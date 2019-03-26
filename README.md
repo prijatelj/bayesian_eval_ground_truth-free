@@ -23,6 +23,10 @@ Trello
 
 Shared Google Drive Folder
 
+## Final Paper
+
+Sharelatex / Overleaf
+
 ## Code and Data
 
 The preferred process is:
