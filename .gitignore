@@ -1,0 +1,13 @@
+*.pyc
+*.o
+*.out
+*.a
+.ipynb_checkpoints
+*.pth.tar
+*.pkl
+*.pth
+__pycache__
+.DS_Store
+*.jpg
+*.png
+._*
