@@ -1,3 +1,5 @@
+source activate metric_py3
+
 export ROOT=$PWD
 export PYTHONPATH=$PWD:$PYTHONPATH
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64"
