@@ -14,9 +14,6 @@ Loosely follows [Cookiecutter](https://drivendata.github.io/cookiecutter-data-sc
 
 Slack `#metric` channel on ND CVRL Slack
 
-## Progress Tracking
-
-Trello tickets
 
 ## Reports, Proposals, Ideas
 
