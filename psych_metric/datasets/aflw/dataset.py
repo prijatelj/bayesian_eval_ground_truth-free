@@ -7,12 +7,13 @@ import ast
 import matplotlib.pyplot as plt
 
 from psych_metric.datasets.base_dataset import BaseDataset
+import psych_metric.utils as utils
 
 ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'data/datasets/aflw/')
+HERE = os.path.join(ROOT, 'psych_metric/datasets/aflw/')
 
 class AFLW(BaseDataset):
-    def __init__(self, stage='train', augment=False, numpy=False
+    def __init__(self, stage='train', augment=False, numpy=False):
         self.numpy = numpy
         self.augment = augment
         self.stage = stage
@@ -83,9 +84,9 @@ class AFLW(BaseDataset):
 
         return ret
 
-    def dislay(self, i, ax=None):
+    def display(self, i, ax=None):
         r = self[i]
-        if ax is None: fig, ax = plt.subplots(1,1 figsize=(10,10))
-        title = [k + "{:.2f}".format(v) for k, v in r.items() if k != 'image'].join('\n')
+        if ax is None: fig, ax = plt.subplots(1,1, figsize=(3,3))
+        title = '\n'.join([k + ": {:.2f}".format(v) for k, v in r.items() if k != 'image'])
         ax.imshow(r['image'])
         ax.set_title(title)
