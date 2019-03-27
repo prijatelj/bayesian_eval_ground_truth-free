@@ -4,6 +4,8 @@
 
 Loosely follows [Cookiecutter](https://drivendata.github.io/cookiecutter-data-science/) structure
 
+`makefile` contains useful commands that are run often. run `make jupyter.port` to open a jupyter notebook to be accessed in a web browser at `localhost:16123`
+
 ## Initializing Environment
 
 [INSTALL.md](INSTALL.md)
@@ -39,3 +41,5 @@ But given the nature of the project trivial changes to the repository can be pus
 Bug tracking should be done in Gitlab Issues, but trello tickets should be made as well.
 
 Data should be linked in shared google drive folders, make sure to add data folders to .gitignore before pushing.
+
+After creating something useful, add a simple jupyter notebook in the proper folder as an example of how to use it, e.g. adding a new dataset.
