@@ -6,10 +6,7 @@ Loosely follows [Cookiecutter](https://drivendata.github.io/cookiecutter-data-sc
 
 ## Initializing Environment
 
-`# TODO: move this to INSTALL.md`
-1.  Add Repository to your `PYTHONPATH` with `source set_environment.sh`
-2.  Install [Anaconda](https://www.anaconda.com/distribution/)
-2.  Create anaconda environment from `.yaml` file
+[INSTALL.md](INSTALL.md)
 
 ## Communication
 
