@@ -35,8 +35,6 @@ The preferred process is:
 
 But given the nature of the project trivial changes to the repository can be pushed to master without that process.
 
-Bug tracking should be done in Gitlab Issues, but trello tickets should be made as well.
-
 Data should be linked in shared google drive folders, make sure to add data folders to .gitignore before pushing.
 
 After creating something useful, add a simple jupyter notebook in the proper folder as an example of how to use it, e.g. adding a new dataset.
