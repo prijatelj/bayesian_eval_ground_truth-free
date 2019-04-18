@@ -23,6 +23,32 @@ class AFLW(BaseDataset):
         else:
             self.img_dir = os.path.join(HERE, 'aflw-att-images')
         self.df = self.load_csv()
+        self.set_multinomials()
+
+    @staticmethod
+    def get_hist(votes):
+        if isinstance(votes, str): 
+            votes = ast.literal_eval(votes)
+        bins = range(1, 9)
+        return np.histogram(votes, bins=bins)[0]
+
+    def set_multinomials(self):
+        cd = {
+                'Trustworthiness_raw': 'Trustworthiness_hist',
+                'Dominance_raw': 'Dominance_hist',
+                'Age_raw': 'Age_hist',
+                'IQ_raw': 'IQ_hist',
+        }
+        for f, t in cd.items():
+            self.df[t] = self.df[f].map(self.get_hist)
+
+    def get_multinomial_arrays(self):
+        arrays = dict()
+        for trait in ['Trustworthiness', 'Dominance', 'IQ', 'Age']:
+            col = trait + '_hist'
+            x = np.stack(self.df[col], axis=0)
+            arrays[trait] = x
+        return arrays
 
     def jpg_to_numpy(self, f):
         return f[:-len('jpg')] + 'npy'
