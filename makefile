@@ -9,4 +9,4 @@ jupyter:
 
 jupyter.port:
 	jupyter nbextension enable --py widgetsnbextension
-	jupyter notebook --no-browser  --NotebookApp.iopub_data_rate_limit=10000000  --port=16123
+	jupyter notebook --no-browser  --NotebookApp.iopub_data_rate_limit=10000  --port=16123
