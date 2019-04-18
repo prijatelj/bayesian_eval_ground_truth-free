@@ -33,6 +33,13 @@ class VolcanoMetricMultinomialEM(BaseMetric):
         params['posterior'] = posterior
         return params
 
+    def sort_params_by_mode(self, params):
+        modes = np.argmax(params['posterior'], axis=1)
+        indices = np.argsort(modes)
+        params['prior'] = params['prior'][indices]
+        params['posterior'] = params['posterior'][indices]
+        return params
+
     def expectation(self, X, params):
         posterior = [
             params['prior'][i] * multinomial.pmf(X, n=np.sum(X, axis=1), p=params['posterior'][i])
@@ -55,13 +62,14 @@ class VolcanoMetricMultinomialEM(BaseMetric):
             
         return params
 
-    def has_converged(self, params1, params2, threshold=0.001):
+    def has_converged(self, params1, params2, threshold=0.001, verbose=False):
         p1 = params1['posterior']
         p2 = params2['posterior']
         delta = np.sqrt(np.sum(np.square(p1 - p2)))
+        if verbose: print('Divergence: {}'.format(delta))
         return (delta < threshold)
 
-    def train(self, X, convergence_threshold=0.001):
+    def train(self, X, convergence_threshold=0.001, verbose=True):
         N, self.n_features = X.shape[0], X.shape[1]
         self.params = self.init_params(X, self.params, method='random')
         last_params = self.copy_params(self.params)
@@ -69,8 +77,10 @@ class VolcanoMetricMultinomialEM(BaseMetric):
             yhat = self.expectation(X, self.params)
             self.params = self.maximization(X, yhat, self.params)
             
-            if self.has_converged(last_params, self.params, convergence_threshold): break
+            if self.has_converged(last_params, self.params, convergence_threshold, verbose): break
             last_params = self.copy_params(self.params)
+
+        self.params = self.sort_params_by_mode(self.params)
 
     def plot_prior(self):
         classes = range(self.n_classes)
@@ -86,12 +96,12 @@ class VolcanoMetricMultinomialEM(BaseMetric):
 
     def plot_posterior(self):
         classes = range(self.n_classes)
-        features = range(self.n_features)
+        features = np.arange(self.n_features)
         fig, axarr = plt.subplots(1, self.n_classes, figsize=(self.n_classes*5, 5), sharex=True, sharey=True)
         for i in range(self.n_classes):
-            axarr[i].bar(features, self.params['posterior'][i])
+            axarr[i].bar(features+1, self.params['posterior'][i])
             axarr[i].set_ylim([0,1])
-            axarr[i].set_xticks(features)
+            axarr[i].set_xticks(features+1)
             axarr[i].set_xlabel('Features', fontsize=15)
         axarr[0].set_ylabel('Probability', fontsize=15)
         plt.suptitle('Posterior (Representative Multinomials)', fontsize=20)
@@ -125,3 +135,5 @@ class VolcanoMetricMultinomialMC(BaseMetric):
     def plot_posterior_pymc3(self):
         pm.traceplot(self.trace, var_names=['prior', 'H',])
         plt.show()
+
+
