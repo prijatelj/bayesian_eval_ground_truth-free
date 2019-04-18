@@ -6,7 +6,7 @@
 
 Create an environment from a `yaml` file with `conda create -f <filename>`
 
-Create a new environment from scratch with `conda create --name metric_py3 python=3.6`
+Create a new environment from scratch with `conda create --name metric_py3 python=3.6 pip conda anaconda`
 
 Add your conda environment to jupyter with: 
 
@@ -29,3 +29,12 @@ Running `source set_environment.sh` will add the repository to your `PYTHONPATH`
 Simply ensure any file you want to be imported exists in a folder with an `__init__.py` file
 
 TODO: alternatively we can use `setup.py` with `pip install -e`
+
+
+### Package notes
+
+```bash
+# pymc3 on the cpu
+pip install git+https://github.com/pymc-devs/pymc3
+pip install arviz
+```
