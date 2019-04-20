@@ -1,4 +1,4 @@
-"""Dataset class handler for truth inference survey 2010 data."""
+"""Dataset class handler for truth inference survey 2017 data."""
 import os
 
 import numpy as np
@@ -7,10 +7,10 @@ import pandas as pd
 from psych_metric.datasets.base_dataset import BaseDataset
 
 ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/truth_inference_survey_2010/truth_inference_survey_2010_data/')
+HERE = os.path.join(ROOT, 'psych_metric/datasets/truth_inference_survey_2017/truth_inference_survey_2017_data/')
 
-class TruthSurvey2010(BaseDataset):
-    """class that loads and serves data from truth inference survey 2010
+class TruthSurvey2017(BaseDataset):
+    """class that loads and serves data from truth inference survey 2017
 
     Attributes
     ----------
