@@ -7,3 +7,44 @@ Majority of these methods, specifically the baselines, will be concerned with an
 The majority of the baseline annotator aggregation methods are taken from two surveys, "Comparing Bayesian Models of Annotation" by Silviu Paun et. al 2018 and "Truth Inference in Crowdsourcing: Is the Problem Solved?" by Yudian Zheng et. al 2017.
 
 A work very close to our own objective, and not just turth inference via annotator aggregation methods is Crowd Layer from "Deep Learning from Crowds" by Filipe Rodrigues and Francisco C. Pereira in 2018. However, our focus is on a metric that can evaluate a predictive model's performance compared to the annotators, while Crowd Layer simply improves the Artificial Neural Network model it is applied to. At the end of this, our metric should be able to better evaluate Crowd Layer and similar models. I believe crowd layer belongs in the truth inference folder due to being able to extract the weights of the annotators from the crowd layers' weights. 
+
+
+
+##Models
+The models of truth inference included in this project.
+
+TODO: get the full names and breif citations so each are identifiable.
+
+###Comparision of Bayesian Models of Annotation
+- Majority Vote
+- dawid\_skene : Dawid and Skene
+- hier\_dawid\_skene : Hierarchial Dawid and Skene
+- multinomial
+- ItemDiff : Item Difficulty, extension of "Beta-Binomial by Item" Carpenter 2008
+- LogRndEff : Logistic Random Effects, Carpenter 2008
+- MACE : Multi-Annotator Competence Estimation, Hovy et al. 2013.
+
+###Truth Inference Survey 2017
+- Majority Vote
+- Mean
+- Median
+- dawid\_skene : Dawid and Skene
+- GLAD : Generative model of Labels, Abilities, and Difficulties)
+- Minimax : 
+- BCC : 
+- CBCC : 
+- LFC : 
+- LFC-N : 
+- ZenCrowd : 
+- CATD : 
+- PM : 
+- Multi : "The Multidimensional Wisdom of Crowds" Welinder et al. 2010
+- KOS :
+- VI-BP : 
+- VI-MF :
+
+### Clustering approach paper
+- Majority Vote
+- spectral\_dawid\_skene
+- GTIC : Ground Truth Inference using Clustering
+- ZenCrowd : 
