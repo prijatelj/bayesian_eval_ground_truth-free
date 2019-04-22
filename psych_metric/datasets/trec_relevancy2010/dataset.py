@@ -16,8 +16,12 @@ class TRECRelevancy2010(BaseDataset):
     ----------
     dataset : str
         Name of specific dataset
-    df : pandas.DataFrame
+    annotations : pandas.DataFrame
         Data Frame containing annotations
+    ground_truth : pandas.DataFrame
+        Data Frame containing annotations
+    features : pandas.DataFrame
+        Data Frame containing annotations, or None
     label_set : set
         Set containing the complete original labels
     label_encoder : {str: sklearn.preprocessing.LabelEncoder}
@@ -49,7 +53,7 @@ class TRECRelevancy2010(BaseDataset):
 
         # Read in and save data
         annotation_file = os.path.join(HERE, self.dataset + '.txt')
-        self.df = pd.read_csv(annotation_file, delimiter='\t')
+        self.annotations = pd.read_csv(annotation_file, delimiter='\t')
 
         # Save the expected labels, or infer the labels from data
         self.label_set = frozenset({-2, -1, 0, 1, 2})
@@ -57,7 +61,17 @@ class TRECRelevancy2010(BaseDataset):
             encode_columns = {'docID'}
 
         # NOTE the 'w' prefix to all workerIDs is removed to use them as integers
-        self.df['workerID'] = self.df['workerID'].apply(lambda x: int(x[1:]))
+        self.annotations['workerID'] = self.annotations['workerID'].apply(lambda x: int(x[1:]))
+
+        # NOTE both are contained within the annotations dataframe.
+        # ground truth: column gold
+        self.ground_truth = None
+        #self.ground_truth = pd.DataFrame()
+        #self.ground_truth['ground_truth'] = self.annotations['gold']
+        #self.ground_truth['ground_truth'] = self.annotations['gold']
+
+        # features: columns topicID and docID
+        self.features = None
 
         # TODO automate the encoding of columns if encode_columns is True:
         # ie. hardcode columns for each dataset to be encoded if True.
@@ -66,9 +80,9 @@ class TRECRelevancy2010(BaseDataset):
 
         # Restructure dataframe into a sparse matrix
         if sparse_matrix:
-            self.df = self.convert_to_sparse_matrix(self.df)
+            self.annotations = self.convert_to_sparse_matrix(self.annotations)
 
-    def convert_to_sparse_matrix(self, df):
+    def convert_to_sparse_matrix(self, annotations):
         """Convert provided dataframe into a sparse matrix equivalent.
 
         Converts the given dataframe of expected format equivalent to this
@@ -78,7 +92,7 @@ class TRECRelevancy2010(BaseDataset):
 
         Parameters
         ----------
-        df : pandas.DataFrame
+        annotations : pandas.DataFrame
             Dataframe to be converted into a sparse matrix format.
 
         Returns
@@ -99,7 +113,7 @@ class TRECRelevancy2010(BaseDataset):
             number of annotations(rows) in dataset. If sparse matrix, number of
             samples
         """
-        return len(self.df)
+        return len(self.annotations)
 
     def __getitem__(self, i):
         """ get specific row from dataset
@@ -109,5 +123,5 @@ class TRECRelevancy2010(BaseDataset):
         dict:
             {header: value, header: value, ...}
         """
-        row = self.df.iloc[i]
+        row = self.annotations.iloc[i]
         return dict(row)

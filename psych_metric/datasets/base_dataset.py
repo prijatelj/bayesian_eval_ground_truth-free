@@ -21,6 +21,24 @@ class BaseDataset(object):
     def display(self, i):
         raise NotImplementedError
 
+    #@property
+    #def is_standardized_format(self):
+    #    """Checks if the dataframes are in standardized format."""
+    #    return self.is_annotation_list or self.is_annotation_matrix
+
+    @property
+    def is_annotation_list(self):
+        """Checks if the annotation dataframe is in list format."""
+        # NOTE this is a weak check, but should work in all expeted cases.
+        return (self.annotations.columns == ['sample_id', 'worker_id', 'label']).all() \
+            and (self.ground_truth.columns == ['sample_id', 'label']).all()
+
+    #@property
+    #def is_annotation_matrix(self):
+    #    """Checks if the annotation dataframe is in list format."""
+    #    # NOTE this is a weak check, but should work in all expeted cases.
+    #    raise NotImplementedError
+
     def _check_dataset(self, dataset, dsets):
         """Checks if the dataset is in the provided set. Raises error if not.
 
@@ -72,9 +90,9 @@ class BaseDataset(object):
                 label_encoder.fit(list(column_labels[column]))
 
                 if by_index:
-                    self.df.iloc[:,column] = label_encoder.transform(self.df.iloc[:,column])
+                    self.annotations.iloc[:,column] = label_encoder.transform(self.annotations.iloc[:,column])
                 else:
-                    self.df[column] = label_encoder.transform(self.df[column])
+                    self.annotations[column] = label_encoder.transform(self.annotations[column])
 
                 label_encoders[column] = label_encoder
 
@@ -88,10 +106,31 @@ class BaseDataset(object):
                 label_encoder = LabelEncoder()
 
                 if by_index:
-                    self.df.iloc[:,column] = label_encoder.fit_transform(self.df.iloc[:,column])
+                    self.annotations.iloc[:,column] = label_encoder.fit_transform(self.annotations.iloc[:,column])
                 else:
-                    self.df[column] = label_encoder.fit_transform(self.df[column])
+                    self.annotations[column] = label_encoder.fit_transform(self.annotations[column])
 
                 label_encoders[column] = label_encoder
 
         return label_encoders
+
+    def convert_to_annotation_list(self, annotations):
+        """Convert provided dataframe into a annotation list equivalent.
+
+        Converts the given dataframe of dataset's expected onload format into
+        a dataframe of equivalent data, but in annotation list format where the
+        rows are the different instance of annotations by individual annotators
+        and the columns are 'sample_id', 'worker_id', and 'label'.
+
+        Parameters
+        ----------
+        annotations : pandas.DataFrame
+            Dataframe to be converted into an annotation list format.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Data Frame of annotations in an annotation list format.
+
+        """
+        raise NotImplementedError

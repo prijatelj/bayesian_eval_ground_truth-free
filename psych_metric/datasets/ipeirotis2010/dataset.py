@@ -18,7 +18,7 @@ class Ipeirotis2010(BaseDataset):
     ----------
     dataset : str
         Name of specific dataset
-    df : pandas.DataFrame
+    annotations : pandas.DataFrame
         Data Frame containing annotations
     label_set : set
         Set containing the complete original labels
@@ -62,10 +62,10 @@ class Ipeirotis2010(BaseDataset):
         # Read in and save data
         if dataset == 'JeroenVuurens':
             annotation_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'votes')
-            self.df = pd.read_csv(annotation_file, header=None, names=['time', 'question_id', 'worker_id', 'label'], delimiter='\t')
+            self.annotations = pd.read_csv(annotation_file, header=None, names=['time', 'question_id', 'worker_id', 'label'], delimiter='\t')
         else:
             annotation_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'labels.txt')
-            self.df = pd.read_csv(annotation_file, header=None, names=['worker_id', 'url', 'label'], delimiter='\t')
+            self.annotations = pd.read_csv(annotation_file, header=None, names=['worker_id', 'url', 'label'], delimiter='\t')
 
         # Read in and save the expected labels, or infer the labels from data
         if 'HITspam' in dataset:
@@ -98,7 +98,7 @@ class Ipeirotis2010(BaseDataset):
 
         # Restructure dataframe into a sparse matrix
         if sparse_matrix:
-            self.df = self.convert_to_sparse_matrix(df)
+            self.annotations = self.convert_to_sparse_matrix(annotations)
 
     def _load_labels(self, csv_path=None):
         """ Load labels from the published dataset categories file, or infer
@@ -116,7 +116,7 @@ class Ipeirotis2010(BaseDataset):
         """
         if csv_path is None:
             # infer labels from data, will exclude any missing labels
-            return frozenset(self.df['label'].unique())
+            return frozenset(self.annotations['label'].unique())
 
         # read in the labels provided
         label_set = set()
@@ -127,7 +127,7 @@ class Ipeirotis2010(BaseDataset):
         return frozenset(label_set)
 
 
-    def convert_to_sparse_matrix(self, df):
+    def convert_to_sparse_matrix(self, annotations):
         """Convert provided dataframe into a sparse matrix equivalent.
 
         Converts the given dataframe of expected format equivalent to this
@@ -137,7 +137,7 @@ class Ipeirotis2010(BaseDataset):
 
         Parameters
         ----------
-        df : pandas.DataFrame
+        annotations : pandas.DataFrame
             Dataframe to be converted into a sparse matrix format.
 
         Returns
@@ -158,7 +158,7 @@ class Ipeirotis2010(BaseDataset):
             number of annotations(rows) in dataset. If sparse matrix, number of
             samples
         """
-        return len(self.df)
+        return len(self.annotations)
 
     def __getitem__(self, i):
         """ get specific row from dataset
@@ -168,5 +168,5 @@ class Ipeirotis2010(BaseDataset):
         dict:
             {header: value, header: value, ...}
         """
-        row = self.df.iloc[i]
+        row = self.annotations.iloc[i]
         return dict(row)
