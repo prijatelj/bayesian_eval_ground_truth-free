@@ -1,0 +1,62 @@
+# Configuration file for running the tests. This will be assumed defaults,
+# passed arguements to scripts will replace the value for that specific run of
+# that script.
+
+# TODO consider replacing this with a shell/bash script if more desirable.
+
+cores: 1 # If empty/null/None the maximum number of cores available will be used
+#threads: lol this is Python.
+n_nested_loop_count: 10
+k_folds: 10
+
+# annotator datasets to be used, and their respective predictive models
+datasets:
+    # Comparison of Bayesian Models of Annotation 2018
+    # Truth Inference Sruvey 2017
+    # Miscellaneous
+    
+
+# Truth inference models to be tested
+truth_inference:
+    # TODO state full name of models so its clear which is which.
+    models: !!set
+        # Non-Probablistic
+        ? majority_vote
+        ? mean  
+        ? median
+        # Comparison of Bayesian Models of Annotation 2018
+        ? multinomial
+        ? dawid_skene
+        ? hier_dawid_skene
+        ? item_diff
+        ? log_rnd_eff
+        ? MACE
+        # Truth Inference Survey 2017 (those not included above)
+        ? ZenCrowd
+        ? GLAD
+        ? minimax
+        ? BCC
+        ? CBCC
+        ? LFC
+        ? LFC-N
+        ? CATD
+        ? PM
+        ? Multi
+        ? KOS
+        ? VI-BP
+        ? VI-MF
+        # Multi-Class Ground Truth Inference in Crowdsourcing with Clustering 2016
+        ? spectral_dawid_skene
+        ? GTIC # Ground Truth Inference using Clustering
+
+# Metrics to be tested and used in evaluating models
+metrics:
+    any: !!set
+        ? wasserstein_distance # Earth Mover's Distance
+    regression: !!set
+        ? MAE
+        ? RMSE
+    classification: !!set
+        ? accuracy
+        ? f1_score
+        ? confusion_matrix
