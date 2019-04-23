@@ -3,6 +3,8 @@ Base Dataset class to be inherited by other dataset classes
 Overwrite these methods
 """
 from sklearn.preprocessing import LabelEncoder
+import ast
+import numpy as np
 
 class BaseDataset(object):
 
@@ -11,6 +13,12 @@ class BaseDataset(object):
         # OR, in the base dataset code [here], assuming standardization.
         # If no standardization, it makes sense to make it dataset specific.
         raise NotImplementedError
+
+    @staticmethod
+    def str_to_array(s):
+        if isinstance(s, str):
+            s = ast.literal_eval(s)
+        return np.array(s)
 
     def __len__(self):
         raise NotImplementedError

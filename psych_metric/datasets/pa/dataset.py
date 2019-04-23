@@ -57,15 +57,15 @@ class PA(BaseDataset):
         """
         df = pd.read_csv(f, header=0)
         return df
+    
+    @staticmethod
+    def get_hist(votes):
+        votes = BaseDataset.str_to_array(votes)
+        bins = range(1, 7)
+        return np.histogram(votes, bins=bins)[0]
 
     def set_multinomials(self, df, vote_col='score_array'):
-        def get_hist(votes):
-            if isinstance(votes, str): 
-                votes = ast.literal_eval(votes)
-            bins = range(1, 7)
-            return np.histogram(votes, bins=bins)[0]
-
-        df['multinomial'] = df[vote_col].map(get_hist)
+        df['multinomial'] = df[vote_col].map(self.get_hist)
         return df
 
     def get_multinomial_array(self):
@@ -91,3 +91,32 @@ class PA(BaseDataset):
         """
         row = self.df.iloc[i]
         return dict(row)
+
+
+class PA_sequence(PA):
+
+    def __init__(self, dataset='3', date='032818', name='dynamic_dense'):
+        self.dataset = str(dataset)
+        self.date = date
+        self.name = name
+        annotation_file = '{}_{}_sequence.csv'.format(self.date, self.dataset)
+        annotation_file = os.path.join(HERE, 'pa_data', annotation_file)
+        self.df = self.load_csv(annotation_file)
+        self.df = self.set_multinomials(self.df, vote_col='scores_array')
+    
+    def load_csv(self, f):
+        df = pd.read_csv(f, header=0)
+        df = df[df['annotation_set_name'] == self.name]
+        for col in ['frame_numbers', 'scores_array']:
+            df[col] = df[col].map(self.str_to_array)
+        df['length'] = df['frame_numbers'].map(len)
+
+        return df
+
+    @staticmethod
+    def get_hists(s):
+        return [PA.get_hist(si) for si in s]
+
+    def set_multinomials(self, df, vote_col='scores_array'):
+        df['multinomials'] = df[vote_col].map(self.get_hists)
+        return df

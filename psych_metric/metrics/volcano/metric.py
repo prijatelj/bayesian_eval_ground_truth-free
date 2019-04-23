@@ -18,6 +18,12 @@ class VolcanoMetricMultinomialEM(BaseMetric):
         self.params = dict()
         self.epsilon = 1e-5
 
+    def predict_proba(self, X):
+        return self.expectation(X, self.params, return_probs=True)
+
+    def predict(self, X):
+        return self.expectation(X, self.params, return_probs=False)
+
     def copy_params(self, params):
         if isinstance(params, dict): return {k: self.copy_params(v) for k, v in params.items()}
         else: return params.copy()
@@ -33,22 +39,28 @@ class VolcanoMetricMultinomialEM(BaseMetric):
         params['posterior'] = posterior
         return params
 
-    def sort_params_by_mode(self, params):
-        modes = np.argmax(params['posterior'], axis=1)
-        indices = np.argsort(modes)
+    def sort_params(self, params, method='mean'):
+        if method == 'mean':
+            w = np.arange(self.n_features)
+            posterior = params['posterior']
+            sort_by = np.dot(posterior, w)
+        elif method == 'mode':
+            sort_by = np.argmax(params['posterior'], axis=1)
+        indices = np.argsort(sort_by)
         params['prior'] = params['prior'][indices]
         params['posterior'] = params['posterior'][indices]
         return params
 
-    def expectation(self, X, params):
+    def expectation(self, X, params, return_probs=False):
         posterior = [
             params['prior'][i] * multinomial.pmf(X, n=np.sum(X, axis=1), p=params['posterior'][i])
             for i in range(self.n_classes)
         ]
         posterior = np.stack(posterior, axis=1)
-        # posterior_norm = posterior / np.sum(posterior, axis=1, keepdims=True)
-        yhat = np.argmax(posterior, axis=1)
-        return yhat
+        if return_probs:
+            return posterior / np.sum(posterior, axis=1, keepdims=True)
+        else:
+            return np.argmax(posterior, axis=1)
 
     def maximization(self, X, Yhat, params, normalize_first=False):
         for i in range(self.n_classes):
@@ -80,11 +92,11 @@ class VolcanoMetricMultinomialEM(BaseMetric):
             if self.has_converged(last_params, self.params, convergence_threshold, verbose): break
             last_params = self.copy_params(self.params)
 
-        self.params = self.sort_params_by_mode(self.params)
+        self.params = self.sort_params(self.params)
 
     def plot_prior(self):
-        classes = range(self.n_classes)
-        features = range(self.n_features)
+        classes = np.arange(self.n_classes)
+        features = np.arange(self.n_features)
         fig, ax = plt.subplots(1,1, figsize=(self.n_features*5, 5))
         ax.bar(classes, self.params['prior'], alpha=0.9)
         ax.set_ylim([0,1])
