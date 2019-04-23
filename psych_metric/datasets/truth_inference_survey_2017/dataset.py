@@ -28,9 +28,6 @@ class TruthSurvey2017(BaseDataset):
     label_encoder : {str: sklearn.preprocessing.LabelEncoder}
         Dict of column name to Label Encoder for the labels. None if no
         encodings used.
-    sparse_matrix : bool
-        Dataframe uses datafile structure if True, uses sparse matrix format if
-        False. Default value is False
     """
 
     def __init__(self, dataset='d_Duck Identification', encode_columns=None):
@@ -84,50 +81,6 @@ class TruthSurvey2017(BaseDataset):
 
         # Encode the labels and data if desired.
         self.label_encoder = None if encode_columns is None else self.encode_labels(encode_columns)
-
-    def get_ground_truth(self, sample_id, decode=False)
-        if ground_truth is None:
-            return None
-
-        # ground_truth is a dict of raw (decoded) sample_ids
-        if decode:
-            sample_id = self.label_encoder['sample_id'].inverse_transform(sample_id)
-
-        return self.ground_truth[sample_id]
-
-    def add_ground_truth_to_samples(self, ground_truth, inplace=True, is_dict=False):
-        """ Add the ground truth labels to every sample (row) of the main
-        dataframe; in place by default.
-
-        Parameters
-        ----------
-        ground_truth : pandas.DataFrame
-            Dataframe of the ground truth,
-        inpalce : bool, optinal
-            Update dataframe in place if True, otherwise return the updated
-            dataframe
-
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame with a ground truth labels column returned if inplace is
-            False, otherwise returns None.
-        """
-        if not is_dict:
-            # converts to dict first, may or may not be efficent.
-            ground_truth_dict = {}
-            for i in range(len(self.ground_truth)):
-                ground_truth_dict[self.ground_truth.iloc[i,0]] = self.ground_truth.iloc[i,1]
-            ground_truth = ground_truth_dict
-
-        ground_truth_col = self.df['sample_id'].apply(lambda x: self.ground_truth[x])
-
-        if inplace:
-            self.df['ground_truth'] = ground_truth
-        else:
-            df_copy = self.df.copy()
-            df_copy['ground_truth'] = ground_truth
-            return df_copy
 
     def convert_to_sparse_matrix(self, df):
         """Convert provided dataframe into a sparse matrix equivalent.

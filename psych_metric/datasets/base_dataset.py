@@ -31,6 +31,57 @@ class BaseDataset(object):
         if dataset not in dsets:
             raise ValueError(str(dataset) + ' is not an acceptable dataset. Use only the following datasets: ' + str(dsets))
 
+    def read_csv_to_dict(csvpath, sep=',', key_column=0, value_column=1, key_dtype=str):
+        """Read the csv as a dict where key value pair is first two columns."""
+        csv_dict = {}
+        with open(csvpath, 'w') as f:
+            csv_reader = csv.reader(f, delimiter=sep)
+
+            if key_dtype != str:
+                for row in csv_reader:
+                    csv_dict[key_dtype(row[key_column])] = row[value_column]
+            else:
+                # No need to cast the row key value.
+                for row in csv_reader:
+                    csv_dict[row[key_column]] = row[value_column]
+        return csv_dict
+
+    def add_ground_truth_to_samples(self, ground_truth, inplace=True, is_dict=False, sample_id='sample_id'):
+        """ Add the ground truth labels to every sample (row) of the main
+        dataframe; in place by default.
+
+        Parameters
+        ----------
+        ground_truth : pandas.DataFrame
+            Dataframe of the ground truth,
+        inpalce : bool, optinal
+            Update dataframe in place if True, otherwise return the updated
+            dataframe
+        sample_id : str
+            the column name that identifies the sample to match to its
+            corresponding ground truth value.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with a ground truth labels column returned if inplace is
+            False, otherwise returns None.
+        """
+        if not is_dict:
+            # converts to dict first, may or may not be efficent.
+            ground_truth_dict = {}
+            for i in range(len(ground_truth)):
+                ground_truth_dict[ground_truth.iloc[i,0]] = ground_truth.iloc[i,1]
+            ground_truth = ground_truth_dict
+
+        ground_truth_col = self.df[sample_id].apply(lambda x: ground_truth[x] if x in ground_truth else None)
+
+        if inplace:
+            self.df['ground_truth'] = ground_truth
+        else:
+            df_copy = self.df.copy()
+            df_copy['ground_truth'] = ground_truth
+
     def encode_labels(self, columns=None, column_labels=None, by_index=False):
         """Initializes a label encoder and fits it to the expected labels of
         the data column.
