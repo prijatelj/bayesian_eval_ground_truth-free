@@ -7,9 +7,6 @@ from sklearn.preprocessing import LabelEncoder
 class BaseDataset(object):
 
     def split_train_val_test(self):
-        #TODO Why have this in the data handler? why not in an evaluation code?
-        # OR, in the base dataset code [here], assuming standardization.
-        # If no standardization, it makes sense to make it dataset specific.
         raise NotImplementedError
 
     def __len__(self):
@@ -20,24 +17,6 @@ class BaseDataset(object):
 
     def display(self, i):
         raise NotImplementedError
-
-    #@property
-    #def is_standardized_format(self):
-    #    """Checks if the dataframes are in standardized format."""
-    #    return self.is_annotation_list or self.is_annotation_matrix
-
-    @property
-    def is_annotation_list(self):
-        """Checks if the annotation dataframe is in list format."""
-        # NOTE this is a weak check, but should work in all expeted cases.
-        return (self.annotations.columns == ['sample_id', 'worker_id', 'label']).all() \
-            and (self.ground_truth.columns == ['sample_id', 'label']).all()
-
-    #@property
-    #def is_annotation_matrix(self):
-    #    """Checks if the annotation dataframe is in list format."""
-    #    # NOTE this is a weak check, but should work in all expeted cases.
-    #    raise NotImplementedError
 
     def _check_dataset(self, dataset, dsets):
         """Checks if the dataset is in the provided set. Raises error if not.
@@ -90,9 +69,9 @@ class BaseDataset(object):
                 label_encoder.fit(list(column_labels[column]))
 
                 if by_index:
-                    self.annotations.iloc[:,column] = label_encoder.transform(self.annotations.iloc[:,column])
+                    self.df.iloc[:,column] = label_encoder.transform(self.df.iloc[:,column])
                 else:
-                    self.annotations[column] = label_encoder.transform(self.annotations[column])
+                    self.df[column] = label_encoder.transform(self.df[column])
 
                 label_encoders[column] = label_encoder
 
@@ -106,15 +85,15 @@ class BaseDataset(object):
                 label_encoder = LabelEncoder()
 
                 if by_index:
-                    self.annotations.iloc[:,column] = label_encoder.fit_transform(self.annotations.iloc[:,column])
+                    self.df.iloc[:,column] = label_encoder.fit_transform(self.df.iloc[:,column])
                 else:
-                    self.annotations[column] = label_encoder.fit_transform(self.annotations[column])
+                    self.df[column] = label_encoder.fit_transform(self.df[column])
 
                 label_encoders[column] = label_encoder
 
         return label_encoders
 
-    def convert_to_annotation_list(self, annotations):
+    def convert_to_annotation_list(self, annotations=None):
         """Convert provided dataframe into a annotation list equivalent.
 
         Converts the given dataframe of dataset's expected onload format into
@@ -125,7 +104,8 @@ class BaseDataset(object):
         Parameters
         ----------
         annotations : pandas.DataFrame
-            Dataframe to be converted into an annotation list format.
+            Dataframe to be converted into an annotation list format. Defaults
+            to class's df.
 
         Returns
         -------

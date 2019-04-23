@@ -15,17 +15,16 @@ class TruthSurvey2017(BaseDataset):
     Attributes
     ----------
     dataset : str
-        Name of specific dataset
-    annotations : pandas.DataFrame
-        Data frame containing annotations either as an annotation list or
-        matrix. If an annotation list, the columns are sample_id, worker_id, and
-        label with rows representing a single annotation from one worker.
-    features : pandas.DataFrame
-        The dataframe containing the sample ids and their features.
-    ground_truth : pandas.DataFrame
-        Data Frame containing the ground truth label data
+        Name of specific (sub) dataset contained within this class.
+    df : pandas.DataFrame
+        contains the data of the dataset in a standardized format (typically
+        an annotation list where each row is an individual's annotation of one
+        sample. Must contain the columns: 'worker_id' and 'label'.
+        'ground_truth' is also a common column name when ground truth is
+        included with the original dataset. 'sample_id' will exist when no
+        features are provided, or some features need loaded.
     label_set : set
-        Set containing the complete original labels
+        Set containing the complete original labels.
     label_encoder : {str: sklearn.preprocessing.LabelEncoder}
         Dict of column name to Label Encoder for the labels. None if no
         encodings used.
@@ -44,12 +43,8 @@ class TruthSurvey2017(BaseDataset):
         encode_columns : list, optional
             Encodes columns provided as list of str; dataframe uses raw values
             by default.
-        sparse_matrix : bool, optional
-            Convert the data into a dataframe with the sparse matrix structure
-        samples_with_ground_truth : bool, optional
-           Add the ground truth labels to the data samples.
         """
-        self.load_dataset(dataset, encode_columns, sparse_matrix, samples_with_ground_truth)
+        self.load_dataset(dataset, encode_columns)
 
     def load_dataset(dataset='d_Duck Identification', encode_columns=None):
         dsets = [
@@ -60,46 +55,35 @@ class TruthSurvey2017(BaseDataset):
         self._check_dataset(dataset, dsets)
         self.dataset = dataset
 
-        #if not isinstance(sparse_matrix, bool):
-        #    raise TypeError('sparse_matrix parameter must be a boolean.')
-        #self.sparse_matrix = sparse_matrix
-
         # Read in and save data
         annotation_file = os.path.join(HERE, self.dataset, 'answer.csv')
-        self.annotations = pd.read_csv(annotation_file)
-        # change to standardized column names.
-        self.annotations.columns = ['sample_id', 'worker_id', 'label']
+        self.df = pd.read_csv(annotation_file)
+        # change to standardized column names. #sample_id is a feature.
+        self.df.columns = ['sample_id', 'worker_id', 'label']
 
         labels_file = os.path.join(HERE, self.dataset, 'truth.csv')
-        self.ground_truth = pd.read_csv(labels_file)
+        ground_truth = pd.read_csv(labels_file)
         # change to standardized column names.
-        self.ground_truth.columns = ['sample_id', 'label']
+        ground_truth.columns = ['sample_id', 'label']
 
         # Save labels set
-        self.labels_set = set(self.ground_truth['label'].unique()) if dataset != 'f201_Emotion_FULL' else self.labels_set = None
+        self.labels_set = set(ground_truth['label'].unique()) if dataset != 'f201_Emotion_FULL' else None
 
-        # Convert ground_truth from dataframe into dict
-        ground_truth_dict = {}
-        for i in range(len(self.ground_truth)):
-            ground_truth_dict[self.ground_truth.iloc[i,0]] = self.ground_truth.iloc[i,1]
-        self.ground_truth = ground_truth_dict
+        # Add ground_truth to the main dataframe as its own column
+        self.add_ground_truth_to_samples(ground_truth)
 
         if encode_columns == True:
+            # The default columns to encode for each data subset.
             if dataset in {'d_jn-product', 's4_Relevance', 's5_AdultContent'}:
                 encode_columns = {'sample_id', 'worker_id'}
             elif dataset in {'d_sentiment', 's4_Face Sentiment Identification', 'f201_Emotion_FULL'}:
                 encode_columns = {'worker_id'}
 
         # Load and save the features if any.
-        # NOTE none of these datasets have the features except for Adult, which is just the URL
         self.features = None
 
-        # Encode the labels and data if desired NOTE only encodes annotation.
+        # Encode the labels and data if desired.
         self.label_encoder = None if encode_columns is None else self.encode_labels(encode_columns)
-
-        # Restructure dataframe into a sparse matrix
-        #if sparse_matrix:
-        #    self.annotations = self.convert_to_sparse_matrix(annotations)
 
     def get_ground_truth(self, sample_id, decode=False)
         if ground_truth is None:
@@ -111,11 +95,14 @@ class TruthSurvey2017(BaseDataset):
 
         return self.ground_truth[sample_id]
 
-    def add_ground_truth_to_samples(self, inplace=True):
-        """ Add the labels to every sample, in place by default.
+    def add_ground_truth_to_samples(self, ground_truth, inplace=True, is_dict=False):
+        """ Add the ground truth labels to every sample (row) of the main
+        dataframe; in place by default.
 
         Parameters
         ----------
+        ground_truth : pandas.DataFrame
+            Dataframe of the ground truth,
         inpalce : bool, optinal
             Update dataframe in place if True, otherwise return the updated
             dataframe
@@ -124,26 +111,31 @@ class TruthSurvey2017(BaseDataset):
         -------
         pd.DataFrame
             DataFrame with a ground truth labels column returned if inplace is
-            False.
+            False, otherwise returns None.
         """
+        if not is_dict:
+            # converts to dict first, may or may not be efficent.
+            ground_truth_dict = {}
+            for i in range(len(self.ground_truth)):
+                ground_truth_dict[self.ground_truth.iloc[i,0]] = self.ground_truth.iloc[i,1]
+            ground_truth = ground_truth_dict
 
-        ground_truth = self.annotations['sample_id'].apply(lambda x: self.ground_truth[x])
+        ground_truth_col = self.df['sample_id'].apply(lambda x: self.ground_truth[x])
 
-        # NOTE is_annotation_list does not accept ground_truth in column of dataframe.
         if inplace:
-            self.annotations['ground_truth'] = ground_truth
+            self.df['ground_truth'] = ground_truth
         else:
-            annotations_copy = self.annotations.copy()
-            annotations_copy['ground_truth'] = ground_truth
-            return annotations_copy
+            df_copy = self.df.copy()
+            df_copy['ground_truth'] = ground_truth
+            return df_copy
 
-    def convert_to_sparse_matrix(self, annotations):
+    def convert_to_sparse_matrix(self, df):
         """Convert provided dataframe into a sparse matrix equivalent.
 
         Converts the given dataframe of expected format equivalent to this
         dataset's datafile structure into a sparse matrix dataframe where the
         row corresponds to each sample and the columns are structured as
-        features, annotations of worker_id, where missing annotations are NA.
+        features, df of worker_id, where missing annotations are NA.
 
         Parameters
         ----------
@@ -168,7 +160,7 @@ class TruthSurvey2017(BaseDataset):
             number of annotations(rows) in dataset. If sparse matrix, number of
             samples
         """
-        return len(self.annotations)
+        return len(self.df)
 
     def __getitem__(self, i):
         """ get specific row from dataset
@@ -178,5 +170,5 @@ class TruthSurvey2017(BaseDataset):
         dict:
             {header: value, header: value, ...}
         """
-        row = self.annotations.iloc[i]
+        row = self.df.iloc[i]
         return dict(row)
