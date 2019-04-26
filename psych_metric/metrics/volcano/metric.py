@@ -4,6 +4,8 @@ import itertools
 import matplotlib.pyplot as plt
 import theano.tensor as tt
 import pymc3 as pm
+import json
+import os
 
 from psych_metric.metrics.base_metric import BaseMetric
 
@@ -12,17 +14,45 @@ class VolcanoMetricPaperEM(BaseMetric):
         pass
 
 class VolcanoMetricMultinomialEM(BaseMetric):
-    def __init__(self, n_classes=2):
-        self.n_classes = n_classes
-        self.n_features = None
-        self.params = dict()
-        self.epsilon = 1e-5
+    def __init__(self, n_classes=2, save_file=None):
+        if (save_file is not None):
+            if (os.path.exists(save_file)):
+                self.load(save_file)
+            else:
+                raise(FileNotFoundError, save_file)
+        else:
+            self.n_classes = n_classes
+            self.n_features = None
+            self.params = dict()
+            self.epsilon = 1e-5
 
     def predict_proba(self, X):
         return self.expectation(X, self.params, return_probs=True)
 
     def predict(self, X):
         return self.expectation(X, self.params, return_probs=False)
+
+    def save(self, path):
+        params = {k: d.tolist() for k,d in self.params.items()}
+        save_dict = {
+                'n_classes': self.n_classes,
+                'n_features': self.n_features,
+                'params': params,
+                'epsilon': self.epsilon,
+        }
+        
+        with open(path, 'w') as f:
+            json.dump(save_dict, f)
+
+    def load(self, path):
+        with open(path, 'r') as f:
+            save_dict = json.load(f)
+
+        self.n_classes = save_dict['n_classes']
+        self.n_features = save_dict['n_features']
+        self.epsilon = save_dict['epsilon']
+        params = save_dict['params']
+        self.params = {k: np.array(v) for k, v in params.items()}
 
     def copy_params(self, params):
         if isinstance(params, dict): return {k: self.copy_params(v) for k, v in params.items()}
