@@ -6,6 +6,7 @@ import theano.tensor as tt
 import pymc3 as pm
 import json
 import os
+from psych_metric.utils import tqdm
 
 from psych_metric.metrics.base_metric import BaseMetric
 
@@ -151,6 +152,7 @@ class VolcanoMetricMultinomialEM(BaseMetric):
 
 
 class VolcanoMetricMultinomialMC(BaseMetric):
+
     def __init__(self, n_classes=3):
         self.n_classes = n_classes
         self.trace=None
@@ -179,3 +181,44 @@ class VolcanoMetricMultinomialMC(BaseMetric):
         plt.show()
 
 
+class VolcanoMetricMultinomialHMM(BaseMetric):
+
+    def __init__(self, n_classes=3):
+        self.n_classes = n_classes
+        self.trace = None
+
+    def train(self, X):
+        """ X is a list of N,C arrays where N is number of stpes, C is number of features """
+        self.n_features = len(X[0][0])
+        n_features, n_components = self.n_features, self.n_classes
+
+        with pm.Model() as model:
+            prior = pm.Dirichlet(
+                'prior', a=np.ones((n_components)), 
+                shape=(n_components)
+            )
+            transitions = pm.Dirichlet(
+                'transitions', a=np.ones((n_components, n_components)), 
+                shape=(n_components, n_components)
+            )
+            posterior = pm.Dirichlet(
+                "posterior", a=np.ones((n_components, n_features)), 
+                shape=(n_components, n_features)
+            ) 
+            
+            for i, row in tqdm(enumerate(X), total=len(X), position=0, desc='Building Model'):
+                current_state = pm.Categorical('state_{}_0'.format(i), p=prior)
+                for j, obs in enumerate(row):
+                    k = np.sum(obs)
+                    yhat = pm.Multinomial('M_{}_{}'.format(i,j), n=k, p=posterior[current_state], observed=obs)
+                    
+                    current_state = pm.Categorical(
+                        'state_{}_{}'.format(i, j+1),
+                        p=transitions[current_state],
+                    )
+
+            self.trace = pm.sample(2000, chains=1)
+
+    def plot_posterior_pymc3(self):
+        pm.traceplot(self.trace, var_names=['prior', 'posterior', 'transitions'])
+        plt.show()
