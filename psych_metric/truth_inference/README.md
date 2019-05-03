@@ -28,7 +28,7 @@ TODO: get the full names and breif citations so each are identifiable.
 - Majority Vote
 - Mean
 - Median
-- dawid\_skene : Dawid and Skene
+- dawid\_skene : Dawid and Skene (Should include the hierarchial D and S too, perhaps)
 - GLAD : Generative model of Labels, Abilities, and Difficulties)
 - Minimax : 
 - BCC : 
