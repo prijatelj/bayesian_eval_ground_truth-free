@@ -9,6 +9,18 @@ The majority of the baseline annotator aggregation methods are taken from two su
 A work very close to our own objective, and not just turth inference via annotator aggregation methods is Crowd Layer from "Deep Learning from Crowds" by Filipe Rodrigues and Francisco C. Pereira in 2018. However, our focus is on a metric that can evaluate a predictive model's performance compared to the annotators, while Crowd Layer simply improves the Artificial Neural Network model it is applied to. At the end of this, our metric should be able to better evaluate Crowd Layer and similar models. I believe crowd layer belongs in the truth inference folder due to being able to extract the weights of the annotators from the crowd layers' weights. 
 
 
+##Generic Truth Inference Model:
+The following is the mathematical formulation of a generic truth inference model. NOTE: use the long form names for the variables, they are just placeholders to make it easier to write the equation. We will use descriptive variable names.
+
+For all a(Y, X, G, alpha) in A, where A is the set of all possible Truth Inference models:
+- Y : Annotators' Labels of data samples. This is able to be thought of as (sparse) matrix of |samples|,|annotators|, but is more computationally efficient to represent as list of annoations where each element of the list contains the unique identifier of the sample, the specific annotator's identifier who annotated this sample, and that annotator's label for this sample. This could also include the time in the case an annotator annotates multiple samples to provide a sequential nature of the labeling.
+- X : (optional, however this work will argue it is ideal to include for truth inference) The data samples that are annotated. This will not be included in some truth inference models because they only focus on the annotations themselves, and as such they could be annotating anything. This is absolutely necessary for any truth inference model that leverages the data.
+- G : (optional and more practical to be missing in some cases when it does not exist in practice) The ground truth of the annotated data.
+- alpha\* : the set of (hyper)parameters needed by the specific instance of the generic truth inference model. Some of these are similar to optimizers and they require parameters. This is akin to pythons args\* where this set is interpretable only to the specific type of truth inference model.
+    + This will always include `random_state` as a parameter of the truth inference model if that model uses randomization in any part of its truth inference process.
+
+For efficiency and consolidation, all standardized datasets will be represented as a single `pandas.Dataframe` of the format: sample features/id, worker id, ground truth.
+This is more pertinent to the data handler code, because these truth inference models will always expect them as these separate values, as is the norm in most standard data science packages/APIs.
 
 ##Models
 The models of truth inference included in this project.
