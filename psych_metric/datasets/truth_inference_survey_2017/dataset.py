@@ -102,7 +102,38 @@ class TruthSurvey2017(BaseDataset):
 
         """
         #TODO decide if this is desireable, then implement if it is desireable.
+        # This is desirable from a standardization perspective of making the
+        # data fit the format of model functions such as those in scikit learn.
         raise NotImplementedError
+
+    def truth_inference_survey_format(self):
+        """Necessary for converting the dataframe list format into what the
+        Truth Inference Survey's code expects.
+
+        Returns
+        -------
+            Tuple of a dictionary of sample identifiers as keys and values as list of
+            annotator id and their annotation, and a dictionary of annotator
+            identifeirs as keys and values as list of samples.
+        """
+        #TODO create a generalized version of this that would apply to any data.
+        samples_to_annotations = dict()
+        annotators_to_samples = dict()
+
+        for index, row in self.df.iterrows():
+            # add to samples_to_annotations
+            if row['sample_id'] not in samples_to_annotations:
+                samples_to_annotations[row['sample_id']] = [row['worker_id'], row['label']]
+            else:
+                samples_to_annotations[row['sample_id']].append([row['worker_id'], row['label']])
+
+            # add to annotators_to_samples
+            if row['worker_id'] not in annotators_to_samples:
+                annotators_to_samples[row['worker_id']] = [row['sample_id'], row['label']]
+            else:
+                annotators_to_samples[row['worker_id']].append([row['sample_id'], row['label']])
+
+        return samples_to_annotations, annotators_to_samples
 
     def __len__(self):
         """ get size of dataset
