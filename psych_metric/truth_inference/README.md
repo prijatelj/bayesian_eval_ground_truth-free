@@ -27,6 +27,20 @@ The models of truth inference included in this project.
 
 TODO: get the full names and breif citations so each are identifiable.
 
+###An Evaluation of Aggregation Techniques in Crowdsourcing
+- Majority Vote
+- Mean
+- Median
+- Majority Decision
+- Honeypot
+- ELICE : Expert Label Injected Crowd Estimation, "Quality Control of Crowd Labeling through Expert Evaluation" Faiza Khan Khattak and Ansaf Salleb-Aouissi.
+
+probablistic:
+- Ipierotis EM (extension of DS)
+- SLME: Supervised Learning from Multiple Experts "Supervised learning from multiple experts: Whom to trust when everyone lies a bit" Raykar, V. et al. 2009
+- ITER: Iterative Learning "Iterative learning for reliable crowdsourcing systems" Karger, D., et al. 2010.
+- GLAD: Generative model of Labels, Abilities, and Difficulties. "Whose vote should count more: Optimal integration of labels from labelers of unknown expertise" Whitehill, J. et al. 2009
+
 ###Comparision of Bayesian Models of Annotation
 - Majority Vote
 - dawid\_skene : Dawid and Skene
@@ -41,7 +55,7 @@ TODO: get the full names and breif citations so each are identifiable.
 - Mean
 - Median
 - dawid\_skene : Dawid and Skene (Should include the hierarchial D and S too, perhaps)
-- GLAD : Generative model of Labels, Abilities, and Difficulties)
+- GLAD : Generative model of Labels, Abilities, and Difficulties
 - Minimax : 
 - BCC : 
 - CBCC : 
