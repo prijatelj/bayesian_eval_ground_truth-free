@@ -71,7 +71,7 @@ def n_nested_kfold_eval(X, y, K=10, N=1, truth_inference_models=None, seed=None,
         fficient and instead save the results to the filesystem.
     """
     for n in range(N):
-        skf = StratifiedKFold(k, True, random_state)
+        skf = StratifiedKFold(K, True, random_state)
 
         for k, (train_index, test_index) in enumerate(skf.split(X, y)):
             X_train, X_test = X.iloc[train_index], X.iloc[test_index]
