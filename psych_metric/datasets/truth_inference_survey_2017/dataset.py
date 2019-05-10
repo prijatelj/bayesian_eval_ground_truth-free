@@ -29,6 +29,11 @@ class TruthSurvey2017(BaseDataset):
         Dict of column name to Label Encoder for the labels. None if no
         encodings used.
     """
+    datasets = frozenset([
+        'd_Duck Identification', 'd_jn-product', 'd_sentiment',
+        's4_Dog data', 's4_Face Sentiment Identification', 's4_Relevance',
+        's5_AdultContent', 'f201_Emotion_FULL'
+    ])
 
     def __init__(self, dataset='d_Duck Identification', encode_columns=None):
         """initialize class by loading the data
@@ -44,12 +49,7 @@ class TruthSurvey2017(BaseDataset):
         self.load_dataset(dataset, encode_columns)
 
     def load_dataset(dataset='d_Duck Identification', encode_columns=None):
-        dsets = [
-            'd_Duck Identification', 'd_jn-product', 'd_sentiment',
-            's4_Dog data', 's4_Face Sentiment Identification', 's4_Relevance',
-            's5_AdultContent', 'f201_Emotion_FULL'
-        ]
-        self._check_dataset(dataset, dsets)
+        self._check_dataset(dataset, TruthSurvey2017.datasets)
         self.dataset = dataset
 
         # Read in and save data

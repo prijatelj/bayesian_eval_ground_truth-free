@@ -9,8 +9,8 @@ ROOT = os.environ['ROOT']
 HERE = os.path.join(ROOT, 'psych_metric/datasets/snow2008/')
 
 class Snow2008(BaseDataset):
-    """class that loads and serves data from Snow 2008 
-    
+    """class that loads and serves data from Snow 2008
+
     Attributes
     ----------
     dataset : str
@@ -18,6 +18,11 @@ class Snow2008(BaseDataset):
     df : pandas.DataFrame
         Data Frame containing annotations
     """
+    datasets = frozenset([
+        'anger', 'disgust', 'fear',
+        'joy', 'rte', 'sadness', 'surprise',
+        'temp', 'valence', 'wordsim', 'wsd'
+    ])
 
     def __init__(self, dataset='anger'):
         """initialize class by loading the data
@@ -27,12 +32,7 @@ class Snow2008(BaseDataset):
         dataset : str
             the name of one of the subdatasets corresponding to file name
         """
-        dsets = [
-            'anger', 'disgust', 'fear', 
-            'joy', 'rte', 'sadness', 'surprise', 
-            'temp', 'valence', 'wordsim', 'wsd'
-        ]
-        assert dataset in dsets
+        assert dataset in Snow2008.datasets
         self.dataset = dataset
         annotation_file = '{}.standardized.tsv'.format(self.dataset)
         annotation_file = os.path.join(
@@ -42,7 +42,7 @@ class Snow2008(BaseDataset):
 
     def load_tsv(self, f):
         """ Read and parse the published dataset file
-        
+
         Parameters
         ----------
         f : str
