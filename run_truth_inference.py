@@ -3,8 +3,7 @@ Script for running the different truth inference methods.
 """
 import argparse
 import os
-import yaml
-import csv
+import yaml # need to import PyYAML
 from datetime import datetime
 
 import numpy as np
@@ -12,31 +11,34 @@ import numpy as np
 # psych metric needs istalled prior to running this script.
 # TODO setup the init and everything such that this is accessible once installed
 from psych_metric.datasets import data_handler
+from psych_metric.truth_inference import truth_inference_model_handler
 
 # TODO create a setup where it is efficient and safe/reliable in saving data
 # in a tmp dir as it goes, and saving all of the results in an output directory.
 
 import random_seed_generator
 
-def run_experiments(datasets, random_seeds_file, K=1, R=1):
+def run_experiments(datasets, models, output_dir, random_seeds):
     """Performs the set of experiments on the given datasets."""
 
     # Iterates through all datasets and performs the same experiments on them.
     for dataset in datasets:
-        # seed the numpy random generator
-        np.random.seed(seed)
-
         # load dataset
         data = data_handler.load_dataset(dataset, encode_columns=True)
 
         # TODO need to convert into a standard format for all Truth Inference models.
-        # Either an annotator (sparse) matrix rows as samples or annotator list
+        samples_to_annotators, annotators_to_samples = data.truth_inference_survey_format()
 
-        # Perform evaluation experiments on dataset.
-        r_looped_kfold_eval(X, y, k, n)
+        # Remember to seed the numpy and python random generators, prior to every model running.
 
-        # Perform train, test split experiments on dataset, if train, test provided.
+    # Iterate through all of the random seeds provided.
+    for seed in random_seeds:
+        # NOTE I think that the models should be called here... otherwise it is a part of the package to run all of them exhaustively, which does not seem desireable for the package itself.
+        #truth_inference.run_models(datasets, models, output_dir, seed)
 
+    # Could perform summary analysis here, but this is better in post processing
+
+## NOTE the kfold things will only be useful for when we want to experiment with how these perform on subsets of the data. This may be of use when comparing the Truth Inference models relation to ground truth, if there is any connection.
 def r_looped_kfold_eval(X, y, K=10, N=1, truth_inference_models=None, seed=None, results_dir=None):
     """Performs N looped Kfold cross validaiton on the provided data and returns
     the resulting information unless told to save the data as it runs.
@@ -161,10 +163,10 @@ def parse_args():
         raise Exception('No datasets provided.')
 
     unrecognized_datasets = set()
-    for d in args.datasets:
+    for dataset in args.datasets:
         if not data_handler.dataset_exists(dataset):
-            raise UserWarning('Unrecognized dataset `%s`. This dataset will be ignored'%d)
-            unrecognized_datasets.add(d)
+            raise UserWarning('Unrecognized dataset `%s`. This dataset will be ignored'%dataset)
+            unrecognized_datasets.add(dataset)
 
     # Remove unrecognized datasets
     args.datasets = set(args.datasets) - unrecognized_datasets
@@ -176,10 +178,10 @@ def parse_args():
         raise Exception('No models provided.')
 
     unrecognized_models = set()
-    for d in args.models:
-        if not data_handler.dataset_exists(dataset):
-            raise UserWarning('Unrecognized dataset `%s`. This dataset will be ignored'%d)
-            unrecognized_models.add(d)
+    for model in args.models:
+        if not truth_inference_model_handler.model_exists(model):
+            raise UserWarning('Unrecognized model `%s`. This model will be ignored'%model)
+            unrecognized_models.add(model)
 
     # Remove unrecognized truth inference models
     args.models = set(args.models) - unrecognized_models
