@@ -17,12 +17,8 @@ from sklearn.model_selection import StratifiedKFold
 # TODO probably need a set of seeds such that the random values throughout are
 # reproducible and independent of the sequential runs of the random_state.
 
-def experiments(datasets, seed=None):
+def experiments(datasets, random_seeds_file, K=1, N=1):
     """Performs the set of experiments on the given datasets."""
-    if seed is None:
-        # Generate random seed to be used and saved with the results
-        # NOTE numpy.random is not threadsafe! Must copy state to each process.
-        seed = np.random.randint(1000000)
 
     # Iterates through all datasets and performs the same experiments on them.
     for dataset in datasets:
@@ -39,9 +35,6 @@ def experiments(datasets, seed=None):
         n_nested_kfold_eval(X, y, k, n)
 
         # Perform train, test split experiments on dataset, if train, test provided.
-        if data.is_train_test_split():
-
-
 
 def n_nested_kfold_eval(X, y, K=10, N=1, truth_inference_models=None, seed=None, results_dir=None):
     """Performs N nested Kfold cross validaiton on the provided data and returns
@@ -71,6 +64,9 @@ def n_nested_kfold_eval(X, y, K=10, N=1, truth_inference_models=None, seed=None,
         fficient and instead save the results to the filesystem.
     """
     for n in range(N):
+        kfold_Eval(X, y, K, truth_inference_models, seed, results_dir)
+
+def kfold_eval(X, y, K=10, truth_inference_models=None, seed=None, results_dir=None):
         skf = StratifiedKFold(K, True, random_state)
 
         for k, (train_index, test_index) in enumerate(skf.split(X, y)):
@@ -84,7 +80,6 @@ def n_nested_kfold_eval(X, y, K=10, N=1, truth_inference_models=None, seed=None,
 
         if results_dir is not None:
             # Save results of this iteration of the N loop
-
 def parse_args():
     """Parses the arguments when this script is called and sets up the experiment
     variables based on the provided configuration file and arguments.
