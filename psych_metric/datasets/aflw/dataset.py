@@ -12,12 +12,22 @@ import psych_metric.utils as utils
 ROOT = os.environ['ROOT']
 HERE = os.path.join(ROOT, 'psych_metric/datasets/aflw/')
 
-class AFLW(BaseDataset):
+class FirstImpressionsSparse(BaseDataset):
+    def __init__(self, dataset='trustworthiness'):
+        self.dataset = dataset
+        self.df_path = os.path.join(HERE, 'first_impressions_data', dataset + '.csv')
+        self.load_csv()
+
+    def load_csv(self):
+        self.df = pd.read_csv(self.df_path)
+
+
+class FirstImpressionsDense(BaseDataset):
     def __init__(self, stage='train', augment=False, numpy=False):
         self.numpy = numpy
         self.augment = augment
         self.stage = stage
-        self.annotations = os.path.join(HERE, 'annotations_att.csv')
+        self.annotations = os.path.join(HERE, 'first_impressions_data', 'aggregated.csv')
         if self.numpy:
             self.img_dir = os.path.join(HERE, 'aflw-att-numpy')
         else:
