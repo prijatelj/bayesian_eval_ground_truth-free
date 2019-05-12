@@ -2,10 +2,11 @@
 Script for running the different truth inference methods.
 """
 import argparse
-import os
-import yaml # need to import PyYAML
 from datetime import datetime
+from json import loads as json_loads
+import os
 
+import yaml # need to import PyYAML
 import numpy as np
 
 # psych metric needs istalled prior to running this script.
@@ -13,13 +14,13 @@ import numpy as np
 from psych_metric.datasets import data_handler
 from psych_metric.truth_inference import truth_inference_model_handler
 
+import random_seed_generator
+
 # TODO create a setup where it is efficient and safe/reliable in saving data
 # in a tmp dir as it goes, and saving all of the results in an output directory.
 
-import random_seed_generator
-
 def run_experiments(datasets, models, output_dir, random_seeds):
-    """Performs the set of experiments on the given datasets."""
+    """Runs experiments on the datasets using the given random seeds."""
 
     # Iterates through all datasets and performs the same experiments on them.
     for dataset in datasets:
@@ -94,9 +95,40 @@ def load_config(args):
         argparse namespace with the orignally missing values filled from the
         configuration file.
     """
-    # TODO load the configurations from the yaml file at args.config.
+    # Check if any arguments are missing in args, if none missing return args.
+    if args.output_dir is not None and args.datasets is not None and args.models is not None and args.random_seeds is not None:
+        return args
 
-    return
+    # Load the configurations from the yaml file at args.config.
+    with open(args.config, 'r') as config_file:
+        config = yaml.load(config_file, Loader=yaml.SafeLoader)
+
+    # Replace all missing values in args with the configuration file values.
+    if args.random_seed is None:
+        args.random_seed = config['random_seed_file']
+    if args.output_dir is None:
+        args.output_dir = config['output_dir']
+
+    if args.datasets is None:
+        args.datasets = config['datasets']
+
+        # extract any filepaths for the datasets if given.
+        for i, dataset in enumerate(args.datasets):
+            if isinstance(dataset, dict) and len(dataset) == 1:
+                # remove the dict and replace with the dataset identifier
+                args.datasets[i] = dataset.keys()[0]
+
+                # dataset filepath given, use that instead of default location.
+                if args.datasets_filepaths is None:
+                    args.datasets_filepaths = dataset
+                elif args.datasets[i] not in args.datasets_filepaths:
+                    # only add if it does not exist, otherwise, assume provided as arg.
+                    args.datasets_filepaths[args.datasets[i]]= dataset[args.datasets[i]]
+
+    if args.models is None:
+        args.models = config['truth_inference']['models']
+
+    return args
 
 def parse_args():
     """Parses the arguments when this script is called and sets up the
@@ -111,12 +143,21 @@ def parse_args():
 
     parser.add_argument('-c', '--config', default=None, help='Enter the file path to the configuration yaml file.')
 
+    # output
     parser.add_argument('-o', '--output_dir', default=None, help='Enter the file path to output directory to store the results.')
     parser.add_argument('--overwrite_output_dir', action='store_true', help='Providing this flag ignores that the output directory already exists and may overwrite existing files.')
-    parser.add_argument('-d','--datasets', default=None, help='')
-    parser.add_argument('-m','--models', default=None, help='Truth inference models to test.')
-    parser.add_argument('r', '--random_seeds', default=None, help='The filepath to the file that contains the random seeds to use for the tests.')
-    parser.add_argument('i','--iterations', default=None, type=int, help='The number of iterations to run the set of models for on the data and also the number of random seeds that will be generated in output file. This is ignored if random_seeds is provided via arguments or the configuration file.')
+    # TODO add datetime to output filenames?
+    #parser.add_argument('--datetime_output', action='store_true', help='Providing this flag adds the date and time information to the output as part of the filename.')
+
+    # data
+    parser.add_argument('-d', '--datasets', default=None, nargs='+', help='list of the datasets to use ')
+    parser.add_argument('-f', '--datasets_filepaths', type=json_loads, help='Dictionary of filepaths to use for certain datasets. Pass in `{"dataset_id": "file/path/"}` to provide the filepath to a dataset.')
+
+    parser.add_argument('-m', '--models', default=None, nargs='+', help='Truth inference models to test.')
+
+    # Random seeds and itereations of models
+    parser.add_argument('r',  '--random_seeds', default=None, help='The filepath to the file that contains the random seeds to use for the tests.')
+    parser.add_argument('i', '--iterations', default=None, type=int, help='The number of iterations to run the set of models for on the data and also the number of random seeds that will be generated in output file. This is ignored if random_seeds is provided via arguments or the configuration file.')
 
     args =  parser.parse_args()
 
@@ -167,6 +208,9 @@ def parse_args():
         if not data_handler.dataset_exists(dataset):
             raise UserWarning('Unrecognized dataset `%s`. This dataset will be ignored'%dataset)
             unrecognized_datasets.add(dataset)
+
+            # Remove the dataset from the datasets_filepaths dict, if present
+            args.datasets_filepaths.pop(dataset, None)
 
     # Remove unrecognized datasets
     args.datasets = set(args.datasets) - unrecognized_datasets
