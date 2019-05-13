@@ -3,11 +3,19 @@ Base Dataset class to be inherited by other dataset classes
 Overwrite these methods
 """
 from sklearn.preprocessing import LabelEncoder
+import ast
+import numpy as np
 
 class BaseDataset(object):
 
     def split_train_val_test(self):
         raise NotImplementedError
+
+    @staticmethod
+    def str_to_array(s):
+        if isinstance(s, str):
+            s = ast.literal_eval(s)
+        return np.array(s)
 
     def __len__(self):
         raise NotImplementedError

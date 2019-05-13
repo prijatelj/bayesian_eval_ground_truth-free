@@ -2,6 +2,20 @@ import math
 import numpy as np
 import random
 
+try:
+    ipy_str = str(type(get_ipython()))
+    if 'zmqshell' in ipy_str:
+        shell = 'jupyter'
+    if 'terminal' in ipy_str:
+        shell =  'ipython'
+except:
+    shell = 'terminal'
+
+if shell == 'jupyter':
+    from tqdm import tqdm_notebook as tqdm
+else:
+    from tqdm import tqdm
+
 def expand_box(box, scale):
     """expand_box
 
