@@ -32,10 +32,25 @@ def run_experiments(datasets, models, output_dir, random_seeds):
 
         # Remember to seed the numpy and python random generators, prior to every model running.
 
-    # Iterate through all of the random seeds provided.
-    for seed in random_seeds:
-        # NOTE I think that the models should be called here... otherwise it is a part of the package to run all of them exhaustively, which does not seem desireable for the package itself.
-        #truth_inference.run_models(datasets, models, output_dir, seed)
+        # Iterate through all of the random seeds provided.
+        for seed in random_seeds:
+            # NOTE I think that the models should be called here... otherwise it is a part of the package to run all of them exhaustively, which does not seem desireable for the package itself.
+            #truth_inference.run_models(datasets, models, output_dir, seed)
+
+            # Classification
+
+            # Truth Inference Survey 2017
+            if 'dawid_skene' in models:
+            if 'ZenCrowd' in models:
+            if 'GLAD' in models:
+            if 'minimax' in models:
+            if 'BCC' in models:
+            if 'CBCC' in models:
+            if 'LFC' in models:
+            if 'LFC-N' in models:
+            if 'CATD' in models:
+            if 'PM' in models:
+            if 'PM' in models:
 
     # Could perform summary analysis here, but this is better in post processing
 
