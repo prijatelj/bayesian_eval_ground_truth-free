@@ -41,14 +41,16 @@ class Snow2008(BaseDataset):
             print('`wsd`: word sense disambiguation is either a mapping or hierarchial classifiaction problem, eitherway, none of the truth inference models will handle this correctly, as far as is known at the moment.')
             raise NotImplemented
 
-        if self.dataset in {'anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise', 'valence', 'wordsim'}:
+        if self.dataset in {'anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise', 'valence'}:
             self.task_type = 'regression'
             # NOTE all emotion and valence could be classifiaction with 100 or 200 labels (integers), which I suppose is really ordering, rather than classification.
+        elif self.dataset == 'wordsim':
+            self.task_type = 'regression'
         elif self.dataset in {'rte', 'temp'}:
             self.task_type = 'binary_classification'
             # NOTE temp=temporal is ordered labels 'strictly before' and 'stritly after'
-        else:
-            self.task_type = 'classification'
+        else: #wsd
+            self.task_type = 'mapping'
             # NOTE wsd: word sense disambiguation is a mapping problem, not a classifiaction problem.
             # The labels will result in misleading class relationships that are non-existent.
             # Furthermore, this is a difficult mapping problem where the item and its possible things to be mapped to both change, rather than keeping a static target to map to.

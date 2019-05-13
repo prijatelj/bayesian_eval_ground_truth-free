@@ -49,7 +49,7 @@ class FacialBeauty(BaseDataset):
         self._check_dataset(dataset, FacialBeauty.datasets)
         self.dataset = dataset
         # NOTE this could be percieved as a regression task, or at least an ordinal task
-        self.task_type = 'classification'
+        self.task_type = 'regression' # regression or ordinal due to ints.
 
         if dataset_filepath is None:
             dataset_filepath = HERE
@@ -63,7 +63,8 @@ class FacialBeauty(BaseDataset):
         self.df = pd.read_csv(annotation_file)
 
         # Save labels set
-        self.labels_set = frozenset((1,2,3,4,5))
+        #self.label_set = frozenset((1,2,3,4,5))
+        self.label_set = None
 
         if encode_columns == True:
             encode_columns = {'Filename'}
