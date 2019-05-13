@@ -82,9 +82,6 @@ datasets:
     - iq
     - trustworthiness
 
-    # Apparent and Real Age
-    # NOTE low priority because there are no individual worker identifiers.
-
 # Truth inference models to be tested
 truth_inference:
     models:
