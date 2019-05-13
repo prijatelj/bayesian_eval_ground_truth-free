@@ -9,7 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 from psych_metric.datasets.base_dataset import BaseDataset
 
 ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/ipeirotis2010/ipeirotis2010_data/')
+HERE = os.path.join(ROOT, 'psych_metric/datasets/ipeirotis_2010/ipeirotis_2010_data/')
 
 class Ipeirotis2010(BaseDataset):
     """class that loads and serves data from Ipeirotis 2010

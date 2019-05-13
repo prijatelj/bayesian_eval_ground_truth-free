@@ -7,7 +7,7 @@ import pandas as pd
 from psych_metric.datasets.base_dataset import BaseDataset
 
 ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/trec_relevancy2010/trec_relevancy2010_data/')
+HERE = os.path.join(ROOT, 'psych_metric/datasets/trec_relevancy_2010/trec_relevancy_2010_data/')
 
 class TRECRelevancy2010(BaseDataset):
     """class that loads and serves data from TREC Relevancy 2010

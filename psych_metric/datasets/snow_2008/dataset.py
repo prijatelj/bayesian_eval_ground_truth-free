@@ -6,7 +6,7 @@ import ast
 from psych_metric.datasets.base_dataset import BaseDataset
 
 ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/snow2008/')
+HERE = os.path.join(ROOT, 'psych_metric/datasets/snow_2008/')
 
 class Snow2008(BaseDataset):
     """class that loads and serves data from Snow 2008
@@ -57,7 +57,7 @@ class Snow2008(BaseDataset):
             # Perhaps, this could be viewed as some form of hierarchial classification.
 
         if dataset_filepath is None:
-            dataset_filepath = os.path.join(HERE, 'rion_snow_2008_simulated_data')
+            dataset_filepath = os.path.join(HERE, 'snow_2008_data')
 
         annotation_file = '{}.standardized.tsv'.format(self.dataset)
         annotation_file = os.path.join(dataset_filepath, annotation_file)
