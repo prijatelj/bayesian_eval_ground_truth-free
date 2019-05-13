@@ -41,6 +41,7 @@ class BaseDataset(object):
 
     def read_csv_to_dict(csvpath, sep=',', key_column=0, value_column=1, key_dtype=str):
         """Read the csv as a dict where key value pair is first two columns."""
+        #TODO I do not see this being used often, perhaps make another subclass of BaseDataset, and all that use this extend that class.
         csv_dict = {}
         with open(csvpath, 'w') as f:
             csv_reader = csv.reader(f, delimiter=sep)
@@ -84,11 +85,13 @@ class BaseDataset(object):
 
         ground_truth_col = self.df[sample_id].apply(lambda x: ground_truth[x] if x in ground_truth else None)
 
+        # TODO make this default to not inplace, it's safer that way.
         if inplace:
             self.df['ground_truth'] = ground_truth
         else:
             df_copy = self.df.copy()
             df_copy['ground_truth'] = ground_truth
+            return df_copy
 
     def encode_labels(self, columns=None, column_labels=None, by_index=False):
         """Initializes a label encoder and fits it to the expected labels of
@@ -173,3 +176,7 @@ class BaseDataset(object):
 
         """
         raise NotImplementedError
+
+    #def convert_to_sparse_matrix(self, annotations=None):
+    #    """Convert provided dataframe into a matrix format, possibly sparse."""
+    #    raise NotImplementedError
