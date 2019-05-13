@@ -37,20 +37,74 @@ def run_experiments(datasets, models, output_dir, random_seeds):
             # NOTE I think that the models should be called here... otherwise it is a part of the package to run all of them exhaustively, which does not seem desireable for the package itself.
             #truth_inference.run_models(datasets, models, output_dir, seed)
 
-            # Classification
+            # TODO split by [binary/multi]Classification, regression, etc.
 
-            # Truth Inference Survey 2017
-            if 'dawid_skene' in models:
-            if 'ZenCrowd' in models:
-            if 'GLAD' in models:
-            if 'minimax' in models:
-            if 'BCC' in models:
-            if 'CBCC' in models:
-            if 'LFC' in models:
-            if 'LFC-N' in models:
-            if 'CATD' in models:
-            if 'PM' in models:
-            if 'PM' in models:
+            # TODO implement a dataset.task_type == 'regression'|'classification'|'binary_classification'
+            if dataset.task_type == 'regression':
+                if 'mean' in models:
+
+                if 'median' in models:
+
+            elif 'classification' in dataset.task_type:
+                # An Evaluation of Aggregation Technique in Crowdsourcing
+                if 'majority_vote' in models:
+
+                if 'majority_decision' in models:
+
+                if 'honeypot' in models:
+
+                if 'ELICE' in models:
+
+                if 'ipierotis_dawid_skene' in models:
+
+                if 'SLME' in models:
+
+                if 'ITER' in models:
+
+                # Comparison of Bayesian Models of Annotation 2018
+                if 'multinomial' in models:
+
+                if 'hier_dawid_skene' in models:
+
+                if 'item_diff' in models:
+
+                if 'log_rnd_eff' in models:
+
+                if 'MACE' in models:
+
+                # Truth Inference Survey 2017
+                if 'dawid_skene' in models:
+
+                if 'ZenCrowd' in models:
+
+                if 'GLAD' in models:
+
+                if 'minimax' in models:
+
+                if 'BCC' in models:
+
+                if 'CBCC' in models:
+
+                if 'LFC' in models:
+
+                if 'LFC-N' in models:
+
+                if 'CATD' in models:
+
+                if 'PM' in models:
+
+                if 'Multi' in models:
+
+                if 'KOS' in models:
+
+                if 'VI-BP' in models:
+
+                if 'VI-MF' in models:
+
+                # Multi-Class Ground Truth Inference in Crowdsourcing with Clustering 2016
+                if 'spectral_dawid_skene' in models:
+
+                if 'GTIC' in models:
 
     # Could perform summary analysis here, but this is better in post processing
 
