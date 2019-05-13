@@ -24,7 +24,7 @@ class Snow2008(BaseDataset):
         'temp', 'valence', 'wordsim', 'wsd'
     ])
 
-    def __init__(self, dataset='anger'):
+    def __init__(self, dataset='anger', dataset_filepath=None):
         """initialize class by loading the data
 
         Parameters
@@ -34,10 +34,11 @@ class Snow2008(BaseDataset):
         """
         assert dataset in Snow2008.datasets
         self.dataset = dataset
+        if dataset_filepath is None:
+            dataset_filepath = os.path.join(HERE, 'rion_snow_2008_simulated_data')
+
         annotation_file = '{}.standardized.tsv'.format(self.dataset)
-        annotation_file = os.path.join(
-                HERE, 'rion_snow_2008_simulated_data', annotation_file
-        )
+        annotation_file = os.path.join(dataset_filepath, annotation_file)
         self.df = self.load_tsv(annotation_file)
 
     def load_tsv(self, f):

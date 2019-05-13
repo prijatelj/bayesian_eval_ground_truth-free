@@ -35,7 +35,7 @@ class TruthSurvey2017(BaseDataset):
         's5_AdultContent', 'f201_Emotion_FULL'
     ])
 
-    def __init__(self, dataset='d_Duck Identification', encode_columns=None):
+    def __init__(self, dataset='d_Duck Identification', dataset_filepath=None, encode_columns=None):
         """initialize class by loading the data
 
         Parameters
@@ -51,14 +51,16 @@ class TruthSurvey2017(BaseDataset):
     def load_dataset(dataset='d_Duck Identification', encode_columns=None):
         self._check_dataset(dataset, TruthSurvey2017.datasets)
         self.dataset = dataset
+        if dataset_filepath is None:
+            dataset_filepath = HERE
 
         # Read in and save data
-        annotation_file = os.path.join(HERE, self.dataset, 'answer.csv')
+        annotation_file = os.path.join(dataset_filepath, self.dataset, 'answer.csv')
         self.df = pd.read_csv(annotation_file)
         # change to standardized column names. #sample_id is a feature.
         self.df.columns = ['sample_id', 'worker_id', 'label']
 
-        labels_file = os.path.join(HERE, self.dataset, 'truth.csv')
+        labels_file = os.path.join(dataset_filepath, self.dataset, 'truth.csv')
         ground_truth = pd.read_csv(labels_file)
         # change to standardized column names.
         ground_truth.columns = ['sample_id', 'label']

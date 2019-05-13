@@ -32,7 +32,7 @@ class TRECRelevancy2010(BaseDataset):
         False. Default value is False
     """
 
-    def __init__(self, encode_columns=None, sparse_matrix=False):
+    def __init__(self, dataset_filepath=None, encode_columns=None, sparse_matrix=False):
         """initialize class by loading the data
 
         Parameters
@@ -51,8 +51,11 @@ class TRECRelevancy2010(BaseDataset):
             raise TypeError('sparse_matrix parameter must be a boolean.')
         self.sparse_matrix = sparse_matrix
 
+        if dataset_filepath is None:
+            dataset_filepath = HERE
+
         # Read in and save data
-        annotation_file = os.path.join(HERE, self.dataset + '.txt')
+        annotation_file = os.path.join(dataset_filepath, self.dataset + '.txt')
         self.annotations = pd.read_csv(annotation_file, delimiter='\t')
 
         # Save the expected labels, or infer the labels from data

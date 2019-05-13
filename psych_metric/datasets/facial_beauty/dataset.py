@@ -7,7 +7,7 @@ import pandas as pd
 from psych_metric.datasets.base_dataset import BaseDataset
 
 ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/facial_beauty/')
+HERE = os.path.join(ROOT, 'psych_metric/datasets/facial_beauty/facial_beauty_data/')
 
 class FacialBeauty(BaseDataset):
     """class that loads and serves data from facial beauty 2018
@@ -28,7 +28,9 @@ class FacialBeauty(BaseDataset):
         False. Default value is False
     """
 
-    def __init__(self, dataset='All_Ratings', encode_columns=None, sparse_matrix=False):
+    datasets = frozenset(['All_Ratings', 'Asian_Females', 'Asian_Males', 'Caucasian_Females', 'Caucasian_Males'])
+
+    def __init__(self, dataset='All_Ratings', dataset_filepath=None, encode_columns=None, sparse_matrix=False):
         """initialize class by loading the data
 
         Parameters
@@ -41,16 +43,18 @@ class FacialBeauty(BaseDataset):
         sparse_matrix : bool, optional
             Convert the data into a dataframe with the sparse matrix structure
         """
-        dsets = ['All_Ratings', 'Asian_Females', 'Asian_Males', 'Caucasian_Females', 'Caucasian_males']
-        self._check_dataset(dataset, dsets)
+        self._check_dataset(dataset, FacialBeauty.datasets)
         self.dataset = dataset
+
+        if dataset_filepath is None:
+            dataset_filepath = HERE
 
         if not isinstance(sparse_matrix, bool):
             raise TypeError('sparse_matrix parameter must be a boolean.')
         self.sparse_matrix = sparse_matrix
 
         # Read in and save data
-        annotation_file = os.path.join(HERE, 'facial_beauty_data', self.dataset + '.csv')
+        annotation_file = os.path.join(dataset_filepath, self.dataset + '.csv')
         self.df = pd.read_csv(annotation_file)
 
         # Save labels set

@@ -35,8 +35,9 @@ class CrowdLayer(BaseDataset):
         Dataframe uses datafile structure if True, uses sparse matrix format if
         False. Default value is False
     """
+    datasets = frozenset({'LabelMe', 'MovieReviews', 'ner-mturk'})
 
-    def __init__(self, dataset='MovieReviews', encode_columns=None):
+    def __init__(self, dataset='MovieReviews', dataset_filepath=None, encode_columns=None):
         """initialize class by loading the data
 
         Parameters
@@ -51,10 +52,12 @@ class CrowdLayer(BaseDataset):
         samples_with_ground_truth : bool, optional
             Add the ground truth labels to the data samples.
         """
-        self._check_dataset(dataset, {'LabelMe', 'MovieReviews', 'ner-mturk'})
+        self._check_dataset(dataset, CrowdLayer.datasets)
+        if dataset_filepath is None:
+            dataset_filepath = HERE
 
         # save the data directory
-        self.data_dir = os.path.join(HERE, 'crowd_layer_data')
+        self.data_dir = os.path.join(dataset_filepath, 'crowd_layer_data')
 
         # All are matrices are sparse matrices. All rows will always be samples
         self.sparse_matrix = True

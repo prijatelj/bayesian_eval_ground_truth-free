@@ -9,7 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 from psych_metric.datasets.base_dataset import BaseDataset
 
 ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/ipeirotis2010/')
+HERE = os.path.join(ROOT, 'psych_metric/datasets/ipeirotis2010/ipeirotis2010_data/')
 
 class Ipeirotis2010(BaseDataset):
     """class that loads and serves data from Ipeirotis 2010
@@ -31,8 +31,14 @@ class Ipeirotis2010(BaseDataset):
         Dict of column name to Label Encoder for the labels. None if no
         encodings used.
     """
+    datasets = frozenset([
+        'AdultContent', 'AdultContent2', 'AdultContent3',
+        'BarzanMozafari', 'CopyrightInfringement',
+        'HITspam-UsingCrowdflower', 'HITspam-UsingMTurk',
+        'JeroenVuurens'
+    ])
 
-    def __init__(self, dataset='AdultContent', encode_columns=None):
+    def __init__(self, dataset='AdultContent', dataset_filepath=None, encode_columns=None):
         """initialize class by loading the data
 
         Parameters
@@ -45,14 +51,14 @@ class Ipeirotis2010(BaseDataset):
         sparse_matrix : bool, optional
             Convert the data into a dataframe with the sparse matrix structure
         """
-    def load_dataset(self, dataset='AdultContent', encode_columns=None):
-        dsets = [
-            'AdultContent', 'AdultContent2', 'AdultContent3',
-            'BarzanMozafari', 'CopyrightInfringement',
-            'HITspam-UsingCrowdflower', 'HITspam-UsingMTurk',
-            'JeroenVuurens'
-        ]
-        self._check_dataset(dataset, dsets)
+
+        load_dataset(dataset, dataset_filepath, encode_columns)
+
+    def load_dataset(self, dataset='AdultContent', dataset_filepath=None, encode_columns=None):
+        self._check_dataset(dataset, Ipeirotis2010.datasets)
+
+        if dataset_filepath is None:
+            dataset_filepath = HERE
 
         # TODO separate these conditionals into data specific load functions.
 
@@ -63,17 +69,17 @@ class Ipeirotis2010(BaseDataset):
 
         # Read in and save data
         if dataset == 'JeroenVuurens':
-            annotation_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'votes')
+            annotation_file = os.path.join(dataset_filepath, self.dataset, 'votes')
             self.df = pd.read_csv(annotation_file, names=['time', 'question_id', 'worker_id', 'label'], delimiter='\t')
         else:
-            annotation_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'labels.txt')
+            annotation_file = os.path.join(dataset_filepath, self.dataset, 'labels.txt')
             self.df = pd.read_csv(annotation_file, names=['worker_id', 'url', 'label'], delimiter='\t')
             # reorder columns into format of features, worker_id, label
             self.df = self.df[['url', 'worker_id', 'label']]
 
         # Read in ground truth.
         if 'Adult' in dataset or dataset == 'CopyrightInfringement':
-            ground_truth_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'gold.txt')
+            ground_truth_file = os.path.join(dataset_filepath, self.dataset, 'gold.txt')
             sample_id = 'url'
             ground_truth_dict = self.read_csv_to_dict(ground_truth_file, sep='\t')
             self.add_ground_truth_to_samples(ground_truth_dict, is_dict=True, sample_id=sample_id)
@@ -84,7 +90,7 @@ class Ipeirotis2010(BaseDataset):
         elif dataset == 'JeroenVuurens':
             self.label_set = frozenset({0, 1})
         else:
-            labels_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'categories.txt')
+            labels_file = os.path.join(dataset_filepath, self.dataset, 'categories.txt')
             self.label_set = self._load_labels(labels_file)
 
         # Encode the labels and data if desired
@@ -110,18 +116,18 @@ class Ipeirotis2010(BaseDataset):
         self._check_dataset(dataset, ['AdultContent', 'AdultContent2', 'AdultContent3'])
 
         # Load annotation data
-        annotation_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'labels.txt')
+        annotation_file = os.path.join(dataset_filepath, self.dataset, 'labels.txt')
         self.df = pd.read_csv(annotation_file, names=['worker_id', 'url', 'label'], delimiter='\t')
         # reorder columns into format of features, worker_id, label
         self.df = self.df[['url', 'worker_id', 'label']]
 
         # Load ground truth
-        ground_truth_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'gold.txt')
+        ground_truth_file = os.path.join(dataset_filepath, self.dataset, 'gold.txt')
         ground_truth_dict = self.read_csv_to_dict(ground_truth_file, sep='\t')
         self.add_ground_truth_to_samples(ground_truth_dict, is_dict=True, sample_id='url')
 
         # Read in and save the expected labels, or infer the labels from data.
-        labels_file = os.path.join(HERE, 'ipeirotis2010_data', self.dataset, 'categories.txt')
+        labels_file = os.path.join(dataset_filepath, self.dataset, 'categories.txt')
         self.label_set = self._load_labels(labels_file)
 
         # Encode the labels and data
