@@ -16,6 +16,9 @@ class FacialBeauty(BaseDataset):
     ----------
     dataset : str
         Name of specific dataset
+    task_type : str
+        The type of learning task the dataset is intended for. This can be one
+        of the following: 'regression', 'binary_classification', 'classification'
     df : pandas.DataFrame
         Data Frame containing annotations
     label_set : set
@@ -45,6 +48,8 @@ class FacialBeauty(BaseDataset):
         """
         self._check_dataset(dataset, FacialBeauty.datasets)
         self.dataset = dataset
+        # NOTE this could be percieved as a regression task, or at least an ordinal task
+        self.task_type = 'classification'
 
         if dataset_filepath is None:
             dataset_filepath = HERE

@@ -17,6 +17,9 @@ class CrowdLayer(BaseDataset):
     ----------
     dataset : str
         Name of the specific dataset with this data.
+    task_type : str
+        The type of learning task the dataset is intended for. This can be one
+        of the following: 'regression', 'binary_classification', 'classification'
     data_dir : str
         Path to directory of the specific dataset with this data.
     label_set : set
@@ -59,6 +62,7 @@ class CrowdLayer(BaseDataset):
         # save the data directory
         self.data_dir = os.path.join(dataset_filepath, 'crowd_layer_data')
 
+
         # All are matrices are sparse matrices. All rows will always be samples
         self.sparse_matrix = True
 
@@ -96,6 +100,9 @@ class CrowdLayer(BaseDataset):
             of the class object.
         """
         self.dataset = 'LabelMe'
+        # Set the dataset task type
+        self.task_type = 'classifiaction'
+
         self.labels_set = frozenset({'highway', 'insidecity', 'tallbuilding', 'street', 'forest', 'coast', 'mountain', 'opencountry'})
 
         # Ensure valid datasplit value
@@ -132,6 +139,10 @@ class CrowdLayer(BaseDataset):
         """
         self.dataset = 'MovieReviews'
 
+        # Set the dataset task type
+        self.task_type = 'regression'
+        self.labels_set = None
+
         # Ensure valid datasplit value
         self._check_datasplit(datasplit, {'all', 'train', 'test'})
 
@@ -160,6 +171,9 @@ class CrowdLayer(BaseDataset):
             instance's attributes.
         """
         self.dataset = 'ner-mturk'
+        # Set the dataset task type
+        self.task_type = 'classifiaction'
+
         self.labels_set = frozenset({'O', 'B-LOC', 'B-ORG', 'B-MISC', 'B-PER', 'I-LOC', 'I-ORG', 'I-MISC', 'I-PER'})
 
         # Ensure valid datasplit value

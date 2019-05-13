@@ -60,12 +60,14 @@ class Ipeirotis2010(BaseDataset):
         if dataset_filepath is None:
             dataset_filepath = HERE
 
-        # TODO separate these conditionals into data specific load functions.
-
+        # TODO separate these conditionals into data specific load functions! It'll be much cleaner.
         if dataset == 'AdultContent3':
             self.dataset = 'AdultContent3-HCOMP2010'
         else:
             self.dataset = dataset
+
+        # Set the task type of the dataset
+        self.task_type = 'binary_classification' if self.dataset in {'BarzanMozafari', 'HITspam-UsingCrowdflower', 'HITspam-UsingMTurk', 'JeroenVuurens'} else 'classification'
 
         # Read in and save data
         if dataset == 'JeroenVuurens':

@@ -65,9 +65,6 @@ datasets:
     # TREC Relevancy 2010
     - trec_relevancy_2010
 
-    # Volcano dataset
-    - volcano
-
     # Computer Vision datasets
     # facial_beauty
     - All_Ratings
@@ -81,6 +78,9 @@ datasets:
     - dominance
     - iq
     - trustworthiness
+
+    # Volcano dataset
+    - volcano
 
 # Truth inference models to be tested
 truth_inference:

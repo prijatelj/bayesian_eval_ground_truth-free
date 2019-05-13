@@ -15,13 +15,15 @@ class Snow2008(BaseDataset):
     ----------
     dataset : str
         Name of specific dataset
+    task_type : str
+        The type of learning task the dataset is intended for. This can be one
+        of the following: 'regression', 'binary_classification', 'classification'
     df : pandas.DataFrame
         Data Frame containing annotations
     """
     datasets = frozenset([
-        'anger', 'disgust', 'fear',
-        'joy', 'rte', 'sadness', 'surprise',
-        'temp', 'valence', 'wordsim', 'wsd'
+        'anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise',
+        'valence', 'rte', 'temp',  'wordsim', 'wsd'
     ])
 
     def __init__(self, dataset='anger', dataset_filepath=None):
@@ -32,8 +34,26 @@ class Snow2008(BaseDataset):
         dataset : str
             the name of one of the subdatasets corresponding to file name
         """
-        assert dataset in Snow2008.datasets
+        self._check_dataset(dataset, Snow2008.datasets)
         self.dataset = dataset
+
+        if dataset == 'wsd':
+            print('`wsd`: word sense disambiguation is either a mapping or hierarchial classifiaction problem, eitherway, none of the truth inference models will handle this correctly, as far as is known at the moment.')
+            raise NotImplemented
+
+        if self.dataset in {'anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise', 'valence', 'wordsim'}:
+            self.task_type = 'regression'
+            # NOTE all emotion and valence could be classifiaction with 100 or 200 labels (integers), which I suppose is really ordering, rather than classification.
+        elif self.dataset in {'rte', 'temp'}:
+            self.task_type = 'binary_classification'
+            # NOTE temp=temporal is ordered labels 'strictly before' and 'stritly after'
+        else:
+            self.task_type = 'classification'
+            # NOTE wsd: word sense disambiguation is a mapping problem, not a classifiaction problem.
+            # The labels will result in misleading class relationships that are non-existent.
+            # Furthermore, this is a difficult mapping problem where the item and its possible things to be mapped to both change, rather than keeping a static target to map to.
+            # Perhaps, this could be viewed as some form of hierarchial classification.
+
         if dataset_filepath is None:
             dataset_filepath = os.path.join(HERE, 'rion_snow_2008_simulated_data')
 

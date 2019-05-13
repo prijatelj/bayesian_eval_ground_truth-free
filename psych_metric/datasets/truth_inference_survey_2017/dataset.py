@@ -16,6 +16,9 @@ class TruthSurvey2017(BaseDataset):
     ----------
     dataset : str
         Name of specific (sub) dataset contained within this class.
+    task_type : str
+        The type of learning task the dataset is intended for. This can be one
+        of the following: 'regression', 'binary_classification', 'classification'
     df : pandas.DataFrame
         contains the data of the dataset in a standardized format (typically
         an annotation list where each row is an individual's annotation of one
@@ -51,8 +54,18 @@ class TruthSurvey2017(BaseDataset):
     def load_dataset(dataset='d_Duck Identification', encode_columns=None):
         self._check_dataset(dataset, TruthSurvey2017.datasets)
         self.dataset = dataset
+
         if dataset_filepath is None:
             dataset_filepath = HERE
+
+        # Set the dataset's expected task type
+        if 'd' == self.dataset[0]:
+            seld.task_type = 'binary_classification'
+        elif 's' == self.dataset[0]:
+            seld.task_type = 'classification'
+            # NOTE the dog breeds identification is probably a hierarchial classifiaction problem
+        elif 'f' == self.dataset[0]:
+            seld.task_type = 'regression'
 
         # Read in and save data
         annotation_file = os.path.join(dataset_filepath, self.dataset, 'answer.csv')

@@ -16,6 +16,9 @@ class TRECRelevancy2010(BaseDataset):
     ----------
     dataset : str
         Name of specific dataset
+    task_type : str
+        The type of learning task the dataset is intended for. This can be one
+        of the following: 'regression', 'binary_classification', 'classification'
     annotations : pandas.DataFrame
         Data Frame containing annotations
     ground_truth : pandas.DataFrame
@@ -46,6 +49,7 @@ class TRECRelevancy2010(BaseDataset):
             Convert the data into a dataframe with the sparse matrix structure
         """
         self.dataset = 'trec-rf10-data'
+        self.task_type = 'classification'
 
         if not isinstance(sparse_matrix, bool):
             raise TypeError('sparse_matrix parameter must be a boolean.')
