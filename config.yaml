@@ -16,26 +16,91 @@ output_dir: 'results/'
 
 
 # Predictive Models evaluation variables.
-
 n_nested_loop_count: 10
 k_folds: 10
 
-# annotated datasets to be used, and their respective predictive models
+# Annotated datasets to be used, and their respective predictive models
+# If any dataset is not a string, but a dict, then that dict may contain the
+# filepath to the dataset rather than the default expected filepath.
 datasets:
     # Truth Inference Sruvey 2017
+    - d_Duck Idnetification
+    - d_jn-product
+    - d_sentiment
+    - s4_Dog data
+    - s4_Face Sentiment Identification
+    - s4_Relevance
+    - s5_AdultContent
+    - f201_Emotion_FULL
+
     # Comparison of Bayesian Models of Annotation 2018
-    # Miscellaneous
-    
+    # Snow 2008:
+    - anger
+    - disgust
+    - fear
+    - joy
+    - rte
+    - sadness
+    - surprise
+    - temp
+    - valence
+    - wordsim
+    - wsd
+
+    # CrowdLayer
+    - LabelMe
+    - MovieReviews
+    - ner_mturk
+
+    # Ipierotis datasets
+    - AdultContent
+    - AdultContent2
+    - AdultContent3
+    - BarzanMozafari
+    - CopyrightInfringement
+    - HITspam-UsingCrowdFlower
+    - HITspam-UsingMTurk
+    - JeroenVurrens
+
+    # TREC Relevancy 2010
+    - trec_relevancy_2010
+
+    # Volcano dataset
+    - volcano
+
+    # Computer Vision datasets
+    # facial_beauty
+    - All_Ratings
+    - Asian_Females
+    - Asian_Males
+    - Caucasian_Females
+    - Caucasian_Males
+
+    # first impressions
+    - age
+    - dominance
+    - iq
+    - trustworthiness
+
+    # Apparent and Real Age
+    # NOTE low priority because there are no individual worker identifiers.
 
 # Truth inference models to be tested
 truth_inference:
-    # TODO state full name of models so its clear which is which.
-    # If any model is not a string, but a dict, then that dict may contain the filepath to the dataset if different from default.
     models:
-        # Non-Probablistic
+        # An Evaluation of Aggregation Techniques in Crowdsourcing 
+        # non-probabilistic
         - majority_vote
         - mean  
         - median
+        - majority_decision
+        - honypot
+        - ELICE
+        # probablistic
+        - ipierotis_dawid_skene
+        - SLME
+        - ITER
+
         # Comparison of Bayesian Models of Annotation 2018
         - multinomial
         - dawid_skene
@@ -43,6 +108,7 @@ truth_inference:
         - item_diff
         - log_rnd_eff
         - MACE
+
         # Truth Inference Survey 2017 (those not included above)
         - ZenCrowd
         - GLAD
@@ -57,6 +123,7 @@ truth_inference:
         - KOS
         - VI-BP
         - VI-MF
+
         # Multi-Class Ground Truth Inference in Crowdsourcing with Clustering 2016
         - spectral_dawid_skene
         - GTIC # Ground Truth Inference using Clustering
