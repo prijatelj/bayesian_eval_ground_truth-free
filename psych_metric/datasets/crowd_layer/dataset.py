@@ -7,8 +7,12 @@ from sklearn.preprocessing import LabelEncoder
 
 from psych_metric.datasets.base_dataset import BaseDataset
 
-ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/crowd_layer/')
+try:
+    ROOT = os.environ['ROOT']
+    HERE = os.path.join(ROOT, 'psych_metric/datasets/crowd_layer/')
+except KeyError:
+    # If ROOT environment variable does not exist, set HERE to None
+    HERE = None
 
 class CrowdLayer(BaseDataset):
     """class that loads and serves data from crowd layer 2018
@@ -57,6 +61,8 @@ class CrowdLayer(BaseDataset):
         """
         self._check_dataset(dataset, CrowdLayer.datasets)
         if dataset_filepath is None:
+            if HERE is None or 'crowd_layer' not in HERE:
+                raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
 
         # save the data directory

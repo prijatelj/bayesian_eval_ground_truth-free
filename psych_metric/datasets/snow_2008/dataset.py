@@ -5,8 +5,11 @@ import ast
 
 from psych_metric.datasets.base_dataset import BaseDataset
 
-ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/snow_2008/')
+try:
+    ROOT = os.environ['ROOT']
+    HERE = os.path.join(ROOT, 'psych_metric/datasets/snow_2008/')
+except KeyError:
+    HERE = None
 
 class Snow2008(BaseDataset):
     """class that loads and serves data from Snow 2008
@@ -57,6 +60,8 @@ class Snow2008(BaseDataset):
             # Perhaps, this could be viewed as some form of hierarchial classification.
 
         if dataset_filepath is None:
+            if HERE is None or 'snow_2008' not in HERE:
+                raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = os.path.join(HERE, 'snow_2008_data')
 
         annotation_file = '{}.standardized.tsv'.format(self.dataset)

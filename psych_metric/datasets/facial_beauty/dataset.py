@@ -6,8 +6,11 @@ import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset
 
-ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/facial_beauty/facial_beauty_data/')
+try:
+    ROOT = os.environ['ROOT']
+    HERE = os.path.join(ROOT, 'psych_metric/datasets/facial_beauty/facial_beauty_data/')
+except:
+    HERE = None
 
 class FacialBeauty(BaseDataset):
     """class that loads and serves data from facial beauty 2018
@@ -52,6 +55,8 @@ class FacialBeauty(BaseDataset):
         self.task_type = 'regression' # regression or ordinal due to ints.
 
         if dataset_filepath is None:
+            if HERE is None or 'facial_beauty_data' not in HERE:
+                raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
 
         if not isinstance(sparse_matrix, bool):

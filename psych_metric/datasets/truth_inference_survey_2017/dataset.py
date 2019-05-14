@@ -6,8 +6,11 @@ import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset
 
-ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/truth_inference_survey_2017/truth_inference_survey_2017_data/')
+try:
+    ROOT = os.environ['ROOT']
+    HERE = os.path.join(ROOT, 'psych_metric/datasets/truth_inference_survey_2017/truth_inference_survey_2017_data/')
+except KeyError:
+    HERE = None
 
 class TruthSurvey2017(BaseDataset):
     """class that loads and serves data from truth inference survey 2017
@@ -56,6 +59,8 @@ class TruthSurvey2017(BaseDataset):
         self.dataset = dataset
 
         if dataset_filepath is None:
+            if HERE is None or 'truth_inference_survey_2017_data' not in HERE:
+                raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
 
         # Set the dataset's expected task type

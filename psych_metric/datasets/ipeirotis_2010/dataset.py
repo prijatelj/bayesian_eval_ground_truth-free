@@ -8,8 +8,11 @@ from sklearn.preprocessing import LabelEncoder
 
 from psych_metric.datasets.base_dataset import BaseDataset
 
-ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/ipeirotis_2010/ipeirotis_2010_data/')
+try:
+    ROOT = os.environ['ROOT']
+    HERE = os.path.join(ROOT, 'psych_metric/datasets/ipeirotis_2010/ipeirotis_2010_data/')
+except KeyError:
+    HERE = None
 
 class Ipeirotis2010(BaseDataset):
     """class that loads and serves data from Ipeirotis 2010
@@ -58,6 +61,8 @@ class Ipeirotis2010(BaseDataset):
         self._check_dataset(dataset, Ipeirotis2010.datasets)
 
         if dataset_filepath is None:
+            if HERE is None or 'ipeirotis_2010_data' not in HERE:
+                raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
 
         # TODO perhaps separate these conditionals into data specific load functions. It'll be much cleaner.

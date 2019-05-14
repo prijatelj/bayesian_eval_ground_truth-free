@@ -6,8 +6,11 @@ import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset
 
-ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/trec_relevancy_2010/trec_relevancy_2010_data/')
+try:
+    ROOT = os.environ['ROOT']
+    HERE = os.path.join(ROOT, 'psych_metric/datasets/trec_relevancy_2010/trec_relevancy_2010_data/')
+except:
+    HERE = None
 
 class TRECRelevancy2010(BaseDataset):
     """class that loads and serves data from TREC Relevancy 2010
@@ -52,6 +55,8 @@ class TRECRelevancy2010(BaseDataset):
         self.sparse_matrix = sparse_matrix
 
         if dataset_filepath is None:
+            if HERE is None or 'trec_relevancy_2010_data' not in HERE:
+                raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
 
         # Read in and save data
