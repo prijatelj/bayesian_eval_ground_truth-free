@@ -180,3 +180,32 @@ class BaseDataset(object):
     #def convert_to_sparse_matrix(self, annotations=None):
     #    """Convert provided dataframe into a matrix format, possibly sparse."""
     #    raise NotImplementedError
+
+    def truth_inference_survey_format(self):
+        """Creates the two dictionaries the Truth Inference Survey's code
+        expects from the dataframe in list format into the two.
+
+        Returns
+        -------
+            Tuple of a dictionary of sample identifiers as keys and values as list of
+            annotator id and their annotation, and a dictionary of annotator
+            identifeirs as keys and values as list of samples.
+        """
+        # NOTE may want this to handle more standard format versions of data.
+        samples_to_annotations = dict()
+        annotators_to_samples = dict()
+
+        for index, row in self.df.iterrows():
+            # add to samples_to_annotations
+            if row['sample_id'] not in samples_to_annotations:
+                samples_to_annotations[row['sample_id']] = [row['worker_id'], row['worker_label']]
+            else:
+                samples_to_annotations[row['sample_id']].append([row['worker_id'], row['worker_label']])
+
+            # add to annotators_to_samples
+            if row['worker_id'] not in annotators_to_samples:
+                annotators_to_samples[row['worker_id']] = [row['sample_id'], row['worker_label']]
+            else:
+                annotators_to_samples[row['worker_id']].append([row['sample_id'], row['worker_label']])
+
+        return samples_to_annotations, annotators_to_samples

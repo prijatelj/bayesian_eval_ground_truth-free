@@ -22,7 +22,7 @@ class TruthSurvey2017(BaseDataset):
     df : pandas.DataFrame
         contains the data of the dataset in a standardized format (typically
         an annotation list where each row is an individual's annotation of one
-        sample. Must contain the columns: 'worker_id' and 'label'.
+        sample. Must contain the columns: 'worker_id' and 'worker_label'.
         'ground_truth' is also a common column name when ground truth is
         included with the original dataset. 'sample_id' will exist when no
         features are provided, or some features need loaded.
@@ -71,15 +71,15 @@ class TruthSurvey2017(BaseDataset):
         annotation_file = os.path.join(dataset_filepath, self.dataset, 'answer.csv')
         self.df = pd.read_csv(annotation_file)
         # change to standardized column names. #sample_id is a feature.
-        self.df.columns = ['sample_id', 'worker_id', 'label']
+        self.df.columns = ['sample_id', 'worker_id', 'worker_label']
 
         labels_file = os.path.join(dataset_filepath, self.dataset, 'truth.csv')
         ground_truth = pd.read_csv(labels_file)
         # change to standardized column names.
-        ground_truth.columns = ['sample_id', 'label']
+        ground_truth.columns = ['sample_id', 'worker_label']
 
         # Save labels set
-        self.labels_set = set(ground_truth['label'].unique()) if dataset != 'f201_Emotion_FULL' else None
+        self.labels_set = set(ground_truth['worker_label'].unique()) if dataset != 'f201_Emotion_FULL' else None
 
         # Add ground_truth to the main dataframe as its own column
         self.add_ground_truth_to_samples(ground_truth)
@@ -120,35 +120,6 @@ class TruthSurvey2017(BaseDataset):
         # This is desirable from a standardization perspective of making the
         # data fit the format of model functions such as those in scikit learn.
         raise NotImplementedError
-
-    def truth_inference_survey_format(self):
-        """Necessary for converting the dataframe list format into what the
-        Truth Inference Survey's code expects.
-
-        Returns
-        -------
-            Tuple of a dictionary of sample identifiers as keys and values as list of
-            annotator id and their annotation, and a dictionary of annotator
-            identifeirs as keys and values as list of samples.
-        """
-        #TODO create a generalized version of this that would apply to any data.
-        samples_to_annotations = dict()
-        annotators_to_samples = dict()
-
-        for index, row in self.df.iterrows():
-            # add to samples_to_annotations
-            if row['sample_id'] not in samples_to_annotations:
-                samples_to_annotations[row['sample_id']] = [row['worker_id'], row['label']]
-            else:
-                samples_to_annotations[row['sample_id']].append([row['worker_id'], row['label']])
-
-            # add to annotators_to_samples
-            if row['worker_id'] not in annotators_to_samples:
-                annotators_to_samples[row['worker_id']] = [row['sample_id'], row['label']]
-            else:
-                annotators_to_samples[row['worker_id']].append([row['sample_id'], row['label']])
-
-        return samples_to_annotations, annotators_to_samples
 
     def __len__(self):
         """ get size of dataset

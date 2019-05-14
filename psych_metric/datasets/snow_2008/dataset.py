@@ -64,7 +64,8 @@ class Snow2008(BaseDataset):
         self.df = self.load_tsv(annotation_file)
 
     def load_tsv(self, f):
-        """ Read and parse the published dataset file
+        """ Read and parse the published dataset file and set column names to
+        the standardized annotation list format.
 
         Parameters
         ----------
@@ -78,7 +79,8 @@ class Snow2008(BaseDataset):
 
         """
         df = pd.read_csv(f, header=0, delimiter='\t')
-        df.columns = [c.replace('!', '') for c in df.columns]
+        df.columns = ['amt_annotation_ids', 'worker_id', 'sample_id', 'worker_label', 'gold']
+        # NOTE keeping gold for now, uncertain if only ground_truth will be for those with ACTUAL ground truth able to be determined.
         return df
 
     def __len__(self):
