@@ -166,7 +166,7 @@ class CrowdLayer(BaseDataset):
         data_file = os.path.join(self.data_dir, self.dataset, 'texts_' + datasplit + '.txt')
         self.data = pd.read_csv(data_file, sep=' ', names=['text'])
 
-    def load_ner_mturk(self, datasplit='ground_truth'):
+    def load_ner_mturk(self, datasplit='train'):
         """Loads the designated split of data from MovieReviews into this
             instance's attributes.
         """
@@ -203,6 +203,48 @@ class CrowdLayer(BaseDataset):
         # There is no general data dataframe for this dataset
         self.data = None
 
+    def ner_mturk_convert_to_annotation_list(self, missing_value=None, inplace=False):
+        """Convert provided sparse dataframe into a annotation list equivalent.
+
+        Converts the given dataframe of sparse matrix format into a dataframe of
+        equivalent data, but in annotation list format where the rows are the
+        different instance of annotations by individual annotators and the
+        columns are 'sample_id', 'worker_id', and 'label'.
+
+        Parameters
+        ----------
+        missing_value :
+            The missing_value of the sparse matrix that represents when an
+            annotator did not annotate a sample. By default this uses the
+            pandas.SparseDataFrame.default_fill_value.
+        inplace : bool
+            Will update the pandas.DataFrame inplace if True, otherwise returns
+            the resulting dataframe.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Data Frame of annotations in an annotation list format.
+
+        """
+        if missing_value is None:
+            missing_value = self.df.default_fill_value
+
+        num_workers = len(self.df.columns) - 2 # do not count sequence or token
+        list_df = pd.DataFrame(np.empty((len(self.df.index)*num_workers, 4)), columns=['sample_id', 'token', 'worker_id', 'worker_label'])
+
+        # Place the correct value in the resulting dataframe list
+        for sample_idx in range(len(self.df.index)):
+            for worker_idx in range(2, num_workers):
+                list_df.iloc[(sample_idx*num_workers) + worker_idx] = [self.df.iloc[sample_idx, 0], self.df.iloc[sample_idx, 1], worker_idx, self.df.iloc[sample_idx, worker_idx + 2]]
+
+        # remove all rows with missing values for labels from dataframe list.
+        list_df = list_df[~list_df.eq(missing_value).any(1)]
+
+        if not inplace:
+            return list_df
+        self.df = list_df
+
     def __len__(self):
         """ get size of dataset
 
@@ -227,4 +269,8 @@ class CrowdLayer(BaseDataset):
         # TODO Currently uncertiain what would make the most intuitive sense for
         # this feature, given the multiple dataframes.
         raise NotImplemented
+
+    def convert_to_annotation_list(self, df=None):
+        """Converts from sparse matrix format into annotation list format."""
+        # TODO Currently expects df to be in sparse matrix format without a check!
 
