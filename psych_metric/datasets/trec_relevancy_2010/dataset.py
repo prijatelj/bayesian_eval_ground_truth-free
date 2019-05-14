@@ -19,12 +19,8 @@ class TRECRelevancy2010(BaseDataset):
     task_type : str
         The type of learning task the dataset is intended for. This can be one
         of the following: 'regression', 'binary_classification', 'classification'
-    annotations : pandas.DataFrame
+    df : pandas.DataFrame
         Data Frame containing annotations
-    ground_truth : pandas.DataFrame
-        Data Frame containing annotations
-    features : pandas.DataFrame
-        Data Frame containing annotations, or None
     label_set : set
         Set containing the complete original labels
     label_encoder : {str: sklearn.preprocessing.LabelEncoder}
@@ -60,34 +56,23 @@ class TRECRelevancy2010(BaseDataset):
 
         # Read in and save data
         annotation_file = os.path.join(dataset_filepath, self.dataset + '.txt')
-        self.annotations = pd.read_csv(annotation_file, delimiter='\t')
+        self.df = pd.read_csv(annotation_file, delimiter='\t')
+        self.df.columns = ['topic_id', 'worker_id', 'sample_id', 'gold', 'worker_label']
 
         # Save the expected labels, or infer the labels from data
         self.label_set = frozenset({-2, -1, 0, 1, 2})
         if encode_columns == True:
-            encode_columns = {'docID'}
+            encode_columns = {'sample_id'}
 
         # NOTE the 'w' prefix to all workerIDs is removed to use them as integers
-        self.annotations['workerID'] = self.annotations['workerID'].apply(lambda x: int(x[1:]))
+        self.df['worker_id'] = self.df['worker_id'].apply(lambda x: int(x[1:]))
 
-        # NOTE both are contained within the annotations dataframe.
-        # ground truth: column gold
-        self.ground_truth = None
-        #self.ground_truth = pd.DataFrame()
-        #self.ground_truth['ground_truth'] = self.annotations['gold']
-        #self.ground_truth['ground_truth'] = self.annotations['gold']
-
-        # features: columns topicID and docID
-        self.features = None
-
-        # TODO automate the encoding of columns if encode_columns is True:
-        # ie. hardcode columns for each dataset to be encoded if True.
         # Encode the labels and data if desired
         self.label_encoder =  None if encode_columns is None else self.encode_labels(encode_columns)
 
         # Restructure dataframe into a sparse matrix
         if sparse_matrix:
-            self.annotations = self.convert_to_sparse_matrix(self.annotations)
+            self.df = self.convert_to_sparse_matrix(self.df)
 
     def convert_to_sparse_matrix(self, annotations):
         """Convert provided dataframe into a sparse matrix equivalent.
@@ -120,7 +105,7 @@ class TRECRelevancy2010(BaseDataset):
             number of annotations(rows) in dataset. If sparse matrix, number of
             samples
         """
-        return len(self.annotations)
+        return len(self.df)
 
     def __getitem__(self, i):
         """ get specific row from dataset
@@ -130,5 +115,5 @@ class TRECRelevancy2010(BaseDataset):
         dict:
             {header: value, header: value, ...}
         """
-        row = self.annotations.iloc[i]
+        row = self.df.iloc[i]
         return dict(row)
