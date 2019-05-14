@@ -61,16 +61,15 @@ class FacialBeauty(BaseDataset):
         # Read in and save data
         annotation_file = os.path.join(dataset_filepath, self.dataset + '.csv')
         self.df = pd.read_csv(annotation_file)
+        self.df.columns = ['worker_id', 'sample_id', 'worker_label', 'original_rating']
 
         # Save labels set
-        #self.label_set = frozenset((1,2,3,4,5))
+        #self.label_set = frozenset((1,2,3,4,5)) # NOTE treating this as regression task
         self.label_set = None
 
         if encode_columns == True:
-            encode_columns = {'Filename'}
+            encode_columns = {'sample_id'}
 
-        # TODO automate the encoding of columns if encode_columns is True:
-        # ie. hardcode columns for each dataset to be encoded if True.
         # Encode the labels and data if desired
         self.label_encoder = None if encode_columns is None else self.encode_labels(encode_columns)
 

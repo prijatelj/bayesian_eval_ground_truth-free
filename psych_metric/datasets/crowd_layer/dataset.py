@@ -128,7 +128,7 @@ class CrowdLayer(BaseDataset):
         self.labels['filename'] = pd.read_csv(filenames_file, sep=' ', names=['filename'])
 
         # Load the data dataframe/dict/numpy thing....
-        # NOTE I have no idea what this is. It's a ragged array, 10k samples,
+        # NOTE I have no idea what this is. It's a ragged array, 1000 samples,
         # 200 max columns, format is #:# for each element, no idea what it means.
         data_file = os.path.join(self.data_dir, self.dataset, 'data_' + datasplit + '.txt')
         self.data = pd.read_csv(data_file)
