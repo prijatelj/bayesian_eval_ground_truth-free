@@ -157,8 +157,6 @@ class BaseDataset(object):
 
     def convert_to_annotation_list(self, missing_value=None, inplace=False):
         """Convert provided sparse dataframe into a annotation list equivalent.
-
-        Converts the given dataframe of sparse matrix format into a dataframe of
         equivalent data, but in annotation list format where the rows are the
         different instance of annotations by individual annotators and the
         columns are 'sample_id', 'worker_id', and 'label'.
@@ -201,7 +199,7 @@ class BaseDataset(object):
     #    """Convert provided dataframe into a matrix format, possibly sparse."""
     #    raise NotImplementedError
 
-    def truth_inference_survey_format(self):
+    def truth_inference_survey_format(self, inplace=False):
         """Creates the two dictionaries the Truth Inference Survey's code
         expects from the dataframe in list format into the two.
 
@@ -212,10 +210,18 @@ class BaseDataset(object):
             identifeirs as keys and values as list of samples.
         """
         # NOTE may want this to handle more standard format versions of data.
+        # If in sparse matrix format, convert to annotation list
+        if inplace:
+            if isinstance(self.df, pd.SparseDataFrame):
+                self.convert_to_annotation_list(inplace=inplace)
+            df = self.df
+        else:
+            df = self.convert_to_annotation_list() if isinstance(self.df, pd.SparseDataFrame) else self.df.copy()
+
         samples_to_annotations = dict()
         annotators_to_samples = dict()
 
-        for index, row in self.df.iterrows():
+        for index, row in df.iterrows():
             # add to samples_to_annotations
             if row['sample_id'] not in samples_to_annotations:
                 samples_to_annotations[row['sample_id']] = [row['worker_id'], row['worker_label']]
