@@ -5,6 +5,8 @@ import argparse
 from datetime import datetime
 from json import loads as json_loads
 import os
+from time import perf_counter, process_time
+#import timeit
 
 import yaml # need to import PyYAML
 import numpy as np
@@ -18,6 +20,24 @@ import random_seed_generator
 
 # TODO create a setup where it is efficient and safe/reliable in saving data
 # in a tmp dir as it goes, and saving all of the results in an output directory.
+
+def summary_csv(filename, truth_inference_method, parameters, dataset, dataset_filepath, random_seed, runtime_process, runtime_performance, datetime_start, datetime_end):
+    """Convenience function creates a summary csv file at the given path
+    containing the given arguments.
+
+    Parameters
+    ----------
+    """
+    with open(filename, 'w') as f:
+        f.write('truth_inference_method,%s\n' % truth_inference_method)
+        f.write('parameters,%s\n' % repr(parameters))
+        f.write('dataset,%s\n' % dataset)
+        f.write('dataset_filepath,%s\n' % dataset_filepath)
+        f.write('random_seed,%d\n' % random_seed)
+        f.write('runtime_process,%f\n' % runtime_process)
+        f.write('runtime_performance,%f\n' % runtime_performance)
+        f.write('datetime_start,%s\n' % str(datetime_start))
+        f.write('datetime_end,%s' % str(datetime_end))
 
 def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None):
     """Runs experiments on the datasets using the given random seeds.
@@ -130,11 +150,50 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'dawid_skene' in models:
                     # for parameters in models['dawid_skene']: #if list of params.
                     # NOTE, EM can be given a prior initial quality!
-                    em_e2lpd, em_w2cm = zheng_2017.EM(samples_to_annotators, annotators_to_samples, data.label_set).Run(parameters['iterations'])
+
+                    # Record start times
+                    start_date = datetime.now()
+                    start_process_time = process_time()
+                    start_perf_time = perf_counter()
+
+                    # Run the expectation maximization method.
+                    em_e2lpd, em_w2cm = zheng_2017.EM(samples_to_annotators, annotators_to_samples, data.label_set, models['dawid_skene']['prior_quality']).Run(models['dawid_skene']['iterations'])
+
+                    # Record end times
+                    end_process_time = process_time()
+                    end_perf_time = perf_counter()
+                    end_date = datetime.now()
+
+                    # e2lpd: example to likelihood probability distribution
+                    # w2cm: workers to confusion matrix
 
                     # Save the results.
+                    worker_confusion_matrix = confusion_matrix.popitem()
+                    cm_df = pd.DataFrame(worker_confusion_matrix[1])
+                    number_of_label_values = len(worker_confusion_matrix[1])
+                    cm_df['worker_id'] = [worker_confusion_matrix[0]] * number_of_label_values
 
-                    # delete the results for memory efficiency
+                    if len(confusion_matrix) > 0:
+                        for worker in confusion_matrix:
+                            cm = pd.DataFrame(confusion_matrix[worker])
+                            cm['worker_id'] = [worker] * len(confusion_matrix[worker])
+                            cm_df = cm_df.append(cm)
+
+                    # Need to make worker_id the index/reorder, and save the item numbers.
+                    cm_df['sample_id'] = cm_df.index
+                    cm_df = cm_df[['work_id', 'sample_id'] + list(range(number_of_label_values))]
+
+                    # Save csv.
+                    cm_df.to_csv(os.path.join(output_dir, dataset, 'dawid_skene', seed,'_'.join([key+'-'+value for key, value in models['dawid_skene'].items()), 'annotator_label_value_confusion_matrix.csv'), index=False)
+
+                    # TODO figure out what example to lpd is???
+
+                    # Delete the results for memory efficiency
+                    # Would be unnecessary if each method call and results and saving were done in a separate function, due to python scoping.
+                    del worker_confusion_matrix
+                    del cm
+                    del cm_df
+                    del number_of_label_values
 
                 if 'ZenCrowd' in models:
                     pass
@@ -170,6 +229,52 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'MACE' in models:
                     pass
 
+def dawid_skene(samples_to_annotators, annotators_tosamples, label_set, model_parameters, output_dir, dataset, dataset_filepath, random_seed):
+    # Record start times
+    start_date = datetime.now()
+    start_process_time = process_time()
+    start_perf_time = perf_counter()
+
+    # Run the expectation maximization method.
+    sample_label_probabilities, worker_confusion_matrices, = zheng_2017.EM(samples_to_annotators, annotators_to_samples, data.label_set, model_parameters['prior_quality']).Run(model_parameters['iterations'])
+
+    # Record end times
+    end_process_time = process_time()
+    end_perf_time = perf_counter()
+    end_date = datetime.now()
+
+    # e2lpd: example to likelihood probability distribution
+    # w2cm: workers to confusion matrix
+
+    # Save the results.
+    # Unpack the confusion matrix
+    worker_confusion_matrix = confusion_matrix.popitem()
+    cm_df = pd.DataFrame(worker_confusion_matrix[1])
+    number_of_label_values = len(worker_confusion_matrix[1])
+    cm_df['worker_id'] = [worker_confusion_matrix[0]] * number_of_label_values
+
+    if len(confusion_matrix) > 0:
+        for worker in confusion_matrix:
+            cm = pd.DataFrame(confusion_matrix[worker])
+            cm['worker_id'] = [worker] * len(confusion_matrix[worker])
+            cm_df = cm_df.append(cm)
+
+    # Need to make worker_id the index/reorder, and save the item numbers.
+    cm_df['sample_id'] = cm_df.index
+    cm_df = cm_df[['work_id', 'sample_id'] + list(range(number_of_label_values))]
+
+    # Create the filepath to this instance's directory
+    dir_path = os.path.join(output_dir, dataset, 'dawid_skene', random_seed,'_'.join([key+'-'+value for key, value in model_parameters.items()))
+
+    # Save csv.
+    cm_df.to_csv(os.path.join(dir_path, 'annotator_label_value_confusion_matrix.csv'), index=False)
+
+    # Unpack the sample label probability estimates
+    sample_label_probabilities = pd.DataFrame(sample_label_probabilities)
+    sample_label_probabilities.to_csv(os.path.join(dir_path, 'sample_label_probabilities.csv'))
+
+    # Create summary.csv
+    summary_csv(os.path.join(dir_path, 'summary.csv'), 'dawid_skene', model_parameters, dataset, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 ## NOTE the kfold things will only be useful for when we want to experiment with how these perform on subsets of the data. This may be of use when comparing the Truth Inference models relation to ground truth, if there is any connection.
 def r_looped_kfold_eval(X, y, K=10, N=1, truth_inference_models=None, seed=None, results_dir=None):

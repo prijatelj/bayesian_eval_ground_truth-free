@@ -101,7 +101,10 @@ truth_inference:
         # Comparison of Bayesian Models of Annotation 2018
         multinomial: None
         # dawid_skene : max_iterations, prior
-        dawid_skene: 20
+        dawid_skene:
+            # using the values given via TI survey script.
+            max_iterations: 20
+            prior_quality: 0.7
         hier_dawid_skene: None
         item_diff: None
         log_rnd_eff: None
