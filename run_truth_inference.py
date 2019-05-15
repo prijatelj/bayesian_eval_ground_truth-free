@@ -12,101 +12,164 @@ import numpy as np
 # psych metric needs istalled prior to running this script.
 # TODO setup the init and everything such that this is accessible once installed
 from psych_metric.datasets import data_handler
-from psych_metric.truth_inference import truth_inference_model_handler
+from psych_metric.truth_inference import truth_inference_model_handler, zheng_2017
 
 import random_seed_generator
 
 # TODO create a setup where it is efficient and safe/reliable in saving data
 # in a tmp dir as it goes, and saving all of the results in an output directory.
 
-def run_experiments(datasets, models, output_dir, random_seeds):
-    """Runs experiments on the datasets using the given random seeds."""
+def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None):
+    """Runs experiments on the datasets using the given random seeds.
+
+    Parameters
+    ----------
+    datasets : list(str)
+        List of string identifiers for the datasets to be loaded and used for
+        the truth inference task.
+    models : list(str) | dict(str:dict())
+        List of string identifiers for the truth inference models to be used.
+        Or, this is a dictionary of string identifiers for the truth inference
+        models to be used and they map to a dictionary of parameters for each
+        model. OR a list of dictionaries of parameters to be tested for every
+        random seed.
+    output_dir : str
+        String of the filepath to the root output directory for saving results.
+    random_seeds : list(int)
+        List of integer random seeds to use for initializing each test of the
+        truth inference methods.
+    dataset_filepaths : dict(str:str)
+        Dictionary with keys as string dataset identifiers and values as string
+        dataset filepaths. If a dataset is not in this dictionary, then it's
+        filepath is not provided.
+    """
 
     # Iterates through all datasets and performs the same experiments on them.
     for dataset in datasets:
+        # Get dataset filepath if given
+        dataset_filepath = datasets_filepaths[dataset] if dataset in datasets_filepaths else None
         # load dataset
-        data = data_handler.load_dataset(dataset, encode_columns=True)
+        #data = data_handler.load_dataset(dataset, dataset_filepath, encode_columns=True)
+        data = data_handler.load_dataset(dataset, dataset_filepath)
 
-        # TODO need to convert into a standard format for all Truth Inference models.
         samples_to_annotators, annotators_to_samples = data.truth_inference_survey_format()
 
         # Remember to seed the numpy and python random generators, prior to every model running.
 
         # Iterate through all of the random seeds provided.
         for seed in random_seeds:
-            # NOTE I think that the models should be called here... otherwise it is a part of the package to run all of them exhaustively, which does not seem desireable for the package itself.
-            #truth_inference.run_models(datasets, models, output_dir, seed)
-
             # TODO split by [binary/multi]Classification, regression, etc.
 
-            # TODO implement a dataset.task_type == 'regression'|'classification'|'binary_classification'
+            # TODO implement a dataset.task_type == 'regression'|'classification'|'binary_classification', possibly also 'ordering', 'binary ordering', 'hierarchial clasification', and 'mapping'
+
+            # Models for any task-type
+            if 'CATD' in models:
+                pass
+
+            if 'PM' in models:
+                pass
+
             if dataset.task_type == 'regression':
                 if 'mean' in models:
 
                 if 'median' in models:
 
-            elif 'classification' in dataset.task_type:
-                # An Evaluation of Aggregation Technique in Crowdsourcing
-                if 'majority_vote' in models:
-
-                if 'majority_decision' in models:
-
-                if 'honeypot' in models:
-
-                if 'ELICE' in models:
-
-                if 'ipierotis_dawid_skene' in models:
-
-                if 'SLME' in models:
-
-                if 'ITER' in models:
-
-                # Comparison of Bayesian Models of Annotation 2018
-                if 'multinomial' in models:
-
-                if 'hier_dawid_skene' in models:
-
-                if 'item_diff' in models:
-
-                if 'log_rnd_eff' in models:
-
-                if 'MACE' in models:
+                # Most likley, all non-probablistic methods can be saved together
 
                 # Truth Inference Survey 2017
-                if 'dawid_skene' in models:
-
-                if 'ZenCrowd' in models:
-
-                if 'GLAD' in models:
-
-                if 'minimax' in models:
-
-                if 'BCC' in models:
-
-                if 'CBCC' in models:
-
-                if 'LFC' in models:
-
                 if 'LFC-N' in models:
+                    pass
 
-                if 'CATD' in models:
+            elif 'classification' in dataset.task_type:
+                if 'binary' in dataset.task_type:
+                    # Use binary classifiaction only TI models
+                    if 'Multi' in models:
+                        pass
 
-                if 'PM' in models:
+                    if 'KOS' in models:
+                        pass
 
-                if 'Multi' in models:
+                    if 'VI-BP' in models:
+                        pass
 
-                if 'KOS' in models:
+                    if 'VI-MF' in models:
+                        pass
 
-                if 'VI-BP' in models:
+                # Use the multi-classification TI models
 
-                if 'VI-MF' in models:
+                # An Evaluation of Aggregation Technique in Crowdsourcing 2013
+                if 'majority_vote' in models:
+                    pass
+
+                if 'majority_decision' in models:
+                    pass
+
+                if 'honeypot' in models:
+                    pass
+
+                if 'ELICE' in models:
+                    pass
+
+                if 'ipierotis_dawid_skene' in models:
+                    pass
+
+                if 'SLME' in models:
+                    pass
+
+                if 'ITER' in models:
+                    pass
 
                 # Multi-Class Ground Truth Inference in Crowdsourcing with Clustering 2016
                 if 'spectral_dawid_skene' in models:
+                    pass
 
                 if 'GTIC' in models:
+                    pass
 
-    # Could perform summary analysis here, but this is better in post processing
+                # Truth Inference Survey 2017
+                if 'dawid_skene' in models:
+                    # for parameters in models['dawid_skene']: #if list of params.
+                    # NOTE, EM can be given a prior initial quality!
+                    em_e2lpd, em_w2cm = zheng_2017.EM(samples_to_annotators, annotators_to_samples, data.label_set).Run(parameters['iterations'])
+
+                    # Save the results.
+
+                    # delete the results for memory efficiency
+
+                if 'ZenCrowd' in models:
+                    pass
+
+                if 'GLAD' in models:
+                    pass
+
+                if 'minimax' in models:
+                    pass
+
+                if 'BCC' in models:
+                    pass
+
+                if 'CBCC' in models:
+                    pass
+
+                if 'LFC' in models:
+                    pass
+
+                # Comparison of Bayesian Models of Annotation 2018
+                if 'multinomial' in models:
+                    pass
+
+                if 'hier_dawid_skene' in models:
+                    pass
+
+                if 'item_diff' in models:
+                    pass
+
+                if 'log_rnd_eff' in models:
+                    pass
+
+                if 'MACE' in models:
+                    pass
+
 
 ## NOTE the kfold things will only be useful for when we want to experiment with how these perform on subsets of the data. This may be of use when comparing the Truth Inference models relation to ground truth, if there is any connection.
 def r_looped_kfold_eval(X, y, K=10, N=1, truth_inference_models=None, seed=None, results_dir=None):
@@ -290,6 +353,7 @@ def parse_args():
     if args.models is None:
         raise Exception('No models provided.')
 
+    # TODO check that the models is a dict of parameters(dict) (or dict of list of dict of parameters)
     unrecognized_models = set()
     for model in args.models:
         if not truth_inference_model_handler.model_exists(model):

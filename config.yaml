@@ -85,45 +85,47 @@ datasets:
 # Truth inference models to be tested
 truth_inference:
     models:
-        # An Evaluation of Aggregation Techniques in Crowdsourcing 
+        # An Evaluation of Aggregation Techniques in Crowdsourcing
         # non-probabilistic
-        - majority_vote
-        - mean  
-        - median
-        - majority_decision
-        - honypot
-        - ELICE
+        majority_vote: None
+        mean: None
+        median: None
+        majority_decision: None
+        honypot: None
+        ELICE: None
         # probablistic
-        - ipierotis_dawid_skene
-        - SLME
-        - ITER
+        ipierotis_dawid_skene: None
+        SLME: None
+        ITER: None
 
         # Comparison of Bayesian Models of Annotation 2018
-        - multinomial
-        - dawid_skene
-        - hier_dawid_skene
-        - item_diff
-        - log_rnd_eff
-        - MACE
+        multinomial: None
+        # dawid_skene : max_iterations, prior
+        dawid_skene: 20
+        hier_dawid_skene: None
+        item_diff: None
+        log_rnd_eff: None
+        MACE: None
 
         # Truth Inference Survey 2017 (those not included above)
-        - ZenCrowd
-        - GLAD
-        - minimax
-        - BCC
-        - CBCC
-        - LFC
-        - LFC-N
-        - CATD
-        - PM
-        - Multi
-        - KOS
-        - VI-BP
-        - VI-MF
+        ZenCrowd: None
+        GLAD: None
+        minimax: None
+        BCC: None
+        CBCC: None
+        LFC: None
+        LFC-N: None
+        CATD: None
+        PM: None
+        Multi: None
+        KOS: None
+        VI-BP: None
+        VI-MF: None
 
         # Multi-Class Ground Truth Inference in Crowdsourcing with Clustering 2016
-        - spectral_dawid_skene
-        - GTIC # Ground Truth Inference using Clustering
+        spectral_dawid_skene: None
+        # Ground Truth Inference using Clustering
+        GTIC: None
 
 # Metrics to be tested and used in evaluating models
 metrics:
