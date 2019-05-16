@@ -53,9 +53,10 @@ class Snow2008(BaseDataset):
             self.label_set = None
         elif self.dataset == 'rte':
             self.task_type = 'binary_classification'
-            # NOTE temp=temporal is ordered labels 'strictly before' and 'stritly after'
             self.label_set = frozenset({0, 1})
         elif self.dataset == 'temp':
+            # NOTE temp=temporal is ordered labels 'strictly before' and 'stritly after'
+            self.task_type = 'binary_classification'
             self.label_set = frozenset({1, 2})
         else: # wsd
             self.task_type = 'mapping'
