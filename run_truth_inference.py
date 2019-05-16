@@ -69,7 +69,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
     for i, dataset_id in enumerate(datasets):
         # Progress print out
         if print_progress:
-            print('%d / %d datasets. Starting dataset: %s' % (i+1, len(datasets), dataset_id))
+            print('%d / %d datasets. Current dataset: %s' % (i+1, len(datasets), dataset_id))
 
         # Get dataset filepath if given
         dataset_filepath = datasets_filepaths[dataset_id] if datasets_filepaths is not None and dataset_id in datasets_filepaths else None
@@ -194,6 +194,9 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
 
 def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
+    """Calls the Zheng 2017 implementation of Dawid and Skene EM algorithm and
+    saves the results and runtimes of the method.
+    """
     # Record start times
     datetime_start = datetime.now()
     start_process_time = process_time()
@@ -236,7 +239,8 @@ def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_p
     cm_df.to_csv(os.path.join(dir_path, 'annotator_label_value_confusion_matrix.csv'), index=False)
 
     # Unpack the sample label probability estimates
-    sample_label_probabilities = pd.DataFrame(sample_label_probabilities)
+    sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
+    sample_label_probabilities.index.name = 'sample_id'
     sample_label_probabilities.to_csv(os.path.join(dir_path, 'sample_label_probabilities.csv'))
 
     # Create summary.csv
