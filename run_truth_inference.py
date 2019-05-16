@@ -9,7 +9,8 @@ from time import perf_counter, process_time
 #import timeit
 
 import yaml # need to import PyYAML
-import numpy as np
+#import numpy as np
+import pandas as pd
 
 # psych metric needs istalled prior to running this script.
 # TODO setup the init and everything such that this is accessible once installed
@@ -23,7 +24,7 @@ import random_seed_generator
 
 def summary_csv(filename, truth_inference_method, parameters, dataset, dataset_filepath, random_seed, runtime_process, runtime_performance, datetime_start, datetime_end):
     """Convenience function creates a summary csv file at the given path
-    containing the given arguments.
+    containing the provided arguments.
 
     Parameters
     ----------
@@ -91,8 +92,10 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
             if dataset.task_type == 'regression':
                 if 'mean' in models:
+                    pass
 
                 if 'median' in models:
+                    pass
 
                 # Most likley, all non-probablistic methods can be saved together
 
@@ -149,51 +152,8 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 # Truth Inference Survey 2017
                 if 'dawid_skene' in models:
                     # for parameters in models['dawid_skene']: #if list of params.
-                    # NOTE, EM can be given a prior initial quality!
-
-                    # Record start times
-                    start_date = datetime.now()
-                    start_process_time = process_time()
-                    start_perf_time = perf_counter()
-
-                    # Run the expectation maximization method.
-                    em_e2lpd, em_w2cm = zheng_2017.EM(samples_to_annotators, annotators_to_samples, data.label_set, models['dawid_skene']['prior_quality']).Run(models['dawid_skene']['iterations'])
-
-                    # Record end times
-                    end_process_time = process_time()
-                    end_perf_time = perf_counter()
-                    end_date = datetime.now()
-
-                    # e2lpd: example to likelihood probability distribution
-                    # w2cm: workers to confusion matrix
-
-                    # Save the results.
-                    worker_confusion_matrix = confusion_matrix.popitem()
-                    cm_df = pd.DataFrame(worker_confusion_matrix[1])
-                    number_of_label_values = len(worker_confusion_matrix[1])
-                    cm_df['worker_id'] = [worker_confusion_matrix[0]] * number_of_label_values
-
-                    if len(confusion_matrix) > 0:
-                        for worker in confusion_matrix:
-                            cm = pd.DataFrame(confusion_matrix[worker])
-                            cm['worker_id'] = [worker] * len(confusion_matrix[worker])
-                            cm_df = cm_df.append(cm)
-
-                    # Need to make worker_id the index/reorder, and save the item numbers.
-                    cm_df['sample_id'] = cm_df.index
-                    cm_df = cm_df[['work_id', 'sample_id'] + list(range(number_of_label_values))]
-
-                    # Save csv.
-                    cm_df.to_csv(os.path.join(output_dir, dataset, 'dawid_skene', seed,'_'.join([key+'-'+value for key, value in models['dawid_skene'].items()), 'annotator_label_value_confusion_matrix.csv'), index=False)
-
-                    # TODO figure out what example to lpd is???
-
-                    # Delete the results for memory efficiency
-                    # Would be unnecessary if each method call and results and saving were done in a separate function, due to python scoping.
-                    del worker_confusion_matrix
-                    del cm
-                    del cm_df
-                    del number_of_label_values
+                    # NOTE, EM is given a prior initial quality! if none, set all to 0.5, or random chance that the annotator is quality (ie. 1/#labels)
+                    dawid_skene(samples_to_annotators, annotators_to_samples, data.label_set, models['dawid_skene'], output_dir, dataset, dataset_filepath, seed)
 
                 if 'ZenCrowd' in models:
                     pass
@@ -229,34 +189,35 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'MACE' in models:
                     pass
 
-def dawid_skene(samples_to_annotators, annotators_tosamples, label_set, model_parameters, output_dir, dataset, dataset_filepath, random_seed):
+
+def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset, dataset_filepath, random_seed):
     # Record start times
-    start_date = datetime.now()
+    datetime_start = datetime.now()
     start_process_time = process_time()
-    start_perf_time = perf_counter()
+    start_performance_time = perf_counter()
 
     # Run the expectation maximization method.
-    sample_label_probabilities, worker_confusion_matrices, = zheng_2017.EM(samples_to_annotators, annotators_to_samples, data.label_set, model_parameters['prior_quality']).Run(model_parameters['iterations'])
+    sample_label_probabilities, worker_confusion_matrices, = zheng_2017.EM(samples_to_annotators, annotators_to_samples, label_set, model_parameters['prior_quality']).Run(model_parameters['iterations'])
 
     # Record end times
     end_process_time = process_time()
-    end_perf_time = perf_counter()
-    end_date = datetime.now()
+    end_performance_time = perf_counter()
+    datetime_end = datetime.now()
 
     # e2lpd: example to likelihood probability distribution
     # w2cm: workers to confusion matrix
 
     # Save the results.
     # Unpack the confusion matrix
-    worker_confusion_matrix = confusion_matrix.popitem()
+    worker_confusion_matrix = worker_confusion_matrices.popitem()
     cm_df = pd.DataFrame(worker_confusion_matrix[1])
     number_of_label_values = len(worker_confusion_matrix[1])
     cm_df['worker_id'] = [worker_confusion_matrix[0]] * number_of_label_values
 
-    if len(confusion_matrix) > 0:
-        for worker in confusion_matrix:
-            cm = pd.DataFrame(confusion_matrix[worker])
-            cm['worker_id'] = [worker] * len(confusion_matrix[worker])
+    if len(worker_confusion_matrices) > 0:
+        for worker in worker_confusion_matrices:
+            cm = pd.DataFrame(worker_confusion_matrices[worker])
+            cm['worker_id'] = [worker] * len(worker_confusion_matrices[worker])
             cm_df = cm_df.append(cm)
 
     # Need to make worker_id the index/reorder, and save the item numbers.
@@ -264,7 +225,7 @@ def dawid_skene(samples_to_annotators, annotators_tosamples, label_set, model_pa
     cm_df = cm_df[['work_id', 'sample_id'] + list(range(number_of_label_values))]
 
     # Create the filepath to this instance's directory
-    dir_path = os.path.join(output_dir, dataset, 'dawid_skene', random_seed,'_'.join([key+'-'+value for key, value in model_parameters.items()))
+    dir_path = os.path.join(output_dir, dataset, 'dawid_skene', random_seed,'_'.join([key+'-'+value for key, value in model_parameters.items()]))
 
     # Save csv.
     cm_df.to_csv(os.path.join(dir_path, 'annotator_label_value_confusion_matrix.csv'), index=False)
@@ -275,53 +236,6 @@ def dawid_skene(samples_to_annotators, annotators_tosamples, label_set, model_pa
 
     # Create summary.csv
     summary_csv(os.path.join(dir_path, 'summary.csv'), 'dawid_skene', model_parameters, dataset, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
-
-## NOTE the kfold things will only be useful for when we want to experiment with how these perform on subsets of the data. This may be of use when comparing the Truth Inference models relation to ground truth, if there is any connection.
-def r_looped_kfold_eval(X, y, K=10, N=1, truth_inference_models=None, seed=None, results_dir=None):
-    """Performs N looped Kfold cross validaiton on the provided data and returns
-    the resulting information unless told to save the data as it runs.
-
-    Parameters
-    ----------
-    X : array-like or sparse matrix, shape (n_samples, n_features)
-        The input data
-    y : array-like, shape (n_samples) or (n_samples, n_outputs)
-        The target values.
-    N : int, optional
-        number of iterations to run the K fold cross validation to provide more
-        accuracte results by overcoming the variace due to the random split used
-        for the K fold cross validation.
-    K : int, optional
-        number of folds to use in K fold cross validation
-    seed : {None, int}, optional
-        Random seed used to initialize the pseudo-random number generator.
-    results_dir : str, optional
-        Saves the results in the given directory as it progresses.
-
-    Returns
-    -------
-    dict
-        A dictionary of the experiment results, or None if told to be memory
-        fficient and instead save the results to the filesystem.
-    """
-    # TODO loop through the random_seeds rather than R.
-    for r in range(R):
-        kfold_Eval(X, y, K, truth_inference_models, seed, results_dir)
-
-def kfold_eval(X, y, K=10, truth_inference_models=None, seed=None, results_dir=None):
-        skf = StratifiedKFold(K, True, random_state)
-
-        for k, (train_index, test_index) in enumerate(skf.split(X, y)):
-            X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-            y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-
-            # Compute the given models on the provided data.
-
-            if results_dir is not None:
-                # Save results of this fold
-
-        if results_dir is not None:
-            # Save results of this iteration of the N loop
 
 def load_config(args):
     """Loads the settings from the given configuration file into the argparse
@@ -399,7 +313,7 @@ def parse_args():
     args =  parser.parse_args()
 
     # TODO Ensure all arguments are valid and load those missing from config
-    if args.config is None and (args.datasets is None or args.models is None or output_dir is None):
+    if args.config is None and (args.datasets is None or args.models is None or args.output_dir is None):
         raise Exception('Must provide a configuration file via the config flag or pass all arguments. when calling this program.')
     elif args.config is not None:
         # Load the values from the config file into args that are not present in args
@@ -409,7 +323,7 @@ def parse_args():
     if args.output_dir is None:
         raise Exception('No output directory provided.')
     elif os.path.is_file(args.output_dir):
-        raise Exception('`%s` is a file, not a directory.'%args.output_dir)
+        raise Exception('`%s` is a file, not a directory.' % args.output_dir)
     else:
         # attempt to create the output directory
         if args.overwrite_output_dir:
@@ -427,11 +341,11 @@ def parse_args():
                 args.random_seeds.append(int(seed))
 
     elif args.random_seeds is None and isinstance(args.iterations, int):
-        raise UserWarning('A random seeds file was not provided. The random seeds wll be generate for every iteration, totaling %(iter)d random seeds. A file containing these seeds will be saved along with the output at `%(output)s/random_seeds_count-%(iter)d.txt`.' % {'iter':args.iterations, 'output':args.output_dir})
+        raise UserWarning('A random seeds file was not provided. The random seeds wll be generate for every iteration, totaling  % (iter)d random seeds. A file containing these seeds will be saved along with the output at ` % (output)s/random_seeds_count- % (iter)d.txt`.' % {'iter':args.iterations, 'output':args.output_dir})
         args.random_seeds = random_seed_generator.generate(args.iterations)
 
         # Save the newly generated random seeds to a file:
-        random_seed_generator.save_to_file(args.random_seeds, os.path.join(args.output_dir, 'random_seeds_count-%d.txt'%args.iterations))
+        random_seed_generator.save_to_file(args.random_seeds, os.path.join(args.output_dir, 'random_seeds_count-%d.txt' % args.iterations))
 
     elif args.random_seeds is None and not isinstance(args.iterations, int):
         raise Exception('The random seeds file was not provided and nor was the number of desired iterations. The random seeds were unable to be generated. Please provide either a random seeds file or a number of iterations.')
@@ -462,7 +376,7 @@ def parse_args():
     unrecognized_models = set()
     for model in args.models:
         if not truth_inference_model_handler.model_exists(model):
-            raise UserWarning('Unrecognized model `%s`. This model will be ignored'%model)
+            raise UserWarning('Unrecognized model `%s`. This model will be ignored' % model)
             unrecognized_models.add(model)
 
     # Remove unrecognized truth inference models
