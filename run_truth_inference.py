@@ -226,11 +226,14 @@ def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_p
             cm['worker_id'] = [worker] * len(worker_confusion_matrices[worker])
             cm_df = cm_df.append(cm)
 
-    # Need to make worker_id the index/reorder, and save the item numbers.
-    cm_df['sample_id'] = cm_df.index
-    cm_df = cm_df[['worker_id', 'sample_id'] + list(range(number_of_label_values))]
+    # Need to make worker_id the index/reorder, and save the label values.
+    cm_df['label_value'] = cm_df.index
+    # TODO it is extremely important that the values added to represent the label values actually matches the correct label values!
+    #cm_df = cm_df[['worker_id', 'label_value'] + list(range(number_of_label_values))]
+    cm_df = cm_df[['worker_id', 'label_value'] + list(cm_df['label_value'].iloc[:number_of_label_values])]
 
     # Create the filepath to this instance's directory
+    # TODO move this to outside of the function, done by next function up.
     dir_path = os.path.join(output_dir, dataset_id, 'dawid_skene', str(random_seed), '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]))
     # Make the  directory structure if it does not already exist.
     os.makedirs(dir_path, exist_ok=True)
