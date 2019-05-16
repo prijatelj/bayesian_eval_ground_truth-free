@@ -7,7 +7,7 @@ def dataset_exists(dataset, collection=None):
     """
     if collection is None:
         # checks if the dataset exists in any collection
-        return isinstance(dataset, str) and (dataset in datasets.Snow2008.datasets or dataset in datasets.TruthSurvey2017.datasets or dataset == 'trec-fr10-data' or dataset in datasets.Ipeirotis2010.datasets or dataset in datasets.FacialBeauty.datasets or dataset in datasets.CrowdLayer.datasets)
+        return isinstance(dataset, str) and (dataset in datasets.Snow2008.datasets or dataset in datasets.TruthSurvey2017.datasets or dataset == 'trec-rf10-data' or dataset in datasets.Ipeirotis2010.datasets or dataset in datasets.FacialBeauty.datasets or dataset in datasets.CrowdLayer.datasets)
     elif collection == 'truth_survey_2017':
         # Check if dataset in truth_survey_2017
         return dataset in datasets.TruthSurvey2017.datasets
