@@ -21,6 +21,8 @@ class Snow2008(BaseDataset):
         of the following: 'regression', 'binary_classification', 'classification'
     df : pandas.DataFrame
         Data Frame containing annotations
+    label_set : set
+        Set containing the complete original labels.
     """
     datasets = frozenset([
         'anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise',
@@ -45,11 +47,14 @@ class Snow2008(BaseDataset):
         if self.dataset in {'anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise', 'valence'}:
             self.task_type = 'regression'
             # NOTE all emotion and valence could be classifiaction with 100 or 200 labels (integers), which I suppose is really ordering, rather than classification.
+            self.label_set = None
         elif self.dataset == 'wordsim':
             self.task_type = 'regression'
+            self.label_set = None
         elif self.dataset in {'rte', 'temp'}:
             self.task_type = 'binary_classification'
             # NOTE temp=temporal is ordered labels 'strictly before' and 'stritly after'
+            self.label_set = frozenset({0, 1})
         else: #wsd
             self.task_type = 'mapping'
             # NOTE wsd: word sense disambiguation is a mapping problem, not a classifiaction problem.

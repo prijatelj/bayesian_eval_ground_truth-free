@@ -84,7 +84,7 @@ class TruthSurvey2017(BaseDataset):
         ground_truth.columns = ['sample_id', 'worker_label']
 
         # Save labels set
-        self.labels_set = set(ground_truth['worker_label'].unique()) if dataset != 'f201_Emotion_FULL' else None
+        self.label_set = set(ground_truth['worker_label'].unique()) if dataset != 'f201_Emotion_FULL' else None
 
         # Add ground_truth to the main dataframe as its own column
         self.add_ground_truth_to_samples(ground_truth)

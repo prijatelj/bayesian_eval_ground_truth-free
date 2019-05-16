@@ -2,9 +2,12 @@
 Base Dataset class to be inherited by other dataset classes
 Overwrite these methods
 """
+import csv
+
 from sklearn.preprocessing import LabelEncoder
 import ast
 import numpy as np
+import pandas as pd
 
 class BaseDataset(object):
 
@@ -39,11 +42,11 @@ class BaseDataset(object):
         if dataset not in dsets:
             raise ValueError(str(dataset) + ' is not an acceptable dataset. Use only the following datasets: ' + str(dsets))
 
-    def read_csv_to_dict(csvpath, sep=',', key_column=0, value_column=1, key_dtype=str):
+    def read_csv_to_dict(self, csvpath, sep=',', key_column=0, value_column=1, key_dtype=str):
         """Read the csv as a dict where key value pair is first two columns."""
         #TODO I do not see this being used often, perhaps make another subclass of BaseDataset, and all that use this extend that class.
         csv_dict = {}
-        with open(csvpath, 'w') as f:
+        with open(csvpath, 'r') as f:
             csv_reader = csv.reader(f, delimiter=sep)
 
             if key_dtype != str:
@@ -87,10 +90,10 @@ class BaseDataset(object):
 
         # TODO make this default to not inplace, it's safer that way.
         if inplace:
-            self.df['ground_truth'] = ground_truth
+            self.df['ground_truth'] = ground_truth_col
         else:
             df_copy = self.df.copy()
-            df_copy['ground_truth'] = ground_truth
+            df_copy['ground_truth'] = ground_truth_col
             return df_copy
 
     def encode_labels(self, columns=None, column_labels=None, by_index=False):
@@ -224,13 +227,13 @@ class BaseDataset(object):
         for index, row in df.iterrows():
             # add to samples_to_annotations
             if row['sample_id'] not in samples_to_annotations:
-                samples_to_annotations[row['sample_id']] = [row['worker_id'], row['worker_label']]
+                samples_to_annotations[row['sample_id']] = [[row['worker_id'], row['worker_label']]]
             else:
                 samples_to_annotations[row['sample_id']].append([row['worker_id'], row['worker_label']])
 
             # add to annotators_to_samples
             if row['worker_id'] not in annotators_to_samples:
-                annotators_to_samples[row['worker_id']] = [row['sample_id'], row['worker_label']]
+                annotators_to_samples[row['worker_id']] = [[row['sample_id'], row['worker_label']]]
             else:
                 annotators_to_samples[row['worker_id']].append([row['sample_id'], row['worker_label']])
 

@@ -33,7 +33,7 @@ class FacialBeauty(BaseDataset):
         False. Default value is False
     """
 
-    datasets = frozenset(['All_Ratings', 'Asian_Females', 'Asian_Males', 'Caucasian_Females', 'Caucasian_Males'])
+    datasets = frozenset(['All_Ratings', 'Asian_Female', 'Asian_Male', 'Caucasian_Female', 'Caucasian_Male'])
 
     def __init__(self, dataset='All_Ratings', dataset_filepath=None, encode_columns=None, sparse_matrix=False):
         """initialize class by loading the data

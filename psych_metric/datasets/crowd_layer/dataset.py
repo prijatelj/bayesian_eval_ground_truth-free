@@ -85,7 +85,7 @@ class CrowdLayer(BaseDataset):
         # TODO automate the encoding of columns if encode_columns is True:
         # ie. hardcode columns for each dataset to be encoded if True.
         # Encode the labels and data if desired
-        if encode_columns is None or dataset == 'MovieReviews':
+        if encode_columns is None or encode_columns is False or dataset == 'MovieReviews':
             self.label_encoder = None
         else:
             #self.encode_labels(encode_columns)
@@ -109,7 +109,7 @@ class CrowdLayer(BaseDataset):
         # Set the dataset task type
         self.task_type = 'classifiaction'
 
-        self.labels_set = frozenset({'highway', 'insidecity', 'tallbuilding', 'street', 'forest', 'coast', 'mountain', 'opencountry'})
+        self.label_set = frozenset({'highway', 'insidecity', 'tallbuilding', 'street', 'forest', 'coast', 'mountain', 'opencountry'})
 
         # Ensure valid datasplit value
         self._check_datasplit(datasplit)
@@ -118,10 +118,10 @@ class CrowdLayer(BaseDataset):
         if datasplit != 'train':
             # Warn about lack of annotations
             raise Warning('The datasplit `' + datasplit + '` of the dataset `' + self.dataset + '` is not annotated. Only the `train` datasplit is annotated.')
-            self.annotations = None
+            self.df = None
         else:
             annotation_file = os.path.join(self.data_dir, self.dataset, 'answers.txt')
-            self.annotations = pd.read_csv(annotation_file, sep=' ', header=None)
+            self.df = pd.read_csv(annotation_file, sep=' ', header=None).to_sparse(fill_value=-1)
 
         # Load/create the Labels dataframe
         labels_file = os.path.join(self.data_dir, self.dataset, 'labels_' + datasplit + '.txt')
@@ -147,7 +147,7 @@ class CrowdLayer(BaseDataset):
 
         # Set the dataset task type
         self.task_type = 'regression'
-        self.labels_set = None
+        self.label_set = None
 
         # Ensure valid datasplit value
         self._check_datasplit(datasplit, {'all', 'train', 'test'})
@@ -156,10 +156,10 @@ class CrowdLayer(BaseDataset):
         if datasplit != 'train':
             # Warn about lack of annotations
             raise Warning('The datasplit `' + datasplit + '` of the dataset `' + self.dataset + '` is not annotated. Only the `train` datasplit is annotated.')
-            self.annotations = None
+            self.df = None
         else:
             annotation_file = os.path.join(self.data_dir, self.dataset, 'answers.txt')
-            self.annotations = pd.read_csv(annotation_file, sep=' ', header=None)
+            self.df = pd.read_csv(annotation_file, sep=' ', header=None).to_sparse(fill_value=-1)
 
         # ratings are assumed to be the labels file.
         labels_file = os.path.join(self.data_dir, self.dataset, 'ratings_' + datasplit + '.txt')
@@ -180,7 +180,7 @@ class CrowdLayer(BaseDataset):
         # Set the dataset task type
         self.task_type = 'classifiaction'
 
-        self.labels_set = frozenset({'O', 'B-LOC', 'B-ORG', 'B-MISC', 'B-PER', 'I-LOC', 'I-ORG', 'I-MISC', 'I-PER'})
+        self.label_set = frozenset({'O', 'B-LOC', 'B-ORG', 'B-MISC', 'B-PER', 'I-LOC', 'I-ORG', 'I-MISC', 'I-PER'})
 
         # Ensure valid datasplit value
         self._check_datasplit(datasplit, {'train', 'test', 'ground_truth'})
@@ -191,11 +191,11 @@ class CrowdLayer(BaseDataset):
             # Warn about lack of annotations
             raise ValueError('The ' + datasplit + ' datasplit is not implemented. The trainset and testset data are unclear in how they relate to the annotation data. They probably do not, given difference in size and their sum not equalling that of the ground truth labels. Please only use `ground_truth_seq.csv`.')
             #raise Warning('The datasplit `' + datasplit + '` of the dataset `' + self.dataset + '` is not annotated. Only the `train` datasplit is annotated.')
-            self.annotations = None
+            self.df = None
         else:
             annotation_file = os.path.join(self.data_dir, self.dataset, 'answers_seq.csv')
-            self.annotations = pd.read_csv(annotation_file, sep=' ', na_values='NA', dtype=str)
-            self.annotations['sequence'] = self.annotations['sequence'].astype(int)
+            self.df = pd.read_csv(annotation_file, sep=' ', na_values='NA', dtype=str).to_sparse(fill_value=np.nan)
+            self.df['sequence'] = self.df['sequence'].astype(int)
 
         # Load/create the Labels dataframe
         labels_file = datasplit if datasplit == 'ground_truth' else datasplit + 'set'

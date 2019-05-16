@@ -45,14 +45,14 @@ datasets:
     - temp
     - valence
     - wordsim
-    - wsd
+    #- wsd # a mapping problem no TI method can handle.
 
     # CrowdLayer
     - LabelMe
     - MovieReviews
     - ner_mturk
 
-    # Ipierotis datasets
+    # Ipeirotis datasets
     - AdultContent
     - AdultContent2
     - AdultContent3
@@ -94,7 +94,7 @@ truth_inference:
         honypot: None
         ELICE: None
         # probablistic
-        ipierotis_dawid_skene: None
+        ipeirotis_dawid_skene: None
         SLME: None
         ITER: None
 

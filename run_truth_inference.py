@@ -6,7 +6,7 @@ from datetime import datetime
 from json import loads as json_loads
 import os
 from time import perf_counter, process_time
-#import timeit
+import warnings
 
 import yaml # need to import PyYAML
 #import numpy as np
@@ -22,7 +22,7 @@ import random_seed_generator
 # TODO create a setup where it is efficient and safe/reliable in saving data
 # in a tmp dir as it goes, and saving all of the results in an output directory.
 
-def summary_csv(filename, truth_inference_method, parameters, dataset, dataset_filepath, random_seed, runtime_process, runtime_performance, datetime_start, datetime_end):
+def summary_csv(filename, truth_inference_method, parameters, dataset_id, dataset_filepath, random_seed, runtime_process, runtime_performance, datetime_start, datetime_end):
     """Convenience function creates a summary csv file at the given path
     containing the provided arguments.
 
@@ -32,7 +32,7 @@ def summary_csv(filename, truth_inference_method, parameters, dataset, dataset_f
     with open(filename, 'w') as f:
         f.write('truth_inference_method,%s\n' % truth_inference_method)
         f.write('parameters,%s\n' % repr(parameters))
-        f.write('dataset,%s\n' % dataset)
+        f.write('dataset,%s\n' % dataset_id)
         f.write('dataset_filepath,%s\n' % dataset_filepath)
         f.write('random_seed,%d\n' % random_seed)
         f.write('runtime_process,%f\n' % runtime_process)
@@ -66,14 +66,14 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
     """
 
     # Iterates through all datasets and performs the same experiments on them.
-    for dataset in datasets:
+    for dataset_id in datasets:
         # Get dataset filepath if given
-        dataset_filepath = datasets_filepaths[dataset] if dataset in datasets_filepaths else None
+        dataset_filepath = datasets_filepaths[dataset_id] if datasets_filepaths is not None and dataset_id in datasets_filepaths else None
         # load dataset
-        #data = data_handler.load_dataset(dataset, dataset_filepath, encode_columns=True)
-        data = data_handler.load_dataset(dataset, dataset_filepath)
+        #data = data_handler.load_dataset(dataset_id, dataset_filepath, encode_columns=True)
+        dataset = data_handler.load_dataset(dataset_id, dataset_filepath)
 
-        samples_to_annotators, annotators_to_samples = data.truth_inference_survey_format()
+        samples_to_annotators, annotators_to_samples = dataset.truth_inference_survey_format()
 
         # Remember to seed the numpy and python random generators, prior to every model running.
 
@@ -133,7 +133,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'ELICE' in models:
                     pass
 
-                if 'ipierotis_dawid_skene' in models:
+                if 'ipeirotis_dawid_skene' in models:
                     pass
 
                 if 'SLME' in models:
@@ -153,7 +153,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'dawid_skene' in models:
                     # for parameters in models['dawid_skene']: #if list of params.
                     # NOTE, EM is given a prior initial quality! if none, set all to 0.5, or random chance that the annotator is quality (ie. 1/#labels)
-                    dawid_skene(samples_to_annotators, annotators_to_samples, data.label_set, models['dawid_skene'], output_dir, dataset, dataset_filepath, seed)
+                    dawid_skene(samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], output_dir, dataset_id, dataset_filepath, seed)
 
                 if 'ZenCrowd' in models:
                     pass
@@ -190,14 +190,14 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     pass
 
 
-def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset, dataset_filepath, random_seed):
+def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
     # Record start times
     datetime_start = datetime.now()
     start_process_time = process_time()
     start_performance_time = perf_counter()
 
     # Run the expectation maximization method.
-    sample_label_probabilities, worker_confusion_matrices, = zheng_2017.EM(samples_to_annotators, annotators_to_samples, label_set, model_parameters['prior_quality']).Run(model_parameters['iterations'])
+    sample_label_probabilities, worker_confusion_matrices, = zheng_2017.EM(samples_to_annotators, annotators_to_samples, label_set, model_parameters['prior_quality']).Run(model_parameters['max_iterations'])
 
     # Record end times
     end_process_time = process_time()
@@ -222,10 +222,12 @@ def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_p
 
     # Need to make worker_id the index/reorder, and save the item numbers.
     cm_df['sample_id'] = cm_df.index
-    cm_df = cm_df[['work_id', 'sample_id'] + list(range(number_of_label_values))]
+    cm_df = cm_df[['worker_id', 'sample_id'] + list(range(number_of_label_values))]
 
     # Create the filepath to this instance's directory
-    dir_path = os.path.join(output_dir, dataset, 'dawid_skene', random_seed,'_'.join([key+'-'+value for key, value in model_parameters.items()]))
+    dir_path = os.path.join(output_dir, dataset_id, 'dawid_skene', str(random_seed), '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]))
+    # Make the  directory structure if it does not already exist.
+    os.makedirs(dir_path, exist_ok=True)
 
     # Save csv.
     cm_df.to_csv(os.path.join(dir_path, 'annotator_label_value_confusion_matrix.csv'), index=False)
@@ -235,7 +237,7 @@ def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_p
     sample_label_probabilities.to_csv(os.path.join(dir_path, 'sample_label_probabilities.csv'))
 
     # Create summary.csv
-    summary_csv(os.path.join(dir_path, 'summary.csv'), 'dawid_skene', model_parameters, dataset, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+    summary_csv(os.path.join(dir_path, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 def load_config(args):
     """Loads the settings from the given configuration file into the argparse
@@ -255,8 +257,8 @@ def load_config(args):
         config = yaml.load(config_file, Loader=yaml.SafeLoader)
 
     # Replace all missing values in args with the configuration file values.
-    if args.random_seed is None:
-        args.random_seed = config['random_seed_file']
+    if args.random_seeds is None:
+        args.random_seeds = config['random_seeds_file']
     if args.output_dir is None:
         args.output_dir = config['output_dir']
 
@@ -307,14 +309,14 @@ def parse_args():
     parser.add_argument('-m', '--models', default=None, nargs='+', help='Truth inference models to test.')
 
     # Random seeds and itereations of models
-    parser.add_argument('r',  '--random_seeds', default=None, help='The filepath to the file that contains the random seeds to use for the tests.')
-    parser.add_argument('i', '--iterations', default=None, type=int, help='The number of iterations to run the set of models for on the data and also the number of random seeds that will be generated in output file. This is ignored if random_seeds is provided via arguments or the configuration file.')
+    parser.add_argument('-r',  '--random_seeds', default=None, help='The filepath to the file that contains the random seeds to use for the tests.')
+    parser.add_argument('-i', '--iterations', default=None, type=int, help='The number of iterations to run the set of models for on the data and also the number of random seeds that will be generated in output file. This is ignored if random_seeds is provided via arguments or the configuration file.')
 
     args =  parser.parse_args()
 
     # TODO Ensure all arguments are valid and load those missing from config
     if args.config is None and (args.datasets is None or args.models is None or args.output_dir is None):
-        raise Exception('Must provide a configuration file via the config flag or pass all arguments. when calling this program.')
+        raise Exception('Must provide a configuration file via the config flag or pass all arguments when calling this script.')
     elif args.config is not None:
         # Load the values from the config file into args that are not present in args
         args = load_config(args)
@@ -322,18 +324,18 @@ def parse_args():
     # Confirm output destination is valid and create if does not exist.
     if args.output_dir is None:
         raise Exception('No output directory provided.')
-    elif os.path.is_file(args.output_dir):
+    elif os.path.isfile(args.output_dir):
         raise Exception('`%s` is a file, not a directory.' % args.output_dir)
     else:
         # attempt to create the output directory
         if args.overwrite_output_dir:
-            raise UserWarning('The `overwrite_output_dir` argument has been passed. The provided output directory exists and this program may overwrite existing files if the generated results share the same filename.')
+            warnings.warn('The `overwrite_output_dir` argument has been passed. The provided output directory exists and this program may overwrite existing files if the generated results share the same filename.', UserWarning)
 
         # if already exists then raise an error, unless overwrite_output_dir
         os.makedirs(args.output_dir, exist_ok=args.overwrite_output_dir)
 
     # Ensure the random seeds were provided, or create them
-    if isinstance(args.random_seeds, str) and os.path.is_file(args.random_seeds):
+    if isinstance(args.random_seeds, str) and os.path.isfile(args.random_seeds):
         # Random seeds file exists, load the random seeds from file.
         with open(args.random_seeds, 'r') as random_seeds_file:
             args.random_seeds = []
@@ -341,7 +343,7 @@ def parse_args():
                 args.random_seeds.append(int(seed))
 
     elif args.random_seeds is None and isinstance(args.iterations, int):
-        raise UserWarning('A random seeds file was not provided. The random seeds wll be generate for every iteration, totaling  % (iter)d random seeds. A file containing these seeds will be saved along with the output at ` % (output)s/random_seeds_count- % (iter)d.txt`.' % {'iter':args.iterations, 'output':args.output_dir})
+        warnings.warn('A random seeds file was not provided. The random seeds wll be generate for every iteration, totaling  % (iter)d random seeds. A file containing these seeds will be saved along with the output at ` % (output)s/random_seeds_count- % (iter)d.txt`.' % {'iter':args.iterations, 'output':args.output_dir}, UserWarning)
         args.random_seeds = random_seed_generator.generate(args.iterations)
 
         # Save the newly generated random seeds to a file:
@@ -357,11 +359,12 @@ def parse_args():
     unrecognized_datasets = set()
     for dataset in args.datasets:
         if not data_handler.dataset_exists(dataset):
-            raise UserWarning('Unrecognized dataset `%s`. This dataset will be ignored'%dataset)
+            warnings.warn('Unrecognized dataset `%s`. This dataset will be ignored' % dataset, UserWarning)
             unrecognized_datasets.add(dataset)
 
             # Remove the dataset from the datasets_filepaths dict, if present
-            args.datasets_filepaths.pop(dataset, None)
+            if isinstance(args.datasets_filepaths, dict):
+                args.datasets_filepaths.pop(dataset, None)
 
     # Remove unrecognized datasets
     args.datasets = set(args.datasets) - unrecognized_datasets
@@ -373,16 +376,16 @@ def parse_args():
         raise Exception('No models provided.')
 
     # TODO check that the models is a dict of parameters(dict) (or dict of list of dict of parameters)
-    unrecognized_models = set()
-    for model in args.models:
-        if not truth_inference_model_handler.model_exists(model):
-            raise UserWarning('Unrecognized model `%s`. This model will be ignored' % model)
-            unrecognized_models.add(model)
+    #unrecognized_models = set()
+    #for model in args.models:
+    #    if not truth_inference_model_handler.model_exists(model):
+    #        warnings.warn('Unrecognized model `%s`. This model will be ignored'  % model, UserWarning)
+    #        unrecognized_models.add(model)
 
     # Remove unrecognized truth inference models
-    args.models = set(args.models) - unrecognized_models
-    if len(args.models) <= 0:
-        raise Exception('There are no remaining models after removing the unrecognized models.')
+    #args.models = set(args.models) - unrecognized_models
+    #if len(args.models) <= 0:
+    #    raise Exception('There are no remaining models after removing the unrecognized models.')
 
     return args
 
@@ -391,4 +394,4 @@ if __name__ == '__main__':
     args = parse_args()
 
     # TODO Run the experiments,
-    run_experiments()
+    run_experiments(args.datasets, args.models, args.output_dir, args.random_seeds)
