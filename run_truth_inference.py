@@ -40,7 +40,7 @@ def summary_csv(filename, truth_inference_method, parameters, dataset_id, datase
         f.write('datetime_start,%s\n' % str(datetime_start))
         f.write('datetime_end,%s' % str(datetime_end))
 
-def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None):
+def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None, print_progress=True):
     """Runs experiments on the datasets using the given random seeds.
 
     Parameters
@@ -66,7 +66,11 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
     """
 
     # Iterates through all datasets and performs the same experiments on them.
-    for dataset_id in datasets:
+    for i, dataset_id in enumerate(datasets):
+        # Progress print out
+        if print_progress:
+            print('%d / %d datasets. Starting dataset: %s' % (i+1, len(datasets), dataset_id))
+
         # Get dataset filepath if given
         dataset_filepath = datasets_filepaths[dataset_id] if datasets_filepaths is not None and dataset_id in datasets_filepaths else None
         # load dataset
@@ -75,13 +79,12 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
         samples_to_annotators, annotators_to_samples = dataset.truth_inference_survey_format()
 
-        # Remember to seed the numpy and python random generators, prior to every model running.
+        # TODO Remember to seed the numpy and python random generators, prior to every model running.
 
         # Iterate through all of the random seeds provided.
-        for seed in random_seeds:
-            # TODO split by [binary/multi]Classification, regression, etc.
-
-            # TODO implement a dataset.task_type == 'regression'|'classification'|'binary_classification', possibly also 'ordering', 'binary ordering', 'hierarchial clasification', and 'mapping'
+        for j, seed in enumerate(random_seeds):
+            if print_progress:
+                print('\t%d / %d; Current random seed: %d;' % (j+1, len(random_seeds), seed))
 
             # Models for any task-type
             if 'CATD' in models:
@@ -312,6 +315,8 @@ def parse_args():
     parser.add_argument('-r',  '--random_seeds', default=None, help='The filepath to the file that contains the random seeds to use for the tests.')
     parser.add_argument('-i', '--iterations', default=None, type=int, help='The number of iterations to run the set of models for on the data and also the number of random seeds that will be generated in output file. This is ignored if random_seeds is provided via arguments or the configuration file.')
 
+    parser.add_argument('--silent', action='store_true', help='Providing this flag disables all progress print outs from the script.')
+
     args =  parser.parse_args()
 
     # TODO Ensure all arguments are valid and load those missing from config
@@ -394,4 +399,4 @@ if __name__ == '__main__':
     args = parse_args()
 
     # TODO Run the experiments,
-    run_experiments(args.datasets, args.models, args.output_dir, args.random_seeds)
+    run_experiments(args.datasets, args.models, args.output_dir, args.random_seeds, args.datasets_filepaths, not args.silent)
