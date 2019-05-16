@@ -1,7 +1,6 @@
 """Dataset class handler for facial beauty 2018 data."""
 import os
 
-import numpy as np
 import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset
@@ -80,11 +79,11 @@ class FacialBeauty(BaseDataset):
 
         # Restructure dataframe into a sparse matrix
         if sparse_matrix:
-            self.df = self.convert_to_sparse_matrix(df)
+            self.df = self.convert_to_sparse_matrix(self.df)
 
     # TODO get_image
     def get_image(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def convert_to_sparse_matrix(self, df):
         """Convert provided dataframe into a sparse matrix equivalent.

@@ -1,7 +1,6 @@
 """Dataset class handler for TREC Relevancy 2010 data."""
 import os
 
-import numpy as np
 import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset

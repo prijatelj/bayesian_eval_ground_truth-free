@@ -89,7 +89,7 @@ class CrowdLayer(BaseDataset):
             self.label_encoder = None
         else:
             #self.encode_labels(encode_columns)
-            raise NotImplemented('Encoding of the multiclassification classes not yet implemented. It requires possibly redoing the `encode_labels` to take and return a dataframe or overriding it.')
+            raise NotImplementedError('Encoding of the multiclassification classes not yet implemented. It requires possibly redoing the `encode_labels` to take and return a dataframe or overriding it.')
 
     def _check_datasplit(self, datasplit, dsets={'train', 'valid', 'test'}):
         if datasplit not in dsets:
@@ -274,9 +274,8 @@ class CrowdLayer(BaseDataset):
         #return dict(row)
         # TODO Currently uncertiain what would make the most intuitive sense for
         # this feature, given the multiple dataframes.
-        raise NotImplemented
+        raise NotImplementedError
 
     def convert_to_annotation_list(self, df=None):
         """Converts from sparse matrix format into annotation list format."""
         # TODO Currently expects df to be in sparse matrix format without a check!
-

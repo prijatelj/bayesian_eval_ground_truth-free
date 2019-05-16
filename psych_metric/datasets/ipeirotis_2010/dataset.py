@@ -2,7 +2,6 @@
 import os
 import csv
 
-import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
@@ -55,7 +54,7 @@ class Ipeirotis2010(BaseDataset):
             Convert the data into a dataframe with the sparse matrix structure
         """
 
-        load_dataset(dataset, dataset_filepath, encode_columns)
+        self.load_dataset(dataset, dataset_filepath, encode_columns)
 
     def load_dataset(self, dataset='AdultContent', dataset_filepath=None, encode_columns=None):
         self._check_dataset(dataset, Ipeirotis2010.datasets)
@@ -91,7 +90,7 @@ class Ipeirotis2010(BaseDataset):
 
         # Read in and save the expected label set, or infer the labels from data
         if 'HITspam' in dataset:
-            self.label_set = frozenset({Yes, No})
+            self.label_set = frozenset({'Yes', 'No'})
         elif dataset == 'JeroenVuurens':
             self.label_set = frozenset({0, 1})
         else:

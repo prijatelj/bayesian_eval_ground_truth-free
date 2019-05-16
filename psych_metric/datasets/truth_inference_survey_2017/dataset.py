@@ -1,7 +1,7 @@
 """Dataset class handler for truth inference survey 2017 data."""
 import os
 
-import numpy as np
+#import numpy as np
 import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset
@@ -52,9 +52,9 @@ class TruthSurvey2017(BaseDataset):
             Encodes columns provided as list of str; dataframe uses raw values
             by default.
         """
-        self.load_dataset(dataset, encode_columns)
+        self.load_dataset(dataset, dataset_filepath, encode_columns)
 
-    def load_dataset(dataset='d_Duck Identification', encode_columns=None):
+    def load_dataset(self, dataset='d_Duck Identification', dataset_filepath=None, encode_columns=None):
         self._check_dataset(dataset, TruthSurvey2017.datasets)
         self.dataset = dataset
 
@@ -65,12 +65,12 @@ class TruthSurvey2017(BaseDataset):
 
         # Set the dataset's expected task type
         if 'd' == self.dataset[0]:
-            seld.task_type = 'binary_classification'
+            self.task_type = 'binary_classification'
         elif 's' == self.dataset[0]:
-            seld.task_type = 'classification'
+            self.task_type = 'classification'
             # NOTE the dog breeds identification is probably a hierarchial classifiaction problem
         elif 'f' == self.dataset[0]:
-            seld.task_type = 'regression'
+            self.task_type = 'regression'
 
         # Read in and save data
         annotation_file = os.path.join(dataset_filepath, self.dataset, 'answer.csv')

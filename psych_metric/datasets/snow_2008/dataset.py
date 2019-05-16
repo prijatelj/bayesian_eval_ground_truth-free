@@ -1,7 +1,5 @@
-import numpy as np
 import os
 import pandas as pd
-import ast
 
 from psych_metric.datasets.base_dataset import BaseDataset
 
@@ -42,7 +40,7 @@ class Snow2008(BaseDataset):
 
         if dataset == 'wsd':
             print('`wsd`: word sense disambiguation is either a mapping or hierarchial classifiaction problem, eitherway, none of the truth inference models will handle this correctly, as far as is known at the moment.')
-            raise NotImplemented
+            raise NotImplementedError
 
         if self.dataset in {'anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise', 'valence'}:
             self.task_type = 'regression'
