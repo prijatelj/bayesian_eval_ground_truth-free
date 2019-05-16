@@ -51,11 +51,13 @@ class Snow2008(BaseDataset):
         elif self.dataset == 'wordsim':
             self.task_type = 'regression'
             self.label_set = None
-        elif self.dataset in {'rte', 'temp'}:
+        elif self.dataset == 'rte':
             self.task_type = 'binary_classification'
             # NOTE temp=temporal is ordered labels 'strictly before' and 'stritly after'
             self.label_set = frozenset({0, 1})
-        else: #wsd
+        elif self.dataset == 'temp':
+            self.label_set = frozenset({1, 2})
+        else: # wsd
             self.task_type = 'mapping'
             # NOTE wsd: word sense disambiguation is a mapping problem, not a classifiaction problem.
             # The labels will result in misleading class relationships that are non-existent.
