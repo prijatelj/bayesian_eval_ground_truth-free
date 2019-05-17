@@ -1,10 +1,11 @@
-import numpy as np
 import os
-import imageio
-import pandas as pd
-import cv2
+
 import ast
+import cv2
+import imageio
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset
 import psych_metric.utils as utils
@@ -37,7 +38,7 @@ class FirstImpressionsDense(BaseDataset):
 
     @staticmethod
     def get_hist(votes):
-        if isinstance(votes, str): 
+        if isinstance(votes, str):
             votes = ast.literal_eval(votes)
         bins = range(1, 9)
         return np.histogram(votes, bins=bins)[0]
