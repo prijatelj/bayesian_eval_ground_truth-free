@@ -82,16 +82,18 @@ class Ipeirotis2010(BaseDataset):
             self.df = self.df[['sample_id', 'worker_id', 'worker_label']]
 
         # Read in ground truth, if any.
-        if 'Adult' in dataset or dataset == 'CopyrightInfringement':
+        if ('Adult' in dataset and '3' not in dataset) or dataset == 'CopyrightInfringement':
             # Consider labeling as gold, rather than ground_truth.
             ground_truth_file = os.path.join(dataset_filepath, self.dataset, 'gold.txt')
             ground_truth_dict = self.read_csv_to_dict(ground_truth_file, sep='\t')
             self.add_ground_truth_to_samples(ground_truth_dict, is_dict=True)
 
         # Read in and save the expected label set, or infer the labels from data
-        if 'HITspam' in dataset:
+        if 'HITspam-UsingCrowdflower' == dataset:
             self.label_set = frozenset({'Yes', 'No'})
-        elif dataset == 'JeroenVuurens':
+        elif 'HITspam-UsingMTurk' == dataset:
+            self.label_set = frozenset({'YES', 'NO'})
+        elif dataset == 'JeroenVuurens' or dataset == 'BarzanMozafari':
             self.label_set = frozenset({0, 1})
         else:
             labels_file = os.path.join(dataset_filepath, self.dataset, 'categories.txt')
