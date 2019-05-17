@@ -1,6 +1,6 @@
+import ast
 import os
 
-import ast
 import cv2
 import imageio
 import matplotlib.pyplot as plt
