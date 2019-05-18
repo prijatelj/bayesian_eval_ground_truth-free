@@ -74,3 +74,10 @@ probablistic:
 - spectral\_dawid\_skene
 - GTIC : Ground Truth Inference using Clustering
 - ZenCrowd : 
+
+### MAX-MIG: an Information Theoretic Approach for Joint Learning from Crowds
+- MAX-MIG
+- dawid\_skene
+- CrowdLayer
+- AggNet
+- DoctorNet
