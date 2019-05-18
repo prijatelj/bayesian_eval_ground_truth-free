@@ -2,12 +2,12 @@
 Base Dataset class to be inherited by other dataset classes
 Overwrite these methods
 """
+import ast
 import csv
 
-from sklearn.preprocessing import LabelEncoder
-import ast
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import LabelEncoder
 
 class BaseDataset(object):
 
@@ -96,6 +96,7 @@ class BaseDataset(object):
             df_copy['ground_truth'] = ground_truth_col
             return df_copy
 
+
     def encode_labels(self, columns=None, column_labels=None, by_index=False):
         """Initializes a label encoder and fits it to the expected labels of
         the data column.
@@ -158,11 +159,12 @@ class BaseDataset(object):
 
         return label_encoders
 
-    def convert_to_annotation_list(self, missing_value=None, inplace=False):
-        """Convert provided sparse dataframe into a annotation list equivalent.
-        equivalent data, but in annotation list format where the rows are the
-        different instance of annotations by individual annotators and the
-        columns are 'sample_id', 'worker_id', and 'label'.
+    #TODO rename this to `sparse_matrix_to_annotation_list` for clarity
+    def sparse_matrix_to_annotation_list(self, missing_value=None, inplace=False):
+        """Lossy conversion of df as a sparse dataframe into a annotation list
+        equivalent dataframe format, where the rows are the different instance
+        of annotations by individual annotators and the columns are 'sample_id',
+        'worker_id', and 'worker_label'.
 
         Parameters
         ----------
@@ -180,6 +182,11 @@ class BaseDataset(object):
             Data Frame of annotations in an annotation list format.
 
         """
+        # Check if the current dataframe is a sparse matrix
+        if not isinstance(self.df, pd.SparseDataFrame):
+            # Assumes df will not be a sparse dataframe if in any other format.
+            return None
+
         if missing_value is None:
             missing_value = self.df.default_fill_value
 
@@ -198,9 +205,60 @@ class BaseDataset(object):
             return list_df
         self.df = list_df
 
-    #def convert_to_sparse_matrix(self, annotations=None):
-    #    """Convert provided dataframe into a matrix format, possibly sparse."""
-    #    raise NotImplementedError
+    def is_in_annotation_list_format(self):
+        """Checks if df is in annotation list format."""
+        # NOTE assumes that df is always a pd.DataFrame if in this list format.
+       return isinstance(self.df, pd.DataFrame) and 'sample_id' in self.df.columns and 'worker_id' in self.df.columns and 'worker_label' in self.df.columns
+
+    def annotation_list_to_sparse_matrix(self, fill_value=None, inplace=False):
+        """Convert provided dataframe into a matrix format, possibly sparse.
+
+        Parameters
+        ----------
+        fill_value : optional
+            The value to be used as the fill value for the sparse matrix. If not
+            provided then the most common label value will be used.
+        inplace : bool, optional
+            Will overwrite the current df attribute if True, outputs the sparse
+            dataframe equivalent if False. Overwriting the current df may result
+            in loss of data, such as ground truth, features, etc. Use with
+            caution.
+
+        Returns
+        -------
+            If inplace is False, then pd.SparseDataFrame equivalent of self.df,
+            otherwise None. If df is not an annoation list, returns None.
+        """
+        # TODO Implement this!
+        # TODO check if the current dataframe is in annotation list format
+        if not self.is_in_annotation_list_format():
+            return None
+
+        unique_sample_ids, unique_sample_ids_inverse = np.unique(self.df['sample_id'], return_inverse=True)
+        unique_worker_ids, unique_worker_ids_inverse = np.unique(self.df['worker_id'], return_inverse=True)
+
+        # TODO find the most frequent value to be fill_value if not provided
+        #if fill_value is None:
+
+        # Create the initial dense matrix and fill it's entries with the missing_value
+        matrix = np.empty((len(unique_sample_ids), len(unique_worker_ids))
+        # Gets a label value from the original dataframe.
+        value = self.df['worker_label'].iloc[0]
+        matrix = matrix.astype(type(value))
+        matrix.fill(fill_value)
+
+        # TODO Put the existing annotations into the matrix
+
+
+        # Make the matrix a sparse dataframe.
+        matrix = pd.DataFrame(matrix, columns=unique_worker_ids, index=unique_sample_ids).to_sparse(fill_value)
+
+        if inplace:
+            self.df = matrix
+            return None
+        else:
+            return matrix
+
 
     def truth_inference_survey_format(self, inplace=False):
         """Creates the two dictionaries the Truth Inference Survey's code
@@ -238,3 +296,19 @@ class BaseDataset(object):
                 annotators_to_samples[row['worker_id']].append([row['sample_id'], row['worker_label']])
 
         return samples_to_annotations, annotators_to_samples
+
+    def statistics_summary(self, filepath=None):
+        """Calculate and return the dataset statistics, such as total number of
+        annotations, annoators, samples, mean and 5 quantiles of both
+        annotations per sample and samples per annotator.
+
+        Parameters
+        ----------
+        filepath : str
+            If filepath is provided, then the summary statistics and other
+            defining characteristics of the data (ie. task_type, id, and
+            data_filepath) to the designated filepath as a csv.
+        """
+        # TODO implement dataset analysis function(s) for finding the
+        raise NotImplementedError
+        # add domain of dataset, such as language, face images, etc.

@@ -88,6 +88,10 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
         #if zheng_2017_models_exist(models):
         samples_to_annotators, annotators_to_samples = dataset.truth_inference_survey_format()
 
+        # TODO Create sparse matrix version if required for a model and not (make model check)
+        # already in that form. Good for, majority vote, mean, median, mode
+        sparse_dataframe = dataset.annotation_list_to_sparse_matrix()
+
         # Save the parent/data collection name of dataset for result output dir
         if data_handler.dataset_exists(dataset_id, 'truth_survey_2017'):
             collection = 'truth_survey_2017'
@@ -120,10 +124,17 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 pass
 
             if dataset.task_type == 'regression':
+                # TODO for these, they would be better for sparse matrices OR need a function that finds each for each sample in the annotation list.
                 if 'mean' in models:
+                    # return the mean of annotations for each sample
                     pass
 
                 if 'median' in models:
+                    # return the median of annotations for each sample
+                    pass
+
+                if 'mode' in models:
+                    # return the mode of annotations for each sample
                     pass
 
                 # Most likley, all non-probablistic methods can be saved together
@@ -151,6 +162,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
                 # An Evaluation of Aggregation Technique in Crowdsourcing 2013
                 if 'majority_vote' in models:
+                    # TODO use the sparse matrix versions
                     pass
 
                 if 'majority_decision' in models:
