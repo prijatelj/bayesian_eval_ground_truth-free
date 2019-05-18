@@ -40,6 +40,13 @@ def summary_csv(filename, truth_inference_method, parameters, dataset_id, datase
         f.write('datetime_start,%s\n' % str(datetime_start))
         f.write('datetime_end,%s' % str(datetime_end))
 
+
+def zheng_2017_models_exist(models):
+    """Checks if any of the zheng 2017 models are present in provided models
+    set."""
+    return
+
+
 def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None, print_progress=True):
     """Runs experiments on the datasets using the given random seeds.
 
@@ -77,10 +84,29 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
         #data = data_handler.load_dataset(dataset_id, dataset_filepath, encode_columns=True)
         dataset = data_handler.load_dataset(dataset_id, dataset_filepath)
 
+        # TODO Make a check if the Zheng 2017 models are in models.
+        #if zheng_2017_models_exist(models):
         samples_to_annotators, annotators_to_samples = dataset.truth_inference_survey_format()
 
-        # TODO Remember to seed the numpy and python random generators, prior to every model running.
+        # Save the parent/data collection name of dataset for result output dir
+        if data_handler.dataset_exists(dataset_id, 'truth_survey_2017'):
+            collection = 'truth_survey_2017'
+        elif data_handler.dataset_exists(dataset_id, 'snow_2008'):
+            collection = 'snow_2008'
+        elif data_handler.dataset_exists(dataset_id, 'ipeirotis_2010'):
+            collection = 'ipeirotis_2010'
+        elif data_handler.dataset_exists(dataset_id, 'facial_beauty'):
+            collection = 'facial_beauty'
+        elif data_handler.dataset_exists(dataset_id, 'crowd_layer'):
+            collection = 'crowd_layer'
+        else:
+            collection = None
 
+        output_data_dir = os.path.join(output_dir, dataset_id) if collection is None else os.path.join(output_dir, collection, dataset_id)
+        # Make the  directory structure if it does not already exist.
+        os.makedirs(output_data_dir, exist_ok=True)
+
+        # TODO Remember to seed the numpy and python random generators, prior to every model running.
         # Iterate through all of the random seeds provided.
         for j, seed in enumerate(random_seeds):
             if print_progress:
@@ -156,13 +182,24 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'dawid_skene' in models:
                     # for parameters in models['dawid_skene']: #if list of params.
                     # NOTE, EM is given a prior initial quality! if none, set all to 0.5, or random chance that the annotator is quality (ie. 1/#labels)
-                    dawid_skene(samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], output_dir, dataset_id, dataset_filepath, seed)
+
+                    # Create the filepath to this instance's directory
+                    dir_path = os.path.join(output_data_dir, 'dawid_skene', str(seed), '_'.join([key + '-' + str(value) for key, value in models['dawid_skene'].items()]))
+                    # Make the  directory structure if it does not already exist.
+                    os.makedirs(dir_path, exist_ok=True)
+
+                    dawid_skene(samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'ZenCrowd' in models:
                     pass
 
                 if 'GLAD' in models:
-                    pass
+                    # Create the filepath to this instance's directory
+                    dir_path = os.path.join(output_data_dir, 'GLAD', str(seed), '_'.join([key + '-' + str(value) for key, value in models['GLAD'].items()]))
+                    # Make the  directory structure if it does not already exist.
+                    os.makedirs(dir_path, exist_ok=True)
+
+                    glad(samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'minimax' in models:
                     pass
@@ -228,26 +265,54 @@ def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_p
 
     # Need to make worker_id the index/reorder, and save the label values.
     cm_df['label_value'] = cm_df.index
-    # TODO it is extremely important that the values added to represent the label values actually matches the correct label values!
-    #cm_df = cm_df[['worker_id', 'label_value'] + list(range(number_of_label_values))]
     cm_df = cm_df[['worker_id', 'label_value'] + list(cm_df['label_value'].iloc[:number_of_label_values])]
 
-    # Create the filepath to this instance's directory
-    # TODO move this to outside of the function, done by next function up.
-    dir_path = os.path.join(output_dir, dataset_id, 'dawid_skene', str(random_seed), '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]))
-    # Make the  directory structure if it does not already exist.
-    os.makedirs(dir_path, exist_ok=True)
-
     # Save csv.
-    cm_df.to_csv(os.path.join(dir_path, 'annotator_label_value_confusion_matrix.csv'), index=False)
+    cm_df.to_csv(os.path.join(output_dir, 'annotator_label_value_confusion_matrix.csv'), index=False)
 
     # Unpack the sample label probability estimates
     sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
     sample_label_probabilities.index.name = 'sample_id'
-    sample_label_probabilities.to_csv(os.path.join(dir_path, 'sample_label_probabilities.csv'))
+    sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
 
     # Create summary.csv
-    summary_csv(os.path.join(dir_path, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+    summary_csv(os.path.join(output_dir, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+
+
+def glad(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
+    """Calls the Zheng 2017 implementation of GLAD and saves the results and
+    runtimes of the method.
+    """
+    # Record start times
+    datetime_start = datetime.now()
+    start_process_time = process_time()
+    start_performance_time = perf_counter()
+
+    # Run the expectation maximization method.
+    sample_label_probabilities, weight = zheng_2017.GLAD(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['threshold'])
+
+    # Record end times
+    end_process_time = process_time()
+    end_performance_time = perf_counter()
+    datetime_end = datetime.now()
+
+    # e2lpd: example to likelihood probability distribution
+    # weight : a single weight for every annotator. worker_id : float
+
+    # Save the results.
+    # Unpack the sample label probability estimates
+    sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
+    sample_label_probabilities.index.name = 'sample_id'
+    sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
+
+    # Save weights as a csv
+    weight = pd.DataFrame(weight, index=['weight']).T
+    weight.index.name = 'worker_id'
+    weight.to_csv(os.path.join(output_dir, 'weight.csv'))
+
+    # Create summary.csv
+    summary_csv(os.path.join(output_dir, 'summary.csv'), 'GLAD', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+
 
 def load_config(args):
     """Loads the settings from the given configuration file into the argparse
@@ -292,6 +357,7 @@ def load_config(args):
         args.models = config['truth_inference']['models']
 
     return args
+
 
 def parse_args():
     """Parses the arguments when this script is called and sets up the
@@ -400,6 +466,7 @@ def parse_args():
     #    raise Exception('There are no remaining models after removing the unrecognized models.')
 
     return args
+
 
 if __name__ == '__main__':
     # Read in arguements and configuaration file

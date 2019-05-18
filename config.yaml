@@ -112,7 +112,8 @@ truth_inference:
 
         # Truth Inference Survey 2017 (those not included above)
         ZenCrowd: None
-        GLAD: None
+        GLAD:
+            threshold: 1.0e-4
         minimax: None
         BCC: None
         CBCC: None
