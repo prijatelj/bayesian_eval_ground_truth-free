@@ -208,16 +208,16 @@ class BaseDataset(object):
     def is_in_annotation_list_format(self):
         """Checks if df is in annotation list format."""
         # NOTE assumes that df is always a pd.DataFrame if in this list format.
-       return isinstance(self.df, pd.DataFrame) and 'sample_id' in self.df.columns and 'worker_id' in self.df.columns and 'worker_label' in self.df.columns
+        return isinstance(self.df, pd.DataFrame) and 'sample_id' in self.df.columns and 'worker_id' in self.df.columns and 'worker_label' in self.df.columns
 
-    def annotation_list_to_sparse_matrix(self, fill_value=None, inplace=False):
+    def annotation_list_to_sparse_matrix(self, fill_value=None, inplace=False, keep_ground_truth=True):
         """Convert provided dataframe into a matrix format, possibly sparse.
 
         Parameters
         ----------
         fill_value : optional
             The value to be used as the fill value for the sparse matrix. If not
-            provided then the most common label value will be used.
+            provided then `None` will be used.
         inplace : bool, optional
             Will overwrite the current df attribute if True, outputs the sparse
             dataframe equivalent if False. Overwriting the current df may result
@@ -229,26 +229,39 @@ class BaseDataset(object):
             If inplace is False, then pd.SparseDataFrame equivalent of self.df,
             otherwise None. If df is not an annoation list, returns None.
         """
-        # TODO Implement this!
-        # TODO check if the current dataframe is in annotation list format
+        # Check if the current dataframe is in annotation list format
         if not self.is_in_annotation_list_format():
             return None
 
         unique_sample_ids, unique_sample_ids_inverse = np.unique(self.df['sample_id'], return_inverse=True)
         unique_worker_ids, unique_worker_ids_inverse = np.unique(self.df['worker_id'], return_inverse=True)
 
-        # TODO find the most frequent value to be fill_value if not provided
-        #if fill_value is None:
+        # Create a dictionary for mapping of all workers to their matrix index
+        worker_to_matrix_idx = {worker:i for i, worker in enumerate(unique_worker_ids)}
 
         # Create the initial dense matrix and fill it's entries with the missing_value
-        matrix = np.empty((len(unique_sample_ids), len(unique_worker_ids))
+        matrix = np.empty((len(unique_sample_ids), len(unique_worker_ids)))
+
         # Gets a label value from the original dataframe.
         value = self.df['worker_label'].iloc[0]
         matrix = matrix.astype(type(value))
         matrix.fill(fill_value)
 
-        # TODO Put the existing annotations into the matrix
+        # TODO Store visited workers per each sample to detect multiple samplings
+        # NOTE unnecesary, can check if value is fill_value at matrix spot prior to filling, this informs of duplicates and will then require whatever action to be taken. Could default for now to using the last seen label value of the worker for that sample.
 
+        # TODO Put the existing annotations into the matrix, by each sample
+        for i, sample_id in enumerate(unique_sample_ids):
+            # Get worker's labels for this sample
+            sample_instances = np.nonzero(unique_sample_ids_inverse == i)[0]
+            # Put each worker's label into the sample_id row of matrix
+            for sample_idx in sample_instances:
+                # TODO handle multiple labels of a sample from one worker
+                #if matrix[i][worker_to_matrix_idx[self.df['worker_id'].iloc[sample_idx]]] != missing_value
+                matrix[i][worker_to_matrix_idx[self.df['worker_id'].iloc[sample_idx]]] = self.df['worker_label'].iloc[sample_idx]
+
+        # TODO implement keep_ground_truth by adding ground truth column to matrix
+        #if 'ground_truth' in self.df.columns:
 
         # Make the matrix a sparse dataframe.
         matrix = pd.DataFrame(matrix, columns=unique_worker_ids, index=unique_sample_ids).to_sparse(fill_value)
