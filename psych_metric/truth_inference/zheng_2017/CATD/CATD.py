@@ -107,12 +107,15 @@ class Conf_Aware:
                 self.truth[example] = random.choice(candidate)
 
 
-    def Run(self,alpha,iterr):
+    def Run(self,alpha,iterr, random_seed):
         self.chi_square_conf, self.chi_square_distribution = read_chi_square_distribution()
         self.normal_conf,self.normal_distribution = read_normal_distribution()
         #self.chi_square_conf, self.chi_square_distribution = cdis.read_chi_square_distribution()
         #self.normal_conf,self.normal_distribution = cdis.read_normal_distribution()
         self.alpha = alpha
+
+        # Seed the random number generator for reproducible results.
+        random.seed(random_seed)
 
         self.Init_truth()
         while iterr > 0:
@@ -252,7 +255,7 @@ if __name__ == "__main__":
     datafile = sys.argv[1]
     datatype = sys.argv[2]
     e2wl, w2el, label_set = gete2wlandw2el(datafile)
-    e2lpd, w2q = Conf_Aware(e2wl,w2el,datatype).Run(0.05,100)
+    e2lpd, w2q = Conf_Aware(e2wl,w2el,datatype).Run(0.05,100, 1234)
 
     print(w2q)
     print(e2lpd)

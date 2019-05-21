@@ -197,7 +197,9 @@ class CRH:
             norm_worker_weight[worker] = self.weight[worker] / sum_worker
         return norm_worker_weight
 
-    def Run(self,iterr):
+    def Run(self,iterr, random_seed):
+        # Set the random seed for the python generator
+        random.seed(random_seed)
 
         self.Init_truth()
         while iterr > 0:
@@ -330,7 +332,7 @@ if __name__ == "__main__":
     datafile = sys.argv[1]
     e2wl,w2el,label_set = gete2wlandw2el(datafile)
 
-    e2lpd, weight = CRH(e2wl,w2el,label_set,datatype,distancetype).Run(10)
+    e2lpd, weight = CRH(e2wl,w2el,label_set,datatype,distancetype).Run(10, 1234)
 
     print( weight) # print worker quality
     print( e2lpd)
