@@ -47,8 +47,9 @@ def save_to_file(seeds, filepath):
         A 1D numpy.array of random seeds
     """
     with open(filepath, 'w') as f:
+        iter_seeds = iter(seeds)
         for i in range(len(seeds)):
-            f.write('%d\n' % seeds[i])
+            f.write('%d\n' % next(iter_seeds))
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate a set of unique random seeds and save to a file.')
