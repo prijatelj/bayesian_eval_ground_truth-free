@@ -25,7 +25,7 @@ import random_seed_generator
 def zheng_2017_models_exist(models):
     """Checks if any of the zheng 2017 models are present in provided models
     set."""
-    return
+    return all([x in models for x in {'dawid_skene', 'GLAD', 'ZenCrowd', 'minimax', 'BCC', 'CBCC', 'CATD', 'LFC', 'LFC-N', 'PM_CRH', 'multidimensional', 'KOS', 'VI-BP', 'VI-MF'}])
 
 
 def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None, print_progress=True):
@@ -66,8 +66,8 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
         dataset = data_handler.load_dataset(dataset_id, dataset_filepath)
 
         # TODO Make a check if the Zheng 2017 models are in models.
-        #if zheng_2017_models_exist(models):
-        samples_to_annotators, annotators_to_samples = dataset.truth_inference_survey_format()
+        if zheng_2017_models_exist(models):
+            samples_to_annotators, annotators_to_samples = dataset.truth_inference_survey_format()
 
         # TODO Create sparse matrix version if required for a model and not (make model check)
         # already in that form. Good for, majority vote, mean, median, mode
@@ -101,7 +101,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
             if 'CATD' in models:
                 pass
 
-            if 'PM' in models:
+            if 'PM_CRH' in models:
                 pass
 
             if dataset.task_type == 'regression':
@@ -443,6 +443,86 @@ def glad(samples_to_annotators, annotators_to_samples, label_set, model_paramete
 
     # Create summary.csv
     summary_csv(os.path.join(output_dir, 'summary.csv'), 'GLAD', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+
+
+def catd(samples_to_annotators, annotators_to_samples, data_type, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
+    """Calls the Zheng 2017 implementation of Dawid and Skene EM algorithm and
+    saves the results and runtimes of the method.
+    """
+    # NOTE be careful of its priors, probably need to add the ability to define said priors in init as parameters.
+
+    # Record start times
+    datetime_start = datetime.now()
+    start_process_time = process_time()
+    start_performance_time = perf_counter()
+
+    # Run the expectation maximization method.
+    sample_label_probabilities, weight = zheng_2017.CATD(samples_to_annotators, annotators_to_samples, datatype).Run(model_parameters['max_iterations'], random_seed)
+
+    # Record end times
+    end_process_time = process_time()
+    end_performance_time = perf_counter()
+    datetime_end = datetime.now()
+
+    # e2lpd: example to likelihood probability distribution
+    # weight : a single weight for every annotator. worker_id : float
+
+    # Save the results.
+    # Unpack the sample label probability estimates
+    sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
+    sample_label_probabilities.index.name = 'sample_id'
+    sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
+
+    # Save weights as a csv
+    weight = pd.DataFrame(weight, index=['weight']).T
+    weight.index.name = 'worker_id'
+    weight.to_csv(os.path.join(output_dir, 'weight.csv'))
+
+
+    # Create summary.csv
+    summary_csv(os.path.join(output_dir, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+
+
+def pm_crh(samples_to_annotators, annotators_to_samples, label_set, data_type, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
+    """Calls the Zheng 2017 implementation of Dawid and Skene EM algorithm and
+    saves the results and runtimes of the method.
+    """
+
+    # infer the correct distance type from the task type (thus, datatype).
+    distance_type = r'normalized absolute loss' if task_type == 'regression' else r'0/1 loss'
+
+    # NOTE be careful of its priors, probably need to add the ability to define said priors in init as parameters.
+
+    # Record start times
+    datetime_start = datetime.now()
+    start_process_time = process_time()
+    start_performance_time = perf_counter()
+
+    # Run the expectation maximization method.
+    sample_label_probabilities, weight = zheng_2017.CHG(samples_to_annotators, annotators_to_samples, label_set, datatype, distance_type).Run(model_parameters['max_iterations'], random_seed)
+
+    # Record end times
+    end_process_time = process_time()
+    end_performance_time = perf_counter()
+    datetime_end = datetime.now()
+
+    # e2lpd: example to likelihood probability distribution
+    # weight : a single weight for every annotator. worker_id : float
+
+    # Save the results.
+    # Unpack the sample label probability estimates
+    sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
+    sample_label_probabilities.index.name = 'sample_id'
+    sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
+
+    # Save weights as a csv
+    weight = pd.DataFrame(weight, index=['weight']).T
+    weight.index.name = 'worker_id'
+    weight.to_csv(os.path.join(output_dir, 'weight.csv'))
+
+
+    # Create summary.csv
+    summary_csv(os.path.join(output_dir, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
 def load_config(args):
