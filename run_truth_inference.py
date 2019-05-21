@@ -22,25 +22,6 @@ import random_seed_generator
 # TODO create a setup where it is efficient and safe/reliable in saving data
 # in a tmp dir as it goes, and saving all of the results in an output directory.
 
-def summary_csv(filename, truth_inference_method, parameters, dataset_id, dataset_filepath, random_seed, runtime_process, runtime_performance, datetime_start, datetime_end):
-    """Convenience function creates a summary csv file at the given path
-    containing the provided arguments.
-
-    Parameters
-    ----------
-    """
-    with open(filename, 'w') as f:
-        f.write('truth_inference_method,%s\n' % truth_inference_method)
-        f.write('parameters,%s\n' % repr(parameters))
-        f.write('dataset,%s\n' % dataset_id)
-        f.write('dataset_filepath,%s\n' % dataset_filepath)
-        f.write('random_seed,%d\n' % random_seed)
-        f.write('runtime_process,%f\n' % runtime_process)
-        f.write('runtime_performance,%f\n' % runtime_performance)
-        f.write('datetime_start,%s\n' % str(datetime_start))
-        f.write('datetime_end,%s' % str(datetime_end))
-
-
 def zheng_2017_models_exist(models):
     """Checks if any of the zheng 2017 models are present in provided models
     set."""
@@ -128,17 +109,17 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'mean' in models:
                     # return the mean of annotations for each sample
                     dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
-                    baseline_regression(sparse_dataframe, 'mean', dir_path)
+                    baseline_regression(sparse_dataframe, 'mean', dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'median' in models:
                     # return the median of annotations for each sample
                     dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
-                    baseline_regression(sparse_dataframe, 'median', dir_path)
+                    baseline_regression(sparse_dataframe, 'median', dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'mode' in models:
                     # return the mode of annotations for each sample
                     dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
-                    baseline_regression(sparse_dataframe, 'mode', dir_path)
+                    baseline_regression(sparse_dataframe, 'mode', dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'bin_frequency' in models:
                     # TODO The frequency of values within given bins
@@ -170,17 +151,17 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'majority_vote' in models:
                     # return the label values that were most common per sample.
                     dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
-                    baseline_classification(sparse_dataframe, 'majority_vote', dir_path)
+                    baseline_classification(sparse_dataframe, 'majority_vote', dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'frequency' in models:
                     # return the frequency of label values for each sample
                     dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
-                    baseline_classification(sparse_dataframe, 'frequency', dir_path)
+                    baseline_classification(sparse_dataframe, 'frequency', dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'count_occurences' in models:
                     # return the count of occurences of label values for each sample
                     dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
-                    baseline_classification(sparse_dataframe, 'count_occurences', dir_path)
+                    baseline_classification(sparse_dataframe, 'count_occurences', dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'majority_decision' in models:
                     pass
@@ -258,7 +239,27 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'MACE' in models:
                     pass
 
-def baseline_regression(sparse_dataframe, method, output_dir):
+
+def summary_csv(filename, truth_inference_method, parameters, dataset_id, dataset_filepath, random_seed, runtime_process, runtime_performance, datetime_start, datetime_end):
+    """Convenience function creates a summary csv file at the given path
+    containing the provided arguments.
+
+    Parameters
+    ----------
+    """
+    with open(filename, 'w') as f:
+        f.write('truth_inference_method,%s\n' % truth_inference_method)
+        f.write('parameters,%s\n' % repr(parameters))
+        f.write('dataset,%s\n' % dataset_id)
+        f.write('dataset_filepath,%s\n' % dataset_filepath)
+        f.write('random_seed,%d\n' % random_seed)
+        f.write('runtime_process,%f\n' % runtime_process)
+        f.write('runtime_performance,%f\n' % runtime_performance)
+        f.write('datetime_start,%s\n' % str(datetime_start))
+        f.write('datetime_end,%s' % str(datetime_end))
+
+
+def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, dataset_filepath, random_seed):
     """Calculates the given baseline regression method on the ddataframe."""
     if method == 'mean':
         # Record start times
@@ -293,20 +294,23 @@ def baseline_regression(sparse_dataframe, method, output_dir):
         start_process_time = process_time()
         start_performance_time = perf_counter()
 
-        result = sparse_dataframe.mode(1, True)
+        result = sparse_dataframe.mode(1)
 
         # Record end times
         end_process_time = process_time()
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
+    # Ensure the output directory path exists.
+    os.makedirs(output_dir, exist_ok=True)
+
     # Save the result to a csv
     result.to_csv(os.path.join(output_dir, method + '.csv'))
 
-    summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+    summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
-def baseline_classification(sparse_dataframe, method, output_dir):
+def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, dataset_filepath, random_seed):
     """Calculates the given baseline regression method on the ddataframe."""
     if method == 'majority_vote':
         # NOTE the majority vote can be multiple values, not aggregating to 1 value
@@ -328,7 +332,7 @@ def baseline_classification(sparse_dataframe, method, output_dir):
         start_process_time = process_time()
         start_performance_time = perf_counter()
 
-        result = sparse_dataframe.apply(lambda x: x.value_counts(True))
+        result = sparse_dataframe.apply(lambda x: x.value_counts(True), 1)
 
         # Record end times
         end_process_time = process_time()
@@ -341,17 +345,20 @@ def baseline_classification(sparse_dataframe, method, output_dir):
         start_process_time = process_time()
         start_performance_time = perf_counter()
 
-        result = sparse_dataframe.apply(lambda x: x.value_counts(False))
+        result = sparse_dataframe.apply(lambda x: x.value_counts(False), 1)
 
         # Record end times
         end_process_time = process_time()
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
+    # Ensure the output directory path exists.
+    os.makedirs(output_dir, exist_ok=True)
+
     # Save the result to a csv
     result.to_csv(os.path.join(output_dir, method + '.csv'))
 
-    summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+    summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
 def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):

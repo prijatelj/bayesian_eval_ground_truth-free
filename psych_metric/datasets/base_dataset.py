@@ -240,12 +240,13 @@ class BaseDataset(object):
         worker_to_matrix_idx = {worker:i for i, worker in enumerate(unique_worker_ids)}
 
         # Create the initial dense matrix and fill it's entries with the missing_value
-        matrix = np.empty((len(unique_sample_ids), len(unique_worker_ids)))
+        #matrix = np.empty((len(unique_sample_ids), len(unique_worker_ids)))
+        matrix = np.full((len(unique_sample_ids), len(unique_worker_ids)), None)
 
         # Gets a label value from the original dataframe.
-        value = self.df['worker_label'].iloc[0]
-        matrix = matrix.astype(type(value))
-        matrix.fill(fill_value)
+        #value = self.df['worker_label'].iloc[0]
+        #matrix = matrix.astype(type(value))
+        #matrix.fill(fill_value)
 
         # TODO Store visited workers per each sample to detect multiple samplings
         # NOTE unnecesary, can check if value is fill_value at matrix spot prior to filling, this informs of duplicates and will then require whatever action to be taken. Could default for now to using the last seen label value of the worker for that sample.
