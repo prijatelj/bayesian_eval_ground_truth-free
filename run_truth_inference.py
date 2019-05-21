@@ -127,17 +127,23 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 # TODO for these, they would be better for sparse matrices OR need a function that finds each for each sample in the annotation list.
                 if 'mean' in models:
                     # return the mean of annotations for each sample
-                    pass
+                    dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
+                    baseline_regression(sparse_dataframe, 'mean', dir_path)
 
                 if 'median' in models:
                     # return the median of annotations for each sample
-                    pass
+                    dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
+                    baseline_regression(sparse_dataframe, 'median', dir_path)
 
                 if 'mode' in models:
                     # return the mode of annotations for each sample
-                    pass
+                    dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
+                    baseline_regression(sparse_dataframe, 'mode', dir_path)
 
-                # Most likley, all non-probablistic methods can be saved together
+                if 'bin_frequency' in models:
+                    # TODO The frequency of values within given bins
+                    # add a bin counts csv option to this.
+                    dir_path = os.path.join(output_data_dir, 'bin_frequency', str(seed), '_'.join([key + '-' + str(value) for key, value in models['dawid_skene'].items()]))
 
                 # Truth Inference Survey 2017
                 if 'LFC-N' in models:
@@ -162,8 +168,19 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
                 # An Evaluation of Aggregation Technique in Crowdsourcing 2013
                 if 'majority_vote' in models:
-                    # TODO use the sparse matrix versions
-                    pass
+                    # return the label values that were most common per sample.
+                    dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
+                    baseline_classification(sparse_dataframe, 'majority_vote', dir_path)
+
+                if 'frequency' in models:
+                    # return the frequency of label values for each sample
+                    dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
+                    baseline_classification(sparse_dataframe, 'frequency', dir_path)
+
+                if 'count_occurences' in models:
+                    # return the count of occurences of label values for each sample
+                    dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
+                    baseline_classification(sparse_dataframe, 'count_occurences', dir_path)
 
                 if 'majority_decision' in models:
                     pass
@@ -240,6 +257,101 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
                 if 'MACE' in models:
                     pass
+
+def baseline_regression(sparse_dataframe, method, output_dir):
+    """Calculates the given baseline regression method on the ddataframe."""
+    if method == 'mean':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        result = sparse_dataframe.mean(1)
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    elif method == 'median':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        result = sparse_dataframe.median(1)
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    elif method == 'mode':
+        # NOTE the mode can be multiple values, not aggregating to 1 value
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        result = sparse_dataframe.mode(1, True)
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    # Save the result to a csv
+    result.to_csv(os.path.join(output_dir, method + '.csv'))
+
+    summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+
+
+def baseline_classification(sparse_dataframe, method, output_dir):
+    """Calculates the given baseline regression method on the ddataframe."""
+    if method == 'majority_vote':
+        # NOTE the majority vote can be multiple values, not aggregating to 1 value
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        result = sparse_dataframe.mode(1)
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    elif method == 'frequency':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        result = sparse_dataframe.apply(lambda x: x.value_counts(True))
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    elif method == 'count_occurences':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        result = sparse_dataframe.apply(lambda x: x.value_counts(False))
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    # Save the result to a csv
+    result.to_csv(os.path.join(output_dir, method + '.csv'))
+
+    summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
 def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
