@@ -133,7 +133,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
             elif 'classification' in dataset.task_type:
                 if 'binary' in dataset.task_type:
                     # Use binary classifiaction only TI models
-                    if 'Multi' in models:
+                    if 'multidimensional' in models:
                         pass
 
                     if 'KOS' in models:
@@ -361,25 +361,69 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
     summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
-def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
+def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
     """Calls the Zheng 2017 implementation of Dawid and Skene EM algorithm and
     saves the results and runtimes of the method.
     """
-    # Record start times
-    datetime_start = datetime.now()
-    start_process_time = process_time()
-    start_performance_time = perf_counter()
+    if 'dawid_skene' == model:
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
 
-    # Run the expectation maximization method.
-    sample_label_probabilities, worker_confusion_matrices, = zheng_2017.EM(samples_to_annotators, annotators_to_samples, label_set, model_parameters['prior_quality']).Run(model_parameters['max_iterations'])
+        # Run the expectation maximization method.
+        sample_label_probabilities, worker_confusion_matrices = zheng_2017.DawidSkene(samples_to_annotators, annotators_to_samples, label_set, model_parameters['prior_quality']).Run(model_parameters['max_iterations'])
 
-    # Record end times
-    end_process_time = process_time()
-    end_performance_time = perf_counter()
-    datetime_end = datetime.now()
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
 
-    # e2lpd: example to likelihood probability distribution
-    # w2cm: workers to confusion matrix
+    elif 'LFC_binary':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        # Run the expectation maximization method.
+        sample_label_probabilities, worker_confusion_matrices = zheng_2017.LFCBinary(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['max_iterations'])
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    elif 'LFC_multi':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        # Run the expectation maximization method.
+        sample_label_probabilities, worker_confusion_matrices = zheng_2017.LFCMulti(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['max_iterations'])
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    elif 'LFC_N':
+        # TODO is not like the rest, needs adjusted more and posisbly rewritten.
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        # Run the expectation maximization method.
+        sample_label_probabilities, worker_confusion_matrices = zheng_2017.LFCContinuous(samples_to_annotators, annotators_to_samples).Run(model_parameters['max_iterations'])
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    # sample_label_probabilities: {sample_id : label probability distribution}
+    # worker_confusion_matrics: {worker_id : confusion matrix}
 
     # Save the results.
     # Unpack the confusion matrix
@@ -410,25 +454,65 @@ def dawid_skene(samples_to_annotators, annotators_to_samples, label_set, model_p
     summary_csv(os.path.join(output_dir, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
-def glad(samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
+def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
     """Calls the Zheng 2017 implementation of GLAD and saves the results and
     runtimes of the method.
     """
-    # Record start times
-    datetime_start = datetime.now()
-    start_process_time = process_time()
-    start_performance_time = perf_counter()
+    if model == 'GLAD':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
 
-    # Run the expectation maximization method.
-    sample_label_probabilities, weight = zheng_2017.GLAD(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['threshold'])
+        sample_label_probabilities, weight = zheng_2017.GLAD(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['threshold'])
 
-    # Record end times
-    end_process_time = process_time()
-    end_performance_time = perf_counter()
-    datetime_end = datetime.now()
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
 
-    # e2lpd: example to likelihood probability distribution
-    # weight : a single weight for every annotator. worker_id : float
+    elif model == 'CATD':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        sample_label_probabilities, weight = zheng_2017.Conf_Aware(samples_to_annotators, annotators_to_samples, datatype).Run(model_parameters['max_iterations'], random_seed)
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    elif model == 'PM_CRH':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        sample_label_probabilities, weight = zheng_2017.CRH(samples_to_annotators, annotators_to_samples, label_set, datatype, distance_type).Run(model_parameters['max_iterations'], random_seed)
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    elif model == 'ZenCrowd':
+        # Record start times
+        datetime_start = datetime.now()
+        start_process_time = process_time()
+        start_performance_time = perf_counter()
+
+        # Run expectation maximization method
+        sample_label_probabilities, weight = zheng_2017.ZenCrowd(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['max_iterations'])
+
+        # Record end times
+        end_process_time = process_time()
+        end_performance_time = perf_counter()
+        datetime_end = datetime.now()
+
+    # sample_label_probabilities: {sample_id : label probability distribution}
+    # weight : a single weight for every annotator. {worker_id : float}
 
     # Save the results.
     # Unpack the sample label probability estimates
@@ -442,87 +526,7 @@ def glad(samples_to_annotators, annotators_to_samples, label_set, model_paramete
     weight.to_csv(os.path.join(output_dir, 'weight.csv'))
 
     # Create summary.csv
-    summary_csv(os.path.join(output_dir, 'summary.csv'), 'GLAD', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
-
-
-def catd(samples_to_annotators, annotators_to_samples, data_type, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
-    """Calls the Zheng 2017 implementation of Dawid and Skene EM algorithm and
-    saves the results and runtimes of the method.
-    """
-    # NOTE be careful of its priors, probably need to add the ability to define said priors in init as parameters.
-
-    # Record start times
-    datetime_start = datetime.now()
-    start_process_time = process_time()
-    start_performance_time = perf_counter()
-
-    # Run the expectation maximization method.
-    sample_label_probabilities, weight = zheng_2017.CATD(samples_to_annotators, annotators_to_samples, datatype).Run(model_parameters['max_iterations'], random_seed)
-
-    # Record end times
-    end_process_time = process_time()
-    end_performance_time = perf_counter()
-    datetime_end = datetime.now()
-
-    # e2lpd: example to likelihood probability distribution
-    # weight : a single weight for every annotator. worker_id : float
-
-    # Save the results.
-    # Unpack the sample label probability estimates
-    sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
-    sample_label_probabilities.index.name = 'sample_id'
-    sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
-
-    # Save weights as a csv
-    weight = pd.DataFrame(weight, index=['weight']).T
-    weight.index.name = 'worker_id'
-    weight.to_csv(os.path.join(output_dir, 'weight.csv'))
-
-
-    # Create summary.csv
-    summary_csv(os.path.join(output_dir, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
-
-
-def pm_crh(samples_to_annotators, annotators_to_samples, label_set, data_type, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
-    """Calls the Zheng 2017 implementation of Dawid and Skene EM algorithm and
-    saves the results and runtimes of the method.
-    """
-
-    # infer the correct distance type from the task type (thus, datatype).
-    distance_type = r'normalized absolute loss' if task_type == 'regression' else r'0/1 loss'
-
-    # NOTE be careful of its priors, probably need to add the ability to define said priors in init as parameters.
-
-    # Record start times
-    datetime_start = datetime.now()
-    start_process_time = process_time()
-    start_performance_time = perf_counter()
-
-    # Run the expectation maximization method.
-    sample_label_probabilities, weight = zheng_2017.CHG(samples_to_annotators, annotators_to_samples, label_set, datatype, distance_type).Run(model_parameters['max_iterations'], random_seed)
-
-    # Record end times
-    end_process_time = process_time()
-    end_performance_time = perf_counter()
-    datetime_end = datetime.now()
-
-    # e2lpd: example to likelihood probability distribution
-    # weight : a single weight for every annotator. worker_id : float
-
-    # Save the results.
-    # Unpack the sample label probability estimates
-    sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
-    sample_label_probabilities.index.name = 'sample_id'
-    sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
-
-    # Save weights as a csv
-    weight = pd.DataFrame(weight, index=['weight']).T
-    weight.index.name = 'worker_id'
-    weight.to_csv(os.path.join(output_dir, 'weight.csv'))
-
-
-    # Create summary.csv
-    summary_csv(os.path.join(output_dir, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+    summary_csv(os.path.join(output_dir, 'summary.csv'), model, model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
 def load_config(args):
