@@ -120,8 +120,8 @@ truth_inference:
         LFC: None
         LFC-N: None
         CATD: None
-        PM: None
-        Multi: None
+        PM_CRH: None
+        multidimensional: None
         KOS: None
         VI-BP: None
         VI-MF: None
