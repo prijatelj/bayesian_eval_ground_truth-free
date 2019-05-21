@@ -262,6 +262,7 @@ class BaseDataset(object):
 
         # TODO implement keep_ground_truth by adding ground truth column to matrix
         #if 'ground_truth' in self.df.columns:
+        # NOTE should just include ground truth with the rest of the workers, and ignore its 'multiple' labels
 
         # Make the matrix a sparse dataframe.
         matrix = pd.DataFrame(matrix, columns=unique_worker_ids, index=unique_sample_ids).to_sparse(fill_value)
