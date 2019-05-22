@@ -25,7 +25,7 @@ import random_seed_generator
 def zheng_2017_models_exist(models):
     """Checks if any of the zheng 2017 models are present in provided models
     set."""
-    return all([x in models for x in {'dawid_skene', 'GLAD', 'ZenCrowd', 'minimax', 'BCC', 'CBCC', 'CATD', 'LFC', 'LFC-N', 'PM_CRH', 'multidimensional', 'KOS', 'VI-BP', 'VI-MF'}])
+    return any([x in models for x in {'dawid_skene', 'GLAD', 'ZenCrowd', 'minimax', 'BCC', 'CBCC', 'CATD', 'LFC_binary', 'LFC_mutli', 'LFC_continuous', 'pm_crh', 'multidimensional', 'KOS', 'VI-BP', 'VI-MF'}])
 
 
 def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None, print_progress=True):
@@ -99,10 +99,24 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
             # Models for any task-type
             if 'CATD' in models:
-                pass
+                # Create the filepath to this instance's directory
+                dir_path = os.path.join(output_data_dir, 'CATD', str(seed), '_'.join([key + '-' + str(value) for key, value in models['CATD'].items()]))
+                # Make the  directory structure if it does not already exist.
+                os.makedirs(dir_path, exist_ok=True)
 
-            if 'PM_CRH' in models:
-                pass
+                zheng_2017_label_probs_weights('CATD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['CATD'], dir_path, dataset_id, dataset_filepath, seed, )
+
+            if 'pm_crh' in models:
+                if 'classification' in dataset.task_type and models['pm_crh']['distance_type'] != '0/1 loss':
+                    print('WARNING: The `distance_type` parameters of PM_CRH can only be `0/1 loss` when used on classification tasks. Forced distance_type to `0/1 loss`.')
+                    models['pm_crh']['distance_type'] = distance_type = '0/1 loss'
+
+                # Create the filepath to this instance's directory
+                dir_path = os.path.join(output_data_dir, 'pm_crh', str(seed), '_'.join([key + '-' + str(value) for key, value in models['pm_crh'].items()]))
+                # Make the  directory structure if it does not already exist.
+                os.makedirs(dir_path, exist_ok=True)
+
+                zheng_2017_label_probs_weights('pm_crh', samples_to_annotators, annotators_to_samples, dataset.label_set, models['pm_crh'], dir_path, dataset_id, dataset_filepath, seed, dataset.task_type)
 
             if dataset.task_type == 'regression':
                 # TODO for these, they would be better for sparse matrices OR need a function that finds each for each sample in the annotation list.
@@ -127,8 +141,13 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     dir_path = os.path.join(output_data_dir, 'bin_frequency', str(seed), '_'.join([key + '-' + str(value) for key, value in models['dawid_skene'].items()]))
 
                 # Truth Inference Survey 2017
-                if 'LFC-N' in models:
-                    pass
+                if 'LFC_continuous' in models:
+                    # Create the filepath to this instance's directory
+                    dir_path = os.path.join(output_data_dir, 'LFC_continuous', str(seed), '_'.join([key + '-' + str(value) for key, value in models['LFC_continuous'].items()]))
+                    # Make the  directory structure if it does not already exist.
+                    os.makedirs(dir_path, exist_ok=True)
+
+                    zheng_2017_label_probs_confusion_matrix('LFC_continuous', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_continuous'], dir_path, dataset_id, dataset_filepath, seed)
 
             elif 'classification' in dataset.task_type:
                 if 'binary' in dataset.task_type:
@@ -144,6 +163,13 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
                     if 'VI-MF' in models:
                         pass
+
+                    if 'LFC_binary' in models:
+                        dir_path = os.path.join(output_data_dir, 'LFC_binary', str(seed), '_'.join([key + '-' + str(value) for key, value in models['LFC_binary'].items()]))
+                        # Make the  directory structure if it does not already exist.
+                        os.makedirs(dir_path, exist_ok=True)
+
+                        zheng_2017_label_probs_confusion_matrix('LFC_binary', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_binary'], dir_path, dataset_id, dataset_filepath, seed)
 
                 # Use the multi-classification TI models
 
@@ -198,10 +224,15 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     # Make the  directory structure if it does not already exist.
                     os.makedirs(dir_path, exist_ok=True)
 
-                    dawid_skene(samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], dir_path, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_confusion_matrix(samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'ZenCrowd' in models:
-                    pass
+                    # Create the filepath to this instance's directory
+                    dir_path = os.path.join(output_data_dir, 'ZenCrowd', str(seed), '_'.join([key + '-' + str(value) for key, value in models['ZenCrowd'].items()]))
+                    # Make the  directory structure if it does not already exist.
+                    os.makedirs(dir_path, exist_ok=True)
+
+                    zheng_2017_label_probs_weights('ZenCrowd', samples_to_annotators, annotators_to_samples, dataset.label_set, models['ZenCrowd'], dir_path, dataset_id, dataset_filepath, seed, dataset.task_type)
 
                 if 'GLAD' in models:
                     # Create the filepath to this instance's directory
@@ -209,7 +240,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     # Make the  directory structure if it does not already exist.
                     os.makedirs(dir_path, exist_ok=True)
 
-                    glad(samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], dir_path, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_weights('GLAD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'minimax' in models:
                     pass
@@ -220,8 +251,12 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'CBCC' in models:
                     pass
 
-                if 'LFC' in models:
-                    pass
+                if 'LFC_multi' in models:
+                    dir_path = os.path.join(output_data_dir, 'LFC_multi', str(seed), '_'.join([key + '-' + str(value) for key, value in models['LFC_multi'].items()]))
+                    # Make the  directory structure if it does not already exist.
+                    os.makedirs(dir_path, exist_ok=True)
+
+                    zheng_2017_label_probs_confusion_matrix('LFC_multi', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_multi'], dir_path, dataset_id, dataset_filepath, seed)
 
                 # Comparison of Bayesian Models of Annotation 2018
                 if 'multinomial' in models:
@@ -407,7 +442,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
-    elif 'LFC_N':
+    elif 'LFC_continuous':
         # TODO is not like the rest, needs adjusted more and posisbly rewritten.
         # Record start times
         datetime_start = datetime.now()
@@ -454,7 +489,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
     summary_csv(os.path.join(output_dir, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
-def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
+def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed, task_type=None):
     """Calls the Zheng 2017 implementation of GLAD and saves the results and
     runtimes of the method.
     """
@@ -472,25 +507,29 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
         datetime_end = datetime.now()
 
     elif model == 'CATD':
+        datatype = 'continuous' if task_type == 'regression' else task_type
+
         # Record start times
         datetime_start = datetime.now()
         start_process_time = process_time()
         start_performance_time = perf_counter()
 
-        sample_label_probabilities, weight = zheng_2017.Conf_Aware(samples_to_annotators, annotators_to_samples, datatype).Run(model_parameters['max_iterations'], random_seed)
+        sample_label_probabilities, weight = zheng_2017.Conf_Aware(samples_to_annotators, annotators_to_samples, datatype).Run(model_parameters['alpha'], model_parameters['max_iterations'], random_seed)
 
         # Record end times
         end_process_time = process_time()
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
-    elif model == 'PM_CRH':
+    elif model == 'pm_crh':
+        datatype = 'continuous' if task_type == 'regression' else task_type
+
         # Record start times
         datetime_start = datetime.now()
         start_process_time = process_time()
         start_performance_time = perf_counter()
 
-        sample_label_probabilities, weight = zheng_2017.CRH(samples_to_annotators, annotators_to_samples, label_set, datatype, distance_type).Run(model_parameters['max_iterations'], random_seed)
+        sample_label_probabilities, weight = zheng_2017.CRH(samples_to_annotators, annotators_to_samples, label_set, datatype, model_parameters['distance_type']).Run(model_parameters['max_iterations'], random_seed)
 
         # Record end times
         end_process_time = process_time()
