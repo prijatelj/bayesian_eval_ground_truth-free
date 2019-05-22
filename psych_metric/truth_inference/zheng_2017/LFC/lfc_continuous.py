@@ -94,5 +94,5 @@ if __name__ == "__main__":
     for name, worker in workers.items():
         w2q[name] = worker['weight']
 
-    print w2q
-    print e2tr
+    print(w2q)
+    print(e2tr)

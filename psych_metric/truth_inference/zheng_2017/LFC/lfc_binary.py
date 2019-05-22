@@ -275,6 +275,6 @@ if __name__ == "__main__":
     iterations = 20 # EM iteration number
     e2lpd, w2cm= EM(e2wl,w2el,label_set).Run(iterations)
 
-    print w2cm
-    print e2lpd
+    print(w2cm)
+    print(e2lpd)
 

@@ -185,8 +185,8 @@ if __name__=='__main__':
     datafile = sys.argv[1]
     e2wl,w2el,label_set = gete2wlandw2el(datafile)
     e2lpd, wm= EM(e2wl,w2el,label_set).Run()
-    print wm
-    print e2lpd
+    print(wm)
+    print(e2lpd)
 
 
-    
+

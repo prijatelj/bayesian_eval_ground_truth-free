@@ -15,7 +15,7 @@ import pandas as pd
 # psych metric needs istalled prior to running this script.
 # TODO setup the init and everything such that this is accessible once installed
 from psych_metric.datasets import data_handler
-from psych_metric.truth_inference import truth_inference_model_handler, zheng_2017
+from psych_metric.truth_inference import zheng_2017
 
 import random_seed_generator
 
