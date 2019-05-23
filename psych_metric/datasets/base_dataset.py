@@ -292,7 +292,7 @@ class BaseDataset(object):
                 self.convert_to_annotation_list(inplace=inplace)
             df = self.df
         else:
-            df = self.convert_to_annotation_list() if isinstance(self.df, pd.SparseDataFrame) else self.df.copy()
+            df = self.sparse_matrix_to_annotation_list() if isinstance(self.df, pd.SparseDataFrame) else self.df.copy()
 
         samples_to_annotations = dict()
         annotators_to_samples = dict()
