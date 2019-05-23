@@ -52,7 +52,6 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
         dataset filepaths. If a dataset is not in this dictionary, then it's
         filepath is not provided.
     """
-
     # Iterates through all datasets and performs the same experiments on them.
     for i, dataset_id in enumerate(datasets):
         # Progress print out
@@ -64,6 +63,10 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
         # load dataset
         #data = data_handler.load_dataset(dataset_id, dataset_filepath, encode_columns=True)
         dataset = data_handler.load_dataset(dataset_id, dataset_filepath)
+
+        # if dataset_filepath is None, get it from the dataset class.
+        if dataset_filepath is None:
+            dataset_filepath = dataset.data_dir
 
         # TODO Make a check if the Zheng 2017 models are in models.
         if zheng_2017_models_exist(models):
@@ -104,12 +107,12 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 # Make the  directory structure if it does not already exist.
                 os.makedirs(dir_path, exist_ok=True)
 
-                zheng_2017_label_probs_weights('CATD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['CATD'], dir_path, dataset_id, dataset_filepath, seed, )
+                zheng_2017_label_probs_weights('CATD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['CATD'], dir_path, dataset_id, dataset_filepath, seed, dataset.task_type)
 
             if 'pm_crh' in models:
-                if 'classification' in dataset.task_type and models['pm_crh']['distance_type'] != '0/1 loss':
-                    print('WARNING: The `distance_type` parameters of PM_CRH can only be `0/1 loss` when used on classification tasks. Forced distance_type to `0/1 loss`.')
-                    models['pm_crh']['distance_type'] = distance_type = '0/1 loss'
+                #if 'classification' in dataset.task_type and models['pm_crh']['distance_type'] != '0/1 loss':
+                #    print('WARNING: The `distance_type` parameters of PM_CRH can only be `0/1 loss` when used on classification tasks. Forced distance_type to `0/1 loss`.')
+                #    models['pm_crh']['distance_type'] = distance_type = '0/1 loss'
 
                 # Create the filepath to this instance's directory
                 dir_path = os.path.join(output_data_dir, 'pm_crh', str(seed), '_'.join([key + '-' + str(value) for key, value in models['pm_crh'].items()]))
@@ -522,14 +525,15 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
         datetime_end = datetime.now()
 
     elif model == 'pm_crh':
-        datatype = 'continuous' if task_type == 'regression' else task_type
+        datatype = 'continuous' if task_type == 'regression' else 'categorical'
+        distance_type = '0/1 loss' if 'classification' in task_type else model_parameters['distance_type']
 
         # Record start times
         datetime_start = datetime.now()
         start_process_time = process_time()
         start_performance_time = perf_counter()
 
-        sample_label_probabilities, weight = zheng_2017.CRH(samples_to_annotators, annotators_to_samples, label_set, datatype, model_parameters['distance_type']).Run(model_parameters['max_iterations'], random_seed)
+        sample_label_probabilities, weight = zheng_2017.CRH(samples_to_annotators, annotators_to_samples, label_set, datatype, distance_type).Run(model_parameters['max_iterations'], random_seed)
 
         # Record end times
         end_process_time = process_time()
@@ -555,7 +559,11 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
 
     # Save the results.
     # Unpack the sample label probability estimates
-    sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
+    if task_type == 'regression' or 'binary' in task_type:
+        # Only works if the output is one scalar. If more, then it does not work.
+        sample_label_probabilities = pd.DataFrame(sample_label_probabilities, index=['label']).T
+    else:
+        sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
     sample_label_probabilities.index.name = 'sample_id'
     sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
 

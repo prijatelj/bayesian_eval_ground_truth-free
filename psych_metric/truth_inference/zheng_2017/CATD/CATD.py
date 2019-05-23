@@ -1,9 +1,11 @@
 import math,csv,random
-import numpy as np
-#import read_distribution as cdis # Moved the file's contents into here.
 import sys
 import os
 import re
+
+import numpy as np
+import scipy as sp
+#import read_distribution as cdis # Moved the file's contents into here.
 
 class Conf_Aware:
     def __init__(self,e2wl,w2el,datatype):
@@ -27,7 +29,7 @@ class Conf_Aware:
             for example, worker_label_set in self.e2wl.items():
                 temp = dict()
                 for worker, label in worker_label_set:
-                    if (temp.has_key(label)):
+                    if (label in temp):
                         temp[label] = temp[label] + self.weight[worker]
                     else:
                         temp[label] = self.weight[worker]
@@ -89,7 +91,7 @@ class Conf_Aware:
             for example, worker_label_set in self.e2wl.items():
                 temp = dict()
                 for _, label in worker_label_set:
-                    if (temp.has_key(label)):
+                    if (label in temp):
                         temp[label] = temp[label] + 1
                     else:
                         temp[label] = 1
@@ -111,8 +113,11 @@ class Conf_Aware:
         # Seed the random number generator for reproducible results.
         random.seed(random_seed)
 
-        self.chi_square_conf, self.chi_square_distribution = read_chi_square_distribution()
-        self.normal_conf,self.normal_distribution = read_normal_distribution()
+        # TODO This needs replaced and sampled from the actual distributions.
+        directory = 'psych_metric/truth_inference/zheng_2017/CATD'
+
+        self.chi_square_conf, self.chi_square_distribution = read_chi_square_distribution(directory)
+        self.normal_conf,self.normal_distribution = read_normal_distribution(directory)
         #self.chi_square_conf, self.chi_square_distribution = cdis.read_chi_square_distribution()
         #self.normal_conf,self.normal_distribution = cdis.read_normal_distribution()
         self.alpha = alpha
@@ -143,9 +148,9 @@ def isfloat(value):
   except ValueError:
     return False
 
-def read_chi_square_distribution():
-    dir = os.path.split(sys.argv[0])[0]
-    file = open(dir+'/chi-square distribution.txt','r')
+def read_chi_square_distribution(directory):
+    #dir = os.path.split(sys.argv[0])[0]
+    file = open(directory+'/chi-square distribution.txt','r')
     flag = 0
     chi_square_conf = []
     chi_square_dis = dict()
@@ -167,9 +172,9 @@ def read_chi_square_distribution():
     file.close()
     return chi_square_conf, chi_square_dis
 
-def read_normal_distribution():
-    dir = os.path.split(sys.argv[0])[0]
-    file = open(dir + '/normal distribution.txt','r')
+def read_normal_distribution(directory):
+    #dir = os.path.split(sys.argv[0])[0]
+    file = open(directory + '/normal distribution.txt','r')
     flag = 0
     normal_conf = []
     normal_dis  = dict()

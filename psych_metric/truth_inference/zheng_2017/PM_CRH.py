@@ -46,7 +46,7 @@ class CRH:
                 temp = dict()
                 sum_weight = 0.0
                 for worker, label in worker_label_set:
-                    if temp.has_key(float(label)):
+                    if float(label) in temp:
                         temp[float(label)] = temp[float(label)] + self.weight[worker]
                     else:
                         temp[float(label)] = self.weight[worker]
@@ -78,7 +78,7 @@ class CRH:
             for example, worker_label_set in self.e2wl.items():
                 temp = dict()
                 for worker, label in worker_label_set:
-                    if (temp.has_key(label)):
+                    if label in temp:
                         temp[label] = temp[label] + self.weight[worker]
                     else:
                         temp[label] = self.weight[worker]
@@ -149,7 +149,7 @@ class CRH:
             for example, worker_label_set in self.e2wl.items():
                 temp = dict()
                 for _, label in worker_label_set:
-                    if (temp.has_key(label)):
+                    if label in temp:
                         temp[label] = temp[label] + 1
                     else:
                         temp[label] = 1
@@ -177,7 +177,7 @@ class CRH:
                 temp = dict()
                 sum = 0.0
                 for worker, label in worker_label_set:
-                    if (temp.has_key(label)):
+                    if label in temp:
                         temp[label] = temp[label] + self.weight[worker]
                     else:
                         temp[label] = self.weight[worker]

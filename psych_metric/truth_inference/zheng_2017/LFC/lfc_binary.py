@@ -112,7 +112,8 @@ class EM:
     #initialization
     def Init_e2lpd(self):
         e2lpd = {}
-        for example, worker_label_set in e2wl.items():
+        # NOTE e2wl did not have `self` in it. It was added by me.
+        for example, worker_label_set in self.e2wl.items():
             lpd = {}
             total = 0
             for label in self.label_set:
