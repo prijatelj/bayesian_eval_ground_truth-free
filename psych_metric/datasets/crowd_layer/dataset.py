@@ -107,7 +107,7 @@ class CrowdLayer(BaseDataset):
         """
         self.dataset = 'LabelMe'
         # Set the dataset task type
-        self.task_type = 'classifiaction'
+        self.task_type = 'classification'
 
         self.label_set = frozenset({'highway', 'insidecity', 'tallbuilding', 'street', 'forest', 'coast', 'mountain', 'opencountry'})
 
@@ -178,7 +178,7 @@ class CrowdLayer(BaseDataset):
         """
         self.dataset = 'ner-mturk'
         # Set the dataset task type
-        self.task_type = 'classifiaction'
+        self.task_type = 'classification'
 
         self.label_set = frozenset({'O', 'B-LOC', 'B-ORG', 'B-MISC', 'B-PER', 'I-LOC', 'I-ORG', 'I-MISC', 'I-PER'})
 
