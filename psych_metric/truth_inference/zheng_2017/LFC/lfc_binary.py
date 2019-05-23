@@ -9,11 +9,14 @@ class EM:
         self.w2el = w2el
         self.workers = self.w2el.keys()
         self.label_set = label_set
+
+        # TODO Make all of these parameters of the model (allow to be user defined)!
         self.initalquality = 0.7
         self.P_beta_param = beta_param
         self.use_P_beta = False
         self.sensitivity = 0.684
         self.specificity = 0.73
+
         if self.P_beta_param:
             self.use_P_beta = True
 
@@ -23,7 +26,7 @@ class EM:
     def Update_e2lpd(self):
         self.e2lpd = {}
 
-        for example, worker_label_set in e2wl.items():
+        for example, worker_label_set in self.e2wl.items():
             lpd = {}
             total_weight = 0
 
@@ -143,12 +146,19 @@ class EM:
 
     def Init_w2cm(self):
         w2cm = {}
+
+        # Extract the negative and positive symbols.
+        binary_tuple = tuple(self.label_set)
+        negative = min(binary_tuple)
+        positive = max(binary_tuple)
+        # NOTE expects that negative will always be comparatively less than the positive.
+
         for worker in self.workers:
-            w2cm[worker] = {"0": {}, "1": {}}
-            w2cm[worker]["0"]["0"] = self.specificity
-            w2cm[worker]["0"]["1"] = 1 - self.specificity
-            w2cm[worker]["1"]["1"] = self.sensitivity
-            w2cm[worker]["1"]["0"] = 1 - self.sensitivity
+                w2cm[worker] = {negative: {}, positive: {}}
+                w2cm[worker][negative][negative] = self.specificity
+                w2cm[worker][negative][positive] = 1 - self.specificity
+                w2cm[worker][positive][positive] = self.sensitivity
+                w2cm[worker][positive][negative] = 1 - self.sensitivity
             # for tlabel in self.label_set:
             #     w2cm[worker][tlabel] = {}
             #     for label in self.label_set:

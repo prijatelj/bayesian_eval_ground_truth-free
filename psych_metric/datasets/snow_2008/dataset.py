@@ -54,12 +54,10 @@ class Snow2008(BaseDataset):
         elif self.dataset == 'rte':
             self.task_type = 'binary_classification'
             self.label_set = frozenset({0, 1})
-            #self.label_set = frozenset({'0', '1'})
         elif self.dataset == 'temp':
             # NOTE temp=temporal is ordered labels 'strictly before' and 'stritly after'
             self.task_type = 'binary_classification'
             self.label_set = frozenset({1, 2})
-            #self.label_set = frozenset({'1', '2'})
         else: # wsd
             self.task_type = 'mapping'
             # NOTE wsd: word sense disambiguation is a mapping problem, not a classifiaction problem.
