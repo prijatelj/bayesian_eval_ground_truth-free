@@ -63,6 +63,7 @@ class Ipeirotis2010(BaseDataset):
             if HERE is None or 'ipeirotis_2010_data' not in HERE:
                 raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
+        self.data_dir = dataset_filepath
 
         # TODO perhaps separate these conditionals into data specific load functions. It'll be much cleaner.
         self.dataset = 'AdultContent3-HCOMP2010' if dataset == 'AdultContent3' else dataset

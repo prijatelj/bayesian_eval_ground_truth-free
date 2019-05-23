@@ -54,10 +54,12 @@ class Snow2008(BaseDataset):
         elif self.dataset == 'rte':
             self.task_type = 'binary_classification'
             self.label_set = frozenset({0, 1})
+            #self.label_set = frozenset({'0', '1'})
         elif self.dataset == 'temp':
             # NOTE temp=temporal is ordered labels 'strictly before' and 'stritly after'
             self.task_type = 'binary_classification'
             self.label_set = frozenset({1, 2})
+            #self.label_set = frozenset({'1', '2'})
         else: # wsd
             self.task_type = 'mapping'
             # NOTE wsd: word sense disambiguation is a mapping problem, not a classifiaction problem.
@@ -69,6 +71,7 @@ class Snow2008(BaseDataset):
             if HERE is None or 'snow_2008' not in HERE:
                 raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = os.path.join(HERE, 'snow_2008_data')
+        self.data_dir = dataset_filepath
 
         annotation_file = '{}.standardized.tsv'.format(self.dataset)
         annotation_file = os.path.join(dataset_filepath, annotation_file)

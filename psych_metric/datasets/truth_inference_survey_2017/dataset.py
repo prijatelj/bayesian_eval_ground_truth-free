@@ -62,6 +62,7 @@ class TruthSurvey2017(BaseDataset):
             if HERE is None or 'truth_inference_survey_2017_data' not in HERE:
                 raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
+        self.data_dir = dataset_filepath
 
         # Set the dataset's expected task type
         if 'd' == self.dataset[0]:

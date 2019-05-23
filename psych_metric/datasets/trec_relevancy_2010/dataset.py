@@ -57,6 +57,7 @@ class TRECRelevancy2010(BaseDataset):
             if HERE is None or 'trec_relevancy_2010_data' not in HERE:
                 raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
+        self.data_dir = dataset_filepath
 
         # Read in and save data
         annotation_file = os.path.join(dataset_filepath, self.dataset + '.txt')

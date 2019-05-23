@@ -57,6 +57,7 @@ class FacialBeauty(BaseDataset):
             if HERE is None or 'facial_beauty_data' not in HERE:
                 raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
             dataset_filepath = HERE
+        self.data_dir = dataset_filepath
 
         if not isinstance(sparse_matrix, bool):
             raise TypeError('sparse_matrix parameter must be a boolean.')
