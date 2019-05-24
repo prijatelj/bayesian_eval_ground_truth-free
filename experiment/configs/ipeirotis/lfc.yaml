@@ -1,0 +1,39 @@
+# Configuration file for running the tests. This will be assumed defaults,
+# passed arguements to scripts will replace the value for that specific run of
+# that script.
+# So the order of precedence:
+# specified arguments script calls > config values > script defaults (if any).
+# Not all values are used here by the scripts.
+
+# Hardware constants
+#cores: 1 # If empty/null/None the maximum number of cores available will be used
+#threads: lol this is Python.
+
+# Random Seeds file
+random_seeds_file:  'experiment/random_seeds/random_seeds_count-10000.txt'
+
+output_dir: 'results/'
+
+# Annotated datasets to be used, and their respective predictive models
+# If any dataset is not a string, but a dict, then that dict may contain the
+# filepath to the dataset rather than the default expected filepath.
+datasets:
+    # Ipeirotis datasets
+    - AdultContent
+    - AdultContent2
+    - AdultContent3
+    - BarzanMozafari
+    - CopyrightInfringement
+    - HITspam-UsingCrowdflower
+    - HITspam-UsingMTurk
+    - JeroenVuurens
+
+# Truth inference models to be tested
+truth_inference:
+    models:
+        LFC_binary:
+            max_iterations: 20
+        LFC_multi:
+            max_iterations: 20
+        #LFC_continuous:
+        #    max_iterations: 50

@@ -1,0 +1,22 @@
+# Configuration file for running Dawid and Skene EM.
+
+# Random Seeds file
+random_seeds_file:  'experiment/random_seeds/random_seeds_test_batch.txt'
+
+output_dir: 'results/'
+
+
+# Annotated datasets to be used, and their respective predictive models
+# If any dataset is not a string, but a dict, then that dict may contain the
+# filepath to the dataset rather than the default expected filepath.
+datasets:
+    # CrowdLayer
+    - LabelMe
+    - MovieReviews
+    #- ner-mturk
+
+# Truth inference models to be tested
+truth_inference:
+    models:
+        GLAD:
+            threshold: 1.0e-4

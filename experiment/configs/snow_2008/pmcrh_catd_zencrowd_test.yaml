@@ -1,0 +1,39 @@
+# Configuration file for running Dawid and Skene EM.
+
+# Random Seeds file
+random_seeds_file:  'experiment/random_seeds/random_seeds_test_batch.txt'
+
+output_dir: 'results/'
+
+
+# Annotated datasets to be used, and their respective predictive models
+# If any dataset is not a string, but a dict, then that dict may contain the
+# filepath to the dataset rather than the default expected filepath.
+datasets:
+    # Comparison of Bayesian Models of Annotation 2018
+    # Snow 2008:
+    - anger
+    - disgust
+    - fear
+    - joy
+    - rte
+    - sadness
+    - surprise
+    - temp
+    - valence
+    - wordsim
+    #- wsd # a mapping problem no TI method can handle.
+
+# Truth inference models to be tested
+truth_inference:
+    models:
+        pm_crh:
+            distance_type: normalized absolute loss
+            #distance_type: normalized square loss
+            #distance_type: 0/1 loss
+            max_iterations: 10
+        CATD:
+            alpha: 0.05
+            max_iterations: 100
+        ZenCrowd:
+            max_iterations: 20

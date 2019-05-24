@@ -1,0 +1,42 @@
+# Configuration file for running the tests. This will be assumed defaults,
+# passed arguements to scripts will replace the value for that specific run of
+# that script.
+# So the order of precedence:
+# specified arguments script calls > config values > script defaults (if any).
+# Not all values are used here by the scripts.
+
+# Hardware constants
+#cores: 1 # If empty/null/None the maximum number of cores available will be used
+#threads: lol this is Python.
+
+# Random Seeds file
+random_seeds_file:  'experiment/random_seeds/random_seeds_count-10000.txt'
+
+output_dir: 'results/'
+
+# Annotated datasets to be used, and their respective predictive models
+# If any dataset is not a string, but a dict, then that dict may contain the
+# filepath to the dataset rather than the default expected filepath.
+datasets:
+    # Truth Inference Sruvey 2017
+    - d_Duck Identification
+    - d_jn-product
+    - d_sentiment
+    - s4_Dog data
+    - s4_Face Sentiment Identification
+    - s4_Relevance
+    - s5_AdultContent
+    - f201_Emotion_FULL
+
+    # TREC Relevancy 2010
+    - trec-rf10-data
+
+# Truth inference models to be tested
+truth_inference:
+    models:
+        LFC_binary:
+            max_iterations: 20
+        LFC_multi:
+            max_iterations: 20
+        #LFC_continuous:
+        #    max_iterations: 50
