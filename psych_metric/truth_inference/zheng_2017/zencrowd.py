@@ -61,7 +61,7 @@ class EM:
 
             if sums==0:
                 for label in self.label_set:
-                    e2lpd[e][label]=1.0/self.len(self.label_set)
+                    e2lpd[e][label]=1.0/len(self.label_set)
             else:
                 for label in self.label_set:
                     e2lpd[e][label]=e2lpd[e][label]*1.0/sums

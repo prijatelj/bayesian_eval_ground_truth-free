@@ -23,7 +23,8 @@ class EM:
     def Update_e2lpd(self):
         self.e2lpd = {}
 
-        for example, worker_label_set in e2wl.items():
+        # e2wl.items() was missing `self.`
+        for example, worker_label_set in self.e2wl.items():
             lpd = {}
             total_weight = 0
 
@@ -111,7 +112,8 @@ class EM:
     #initialization
     def Init_e2lpd(self):
         e2lpd = {}
-        for example, worker_label_set in e2wl.items():
+        # the call of e2wl.items() was missing `self.` originally.
+        for example, worker_label_set in self.e2wl.items():
             lpd = {}
             total = 0
             for label in self.label_set:
@@ -149,7 +151,8 @@ class EM:
                     if tlabel == label:
                         w2cm[worker][tlabel][label] = self.initalquality
                     else:
-                        w2cm[worker][tlabel][label] = (1-self.initalquality)/(len(label_set)-1)
+                        # label set was missing `self.`
+                        w2cm[worker][tlabel][label] = (1-self.initalquality)/(len(self.label_set)-1)
 
 
         return w2cm

@@ -77,6 +77,13 @@ class EM:
 
 
         w2lweights = {}
+
+        # Extract the negative and positive symbols.
+        binary_tuple = tuple(self.label_set)
+        negative = min(binary_tuple)
+        positive = max(binary_tuple)
+        # NOTE expects that negative will always be comparatively less than the positive.
+
         for w in self.w2el:
             w2lweights[w] = {}
             for label in self.label_set:
@@ -89,12 +96,12 @@ class EM:
             for tlabel in self.label_set:
 
                 if w2lweights[w][tlabel] == 0:
-                    if tlabel == "0":
-                        self.w2cm[w]["0"]["0"] = self.specificity
-                        self.w2cm[w]["0"]["1"] = 1 - self.specificity
-                    elif tlabel == "1":
-                        self.w2cm[w]["1"]["1"] = self.sensitivity
-                        self.w2cm[w]["1"]["0"] = 1 - self.sensitivity
+                    if tlabel == negative:
+                        self.w2cm[w][negative][negative] = self.specificity
+                        self.w2cm[w][negative][positive] = 1 - self.specificity
+                    elif tlabel == positive:
+                        self.w2cm[w][positive][positive] = self.sensitivity
+                        self.w2cm[w][positive][negative] = 1 - self.sensitivity
 
                     continue
 
