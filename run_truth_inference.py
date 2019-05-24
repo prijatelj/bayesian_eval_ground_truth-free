@@ -243,7 +243,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     # Make the  directory structure if it does not already exist.
                     os.makedirs(dir_path, exist_ok=True)
 
-                    zheng_2017_label_probs_weights('GLAD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], dir_path, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_weights('GLAD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], dir_path, dataset_id, dataset_filepath, seed, dataset.task_type)
 
                 if 'minimax' in models:
                     pass
