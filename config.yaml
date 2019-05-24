@@ -50,7 +50,7 @@ datasets:
     # CrowdLayer
     - LabelMe
     - MovieReviews
-    - ner_mturk
+    #- ner_mturk
 
     # Ipeirotis datasets
     - AdultContent

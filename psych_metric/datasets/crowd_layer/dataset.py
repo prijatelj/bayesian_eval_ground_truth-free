@@ -172,7 +172,7 @@ class CrowdLayer(BaseDataset):
         data_file = os.path.join(self.data_dir, self.dataset, 'texts_' + datasplit + '.txt')
         self.data = pd.read_csv(data_file, sep=' ', names=['text'])
 
-    def load_ner_mturk(self, datasplit='train'):
+    def load_ner_mturk(self, datasplit='answers'):
         """Loads the designated split of data from MovieReviews into this
             instance's attributes.
         """
@@ -183,11 +183,11 @@ class CrowdLayer(BaseDataset):
         self.label_set = frozenset({'O', 'B-LOC', 'B-ORG', 'B-MISC', 'B-PER', 'I-LOC', 'I-ORG', 'I-MISC', 'I-PER'})
 
         # Ensure valid datasplit value
-        self._check_datasplit(datasplit, {'train', 'test', 'ground_truth'})
+        self._check_datasplit(datasplit, {'train', 'test', 'ground_truth', 'answers'})
         # NOTE ground_truth is all annotated labels.
 
         # Load annotations if they exist
-        if datasplit != 'ground_truth':
+        if datasplit != 'answers':
             # Warn about lack of annotations
             raise ValueError('The ' + datasplit + ' datasplit is not implemented. The trainset and testset data are unclear in how they relate to the annotation data. They probably do not, given difference in size and their sum not equalling that of the ground truth labels. Please only use `ground_truth_seq.csv`.')
             #raise Warning('The datasplit `' + datasplit + '` of the dataset `' + self.dataset + '` is not annotated. Only the `train` datasplit is annotated.')
