@@ -262,12 +262,12 @@ class GLAD:
             # E-step
             self.Update_e2lpd()
             Q = self.computeQ()
-            print(Q)
+            #print(Q)
 
             # M-step
             self.Update_alpha_beta()
             Q = self.computeQ()
-            print(Q)
+            #print(Q)
 
             # compute the likelihood
             #print self.computelikelihood()
