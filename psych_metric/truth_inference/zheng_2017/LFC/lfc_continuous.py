@@ -53,11 +53,15 @@ def cal_variance(items):
 
 def LFCContinuous(workers, items, iterations, eps = 1e-6):
     variance = float("inf")
+
+    # NOTE can set iterations to float('inf') to ignore iterations.
+
     while iterations > 0 and variance > eps:
         iterations -= 1
         compute_weights(workers, items)
         calculate_truths(workers, items)
         variance = cal_variance(items)
+
     e2tr = {}
     for name, item in items.items():
         e2tr[name] = item['truth']
