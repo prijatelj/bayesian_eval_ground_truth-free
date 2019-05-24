@@ -109,7 +109,9 @@ class CrowdLayer(BaseDataset):
         # Set the dataset task type
         self.task_type = 'classification'
 
-        self.label_set = frozenset({'highway', 'insidecity', 'tallbuilding', 'street', 'forest', 'coast', 'mountain', 'opencountry'})
+        self.label_set = frozenset({0, 1, 2, 3, 4, 5, 6, 7})
+        # May want to implement a reverse encoder... but this needs to be ordered and static then.
+        #self.label_set = frozenset({'highway', 'insidecity', 'tallbuilding', 'street', 'forest', 'coast', 'mountain', 'opencountry'})
 
         # Ensure valid datasplit value
         self._check_datasplit(datasplit)
