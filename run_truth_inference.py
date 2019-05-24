@@ -141,7 +141,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'bin_frequency' in models:
                     # TODO The frequency of values within given bins
                     # add a bin counts csv option to this.
-                    dir_path = os.path.join(output_data_dir, 'bin_frequency', str(seed), '_'.join([key + '-' + str(value) for key, value in models['dawid_skene'].items()]))
+                    dir_path = os.path.join(output_data_dir, 'bin_frequency', str(seed), '_'.join([key + '-' + str(value) for key, value in models['bin_frequency'].items()]))
 
                 # Truth Inference Survey 2017
                 if 'LFC_continuous' in models:
@@ -227,7 +227,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     # Make the  directory structure if it does not already exist.
                     os.makedirs(dir_path, exist_ok=True)
 
-                    zheng_2017_label_probs_confusion_matrix(samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], dir_path, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_confusion_matrix('dawid_skene', samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], dir_path, dataset_id, dataset_filepath, seed)
 
                 if 'ZenCrowd' in models:
                     # Create the filepath to this instance's directory
@@ -489,7 +489,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
     sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
 
     # Create summary.csv
-    summary_csv(os.path.join(output_dir, 'summary.csv'), 'dawid_skene', model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+    summary_csv(os.path.join(output_dir, 'summary.csv'), model, model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
 def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed, task_type=None):
@@ -524,6 +524,8 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
+        # NOTE CATD apparently only returns the most likely label, rather than a distribution.
+
     elif model == 'pm_crh':
         datatype = 'continuous' if task_type == 'regression' else 'categorical'
         distance_type = '0/1 loss' if 'classification' in task_type else model_parameters['distance_type']
@@ -547,7 +549,7 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
         start_performance_time = perf_counter()
 
         # Run expectation maximization method
-        sample_label_probabilities, weight = zheng_2017.ZenCrowd(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['max_iterations'])
+        sample_label_probabilities, weight = zheng_2017.ZenCrowd(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['max_iterations'], random_seed)
 
         # Record end times
         end_process_time = process_time()
@@ -559,7 +561,7 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
 
     # Save the results.
     # Unpack the sample label probability estimates
-    if task_type == 'regression' or 'binary' in task_type:
+    if task_type == 'regression' or 'binary' in task_type or model == 'CATD':
         # Only works if the output is one scalar. If more, then it does not work.
         sample_label_probabilities = pd.DataFrame(sample_label_probabilities, index=['label']).T
     else:
