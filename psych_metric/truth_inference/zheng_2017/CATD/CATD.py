@@ -63,8 +63,9 @@ class Conf_Aware:
                 else:
                     if self.truth[example]!=label:
                         dif = dif + 1
-            if dif==0:
-                print(worker, ns, dif, chi_s / (dif + 0.00001))
+            # NOTE uncertain of point of this print out.
+            #if dif==0:
+            #    print(worker, ns, dif, chi_s / (dif + 0.00001))
 
             self.weight[worker] = chi_s / (dif + 0.000000001)
             weight_sum = weight_sum + self.weight[worker]
