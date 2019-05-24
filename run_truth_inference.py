@@ -403,7 +403,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
     """Calls the Zheng 2017 implementation of Dawid and Skene EM algorithm and
     saves the results and runtimes of the method.
     """
-    if 'dawid_skene' == model:
+    if model == 'dawid_skene':
         # Record start times
         datetime_start = datetime.now()
         start_process_time = process_time()
@@ -417,7 +417,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
-    elif 'LFC_binary':
+    elif model == 'LFC_binary':
         # Record start times
         datetime_start = datetime.now()
         start_process_time = process_time()
@@ -431,7 +431,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
-    elif 'LFC_multi':
+    elif model == 'LFC_multi':
         # Record start times
         datetime_start = datetime.now()
         start_process_time = process_time()
@@ -445,7 +445,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
-    elif 'LFC_continuous':
+    elif model == 'LFC_continuous':
         # TODO is not like the rest, needs adjusted more and posisbly rewritten.
         # Record start times
         datetime_start = datetime.now()
