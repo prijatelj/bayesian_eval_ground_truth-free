@@ -74,7 +74,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
         # TODO Create sparse matrix version if required for a model and not (make model check)
         # already in that form. Good for, majority vote, mean, median, mode
-        sparse_dataframe = dataset.annotation_list_to_sparse_matrix()
+        sparse_dataframe = dataset.df if isinstance(dataset.df, pd.SparseDataFrame) else dataset.annotation_list_to_sparse_matrix()
 
         # Save the parent/data collection name of dataset for result output dir
         if data_handler.dataset_exists(dataset_id, 'truth_survey_2017'):
@@ -549,7 +549,7 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
         start_performance_time = perf_counter()
 
         # Run expectation maximization method
-        sample_label_probabilities, weight = zheng_2017.ZenCrowd(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['max_iterations'], random_seed)
+        sample_label_probabilities, weight = zheng_2017.ZenCrowd(samples_to_annotators, annotators_to_samples, label_set).Run(model_parameters['max_iterations'])
 
         # Record end times
         end_process_time = process_time()
