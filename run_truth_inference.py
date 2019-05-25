@@ -377,6 +377,9 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
+        # NOTE I made a hot fix of missing label values to be set to 0.
+        result.fillna(0.0)
+
     elif method == 'count_occurences':
         # Record start times
         datetime_start = datetime.now()
@@ -390,10 +393,14 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
         end_performance_time = perf_counter()
         datetime_end = datetime.now()
 
+        # NOTE I made a hot fix of missing label values to be set to 0.
+        result.fillna(0)
+
     # Ensure the output directory path exists.
     os.makedirs(output_dir, exist_ok=True)
 
     # Save the result to a csv
+    result.index.name = 'sample_id'
     result.to_csv(os.path.join(output_dir, method + '.csv'))
 
     summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
