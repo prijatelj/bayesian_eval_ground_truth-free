@@ -125,6 +125,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     # TODO The frequency of values within given bins
                     # add a bin counts csv option to this.
                     #dir_path = os.path.join(output_data_dir, 'bin_frequency', str(seed), '_'.join([key + '-' + str(value) for key, value in models['bin_frequency'].items()]))
+                    pass
 
                 # Truth Inference Survey 2017
                 if 'LFC_continuous' in models:
@@ -157,7 +158,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
                 if 'frequency' in models:
                     # return the frequency of label values for each sample
-                    baseline_classification(sparse_dataframe, 'frequency', output_datat_dir, dataset_id, dataset_filepath, seed)
+                    baseline_classification(sparse_dataframe, 'frequency', output_data_dir, dataset_id, dataset_filepath, seed)
 
                 if 'count_occurences' in models:
                     # return the count of occurences of label values for each sample
