@@ -293,7 +293,7 @@ def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, datase
         result.index.name = 'sample_id'
 
     # Create output file path
-    output_dir = os.path.join(output_dir, 'baseline_regression', str(seed))
+    output_dir = os.path.join(output_dir, 'baseline_regression', str(random_seed))
 
     # Ensure the output directory path exists.
     os.makedirs(output_dir, exist_ok=True)
@@ -356,7 +356,7 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
         result.fillna(0)
 
     # Create the filepath to the output directory
-    output_dir = os.path.join(output_dir, 'baseline_classification', str(seed))
+    output_dir = os.path.join(output_dir, 'baseline_classification', str(random_seed))
 
     # Ensure the output directory path exists.
     os.makedirs(output_dir, exist_ok=True)
@@ -434,7 +434,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
 
     # Save the results.
     # Create the filepath to the output directory
-    output_dir = os.path.join(output_dir, model, '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]), str(seed))
+    output_dir = os.path.join(output_dir, model, '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]), str(random_seed))
     # Make the  directory structure if it does not already exist.
     os.makedirs(dir_path, exist_ok=True)
 
@@ -535,7 +535,7 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
 
     # Save the results.
     # Create the filepath to the output directory
-    output_dir = os.path.join(output_dir, model, '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]), str(seed))
+    output_dir = os.path.join(output_dir, model, '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]), str(random_seed))
     # Make the  directory structure if it does not already exist.
     os.makedirs(dir_path, exist_ok=True)
 
