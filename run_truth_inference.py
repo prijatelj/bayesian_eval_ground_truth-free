@@ -124,7 +124,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'bin_frequency' in models:
                     # TODO The frequency of values within given bins
                     # add a bin counts csv option to this.
-                    dir_path = os.path.join(output_data_dir, 'bin_frequency', str(seed), '_'.join([key + '-' + str(value) for key, value in models['bin_frequency'].items()]))
+                    #dir_path = os.path.join(output_data_dir, 'bin_frequency', str(seed), '_'.join([key + '-' + str(value) for key, value in models['bin_frequency'].items()]))
 
                 # Truth Inference Survey 2017
                 if 'LFC_continuous' in models:
@@ -436,7 +436,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
     # Create the filepath to the output directory
     output_dir = os.path.join(output_dir, model, '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]), str(random_seed))
     # Make the  directory structure if it does not already exist.
-    os.makedirs(dir_path, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
     # Unpack the confusion matrix
     worker_confusion_matrix = worker_confusion_matrices.popitem()
@@ -537,7 +537,7 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
     # Create the filepath to the output directory
     output_dir = os.path.join(output_dir, model, '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]), str(random_seed))
     # Make the  directory structure if it does not already exist.
-    os.makedirs(dir_path, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
     # Unpack the sample label probability estimates
     if task_type == 'regression' or 'binary' in task_type or model == 'CATD':
