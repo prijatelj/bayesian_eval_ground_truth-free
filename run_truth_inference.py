@@ -102,41 +102,24 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
             # Models for any task-type
             if 'CATD' in models:
-                # Create the filepath to this instance's directory
-                dir_path = os.path.join(output_data_dir, 'CATD', str(seed), '_'.join([key + '-' + str(value) for key, value in models['CATD'].items()]))
-                # Make the  directory structure if it does not already exist.
-                os.makedirs(dir_path, exist_ok=True)
-
-                zheng_2017_label_probs_weights('CATD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['CATD'], dir_path, dataset_id, dataset_filepath, seed, dataset.task_type)
+                zheng_2017_label_probs_weights('CATD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['CATD'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type)
 
             if 'pm_crh' in models:
-                #if 'classification' in dataset.task_type and models['pm_crh']['distance_type'] != '0/1 loss':
-                #    print('WARNING: The `distance_type` parameters of PM_CRH can only be `0/1 loss` when used on classification tasks. Forced distance_type to `0/1 loss`.')
-                #    models['pm_crh']['distance_type'] = distance_type = '0/1 loss'
-
-                # Create the filepath to this instance's directory
-                dir_path = os.path.join(output_data_dir, 'pm_crh', str(seed), '_'.join([key + '-' + str(value) for key, value in models['pm_crh'].items()]))
-                # Make the  directory structure if it does not already exist.
-                os.makedirs(dir_path, exist_ok=True)
-
-                zheng_2017_label_probs_weights('pm_crh', samples_to_annotators, annotators_to_samples, dataset.label_set, models['pm_crh'], dir_path, dataset_id, dataset_filepath, seed, dataset.task_type)
+                zheng_2017_label_probs_weights('pm_crh', samples_to_annotators, annotators_to_samples, dataset.label_set, models['pm_crh'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type)
 
             if dataset.task_type == 'regression':
                 # TODO for these, they would be better for sparse matrices OR need a function that finds each for each sample in the annotation list.
                 if 'mean' in models:
                     # return the mean of annotations for each sample
-                    dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
-                    baseline_regression(sparse_dataframe, 'mean', dir_path, dataset_id, dataset_filepath, seed)
+                    baseline_regression(sparse_dataframe, 'mean', output_data_dir, dataset_id, dataset_filepath, seed)
 
                 if 'median' in models:
                     # return the median of annotations for each sample
-                    dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
-                    baseline_regression(sparse_dataframe, 'median', dir_path, dataset_id, dataset_filepath, seed)
+                    baseline_regression(sparse_dataframe, 'median', output_data_dir, dataset_id, dataset_filepath, seed)
 
                 if 'mode' in models:
                     # return the mode of annotations for each sample
-                    dir_path = os.path.join(output_data_dir, 'baseline_regression', str(seed))
-                    baseline_regression(sparse_dataframe, 'mode', dir_path, dataset_id, dataset_filepath, seed)
+                    baseline_regression(sparse_dataframe, 'mode', output_data_dir, dataset_id, dataset_filepath, seed)
 
                 if 'bin_frequency' in models:
                     # TODO The frequency of values within given bins
@@ -145,12 +128,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
                 # Truth Inference Survey 2017
                 if 'LFC_continuous' in models:
-                    # Create the filepath to this instance's directory
-                    dir_path = os.path.join(output_data_dir, 'LFC_continuous', str(seed), '_'.join([key + '-' + str(value) for key, value in models['LFC_continuous'].items()]))
-                    # Make the  directory structure if it does not already exist.
-                    os.makedirs(dir_path, exist_ok=True)
-
-                    zheng_2017_label_probs_confusion_matrix('LFC_continuous', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_continuous'], dir_path, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_confusion_matrix('LFC_continuous', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_continuous'], output_data_dir, dataset_id, dataset_filepath, seed)
 
             elif 'classification' in dataset.task_type:
                 if 'binary' in dataset.task_type:
@@ -168,29 +146,22 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                         pass
 
                     if 'LFC_binary' in models:
-                        dir_path = os.path.join(output_data_dir, 'LFC_binary', str(seed), '_'.join([key + '-' + str(value) for key, value in models['LFC_binary'].items()]))
-                        # Make the  directory structure if it does not already exist.
-                        os.makedirs(dir_path, exist_ok=True)
-
-                        zheng_2017_label_probs_confusion_matrix('LFC_binary', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_binary'], dir_path, dataset_id, dataset_filepath, seed)
+                        zheng_2017_label_probs_confusion_matrix('LFC_binary', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_binary'], output_data_dir, dataset_id, dataset_filepath, seed)
 
                 # Use the multi-classification TI models
 
                 # An Evaluation of Aggregation Technique in Crowdsourcing 2013
                 if 'majority_vote' in models:
                     # return the label values that were most common per sample.
-                    dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
-                    baseline_classification(sparse_dataframe, 'majority_vote', dir_path, dataset_id, dataset_filepath, seed)
+                    baseline_classification(sparse_dataframe, 'majority_vote', output_data_dir, dataset_id, dataset_filepath, seed)
 
                 if 'frequency' in models:
                     # return the frequency of label values for each sample
-                    dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
-                    baseline_classification(sparse_dataframe, 'frequency', dir_path, dataset_id, dataset_filepath, seed)
+                    baseline_classification(sparse_dataframe, 'frequency', output_datat_dir, dataset_id, dataset_filepath, seed)
 
                 if 'count_occurences' in models:
                     # return the count of occurences of label values for each sample
-                    dir_path = os.path.join(output_data_dir, 'baseline_classification', str(seed))
-                    baseline_classification(sparse_dataframe, 'count_occurences', dir_path, dataset_id, dataset_filepath, seed)
+                    baseline_classification(sparse_dataframe, 'count_occurences', output_data_dir, dataset_id, dataset_filepath, seed)
 
                 if 'majority_decision' in models:
                     pass
@@ -221,29 +192,13 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'dawid_skene' in models:
                     # for parameters in models['dawid_skene']: #if list of params.
                     # NOTE, EM is given a prior initial quality! if none, set all to 0.5, or random chance that the annotator is quality (ie. 1/#labels)
-
-                    # Create the filepath to this instance's directory
-                    dir_path = os.path.join(output_data_dir, 'dawid_skene', str(seed), '_'.join([key + '-' + str(value) for key, value in models['dawid_skene'].items()]))
-                    # Make the  directory structure if it does not already exist.
-                    os.makedirs(dir_path, exist_ok=True)
-
-                    zheng_2017_label_probs_confusion_matrix('dawid_skene', samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], dir_path, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_confusion_matrix('dawid_skene', samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], output_data_dir, dataset_id, dataset_filepath, seed)
 
                 if 'ZenCrowd' in models:
-                    # Create the filepath to this instance's directory
-                    dir_path = os.path.join(output_data_dir, 'ZenCrowd', str(seed), '_'.join([key + '-' + str(value) for key, value in models['ZenCrowd'].items()]))
-                    # Make the  directory structure if it does not already exist.
-                    os.makedirs(dir_path, exist_ok=True)
-
-                    zheng_2017_label_probs_weights('ZenCrowd', samples_to_annotators, annotators_to_samples, dataset.label_set, models['ZenCrowd'], dir_path, dataset_id, dataset_filepath, seed, dataset.task_type)
+                    zheng_2017_label_probs_weights('ZenCrowd', samples_to_annotators, annotators_to_samples, dataset.label_set, models['ZenCrowd'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type)
 
                 if 'GLAD' in models:
-                    # Create the filepath to this instance's directory
-                    dir_path = os.path.join(output_data_dir, 'GLAD', str(seed), '_'.join([key + '-' + str(value) for key, value in models['GLAD'].items()]))
-                    # Make the  directory structure if it does not already exist.
-                    os.makedirs(dir_path, exist_ok=True)
-
-                    zheng_2017_label_probs_weights('GLAD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], dir_path, dataset_id, dataset_filepath, seed, dataset.task_type)
+                    zheng_2017_label_probs_weights('GLAD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type)
 
                 if 'minimax' in models:
                     pass
@@ -255,11 +210,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     pass
 
                 if 'LFC_multi' in models:
-                    dir_path = os.path.join(output_data_dir, 'LFC_multi', str(seed), '_'.join([key + '-' + str(value) for key, value in models['LFC_multi'].items()]))
-                    # Make the  directory structure if it does not already exist.
-                    os.makedirs(dir_path, exist_ok=True)
-
-                    zheng_2017_label_probs_confusion_matrix('LFC_multi', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_multi'], dir_path, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_confusion_matrix('LFC_multi', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_multi'], output_data_dir, dataset_id, dataset_filepath, seed)
 
                 # Comparison of Bayesian Models of Annotation 2018
                 if 'multinomial' in models:
@@ -341,6 +292,9 @@ def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, datase
 
         result.index.name = 'sample_id'
 
+    # Create output file path
+    output_dir = os.path.join(output_dir, 'baseline_regression', str(seed))
+
     # Ensure the output directory path exists.
     os.makedirs(output_dir, exist_ok=True)
 
@@ -400,6 +354,9 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
 
         # NOTE I made a hot fix of missing label values to be set to 0.
         result.fillna(0)
+
+    # Create the filepath to the output directory
+    output_dir = os.path.join(output_dir, 'baseline_classification', str(seed))
 
     # Ensure the output directory path exists.
     os.makedirs(output_dir, exist_ok=True)
@@ -476,6 +433,11 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
     # worker_confusion_matrics: {worker_id : confusion matrix}
 
     # Save the results.
+    # Create the filepath to the output directory
+    output_dir = os.path.join(output_dir, model, '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]), str(seed))
+    # Make the  directory structure if it does not already exist.
+    os.makedirs(dir_path, exist_ok=True)
+
     # Unpack the confusion matrix
     worker_confusion_matrix = worker_confusion_matrices.popitem()
     cm_df = pd.DataFrame(worker_confusion_matrix[1])
@@ -572,6 +534,11 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
     # weight : a single weight for every annotator. {worker_id : float}
 
     # Save the results.
+    # Create the filepath to the output directory
+    output_dir = os.path.join(output_dir, model, '_'.join([key + '-' + str(value) for key, value in model_parameters.items()]), str(seed))
+    # Make the  directory structure if it does not already exist.
+    os.makedirs(dir_path, exist_ok=True)
+
     # Unpack the sample label probability estimates
     if task_type == 'regression' or 'binary' in task_type or model == 'CATD':
         # Only works if the output is one scalar. If more, then it does not work.
