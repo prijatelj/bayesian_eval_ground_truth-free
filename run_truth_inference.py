@@ -348,7 +348,7 @@ def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, datase
     if method == 'mode':
         result.to_csv(os.path.join(output_dir, method + '.csv'))
     else:
-        result.to_csv(os.path.join(output_dir, method + '.csv'), header=['sample_id','label'])
+        result.to_csv(os.path.join(output_dir, method + '.csv'), header=['label'])
 
     summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
