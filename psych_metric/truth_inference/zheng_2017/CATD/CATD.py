@@ -7,6 +7,13 @@ import numpy as np
 import scipy as sp
 #import read_distribution as cdis # Moved the file's contents into here.
 
+try:
+    ROOT = os.environ['ROOT']
+    HERE = os.path.join(ROOT, 'psych_metric', 'truth_inference', 'zheng_2017', 'CATD')
+except KeyError:
+    # TODO would need to implement this path being passed via args, but really it needs removed.
+    HERE = None
+
 class Conf_Aware:
     def __init__(self,e2wl,w2el,datatype):
         self.e2wl = e2wl
@@ -115,7 +122,7 @@ class Conf_Aware:
         random.seed(random_seed)
 
         # TODO This needs replaced and sampled from the actual distributions.
-        directory = 'psych_metric/truth_inference/zheng_2017/CATD'
+        directory = HERE
 
         self.chi_square_conf, self.chi_square_distribution = read_chi_square_distribution(directory)
         self.normal_conf,self.normal_distribution = read_normal_distribution(directory)
