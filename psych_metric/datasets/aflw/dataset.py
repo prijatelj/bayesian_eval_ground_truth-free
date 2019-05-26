@@ -10,8 +10,67 @@ import pandas as pd
 from psych_metric.datasets.base_dataset import BaseDataset
 import psych_metric.utils as utils
 
-ROOT = os.environ['ROOT']
-HERE = os.path.join(ROOT, 'psych_metric/datasets/aflw/')
+try:
+    ROOT = os.environ['ROOT']
+    HERE = os.path.join(ROOT, 'psych_metric/datasets/aflw/')
+except KeyError:
+    HERE = None
+
+class FirstImpressions(BaseDataset):
+    """Dataset wrapper class for the First Impression dataset
+
+    Attributes
+    ----------
+    dataset : str
+        Name of specific (sub) dataset contained within this class.
+    task_type : str
+        The type of learning task the dataset is intended for. This can be one
+        of the following: 'regression', 'binary_classification', 'classification'
+    df : pandas.DataFrame
+        contains the data of the dataset in a standardized format, typically
+        an annotation list where each row is an individual's annotation of one
+        sample. Must contain the columns: 'worker_id' and 'worker_label'.
+        'ground_truth' is also a common column name when ground truth is
+        included with the original dataset. 'sample_id' will exist when no
+        features are provided, or some features need loaded.
+    label_set : set
+        Set containing the complete original labels.
+    label_encoder : {str: sklearn.preprocessing.LabelEncoder}
+        Dict of column name to Label Encoder for the labels. None if no
+        encodings used.
+    """
+    datasets = frozenset(['age', 'dominance', 'iq', 'trustworthiness'])
+
+    def __init__(self, dataset='age', dataset_filepath=None, encode_columns=None):
+        self._check_dataset(dataset, FirstImpressions.datasets)
+        self.dataset = dataset
+
+        # Set dataset's expected task type
+        # NOTE this could be percieved as a regression task, or at least an ordinal task
+        self.task_type = 'regression' # regression or ordinal due to ints.
+
+        if dataset_filepath is None:
+            if HERE is None or 'first_impressions' not in HERE:
+                raise ValueError('A path to the dataset file was not provided either by the `dataset_filepath` parameter or by the ROOT environment variable. Global variable HERE is `%s`. It is recommended to use the `dataset_filepath` parameter to provide the filepath.' % HERE)
+            dataset_filepath = os.path.join(HERE, 'first_impressions_data')
+
+        # Read in and format the data as an annotation list.
+        annotation_file = os.path.join(dataset_filepath, self.dataset + '.csv')
+        self.df = pd.read_csv(annotation_file)
+        # TODO worker_label is either rating or response.
+        self.df.columns = ['random_index_artifact', 'sample_id', 'worker_id', 'duration', 'start_time', 'reaction_time', 'src', 'type', 'ground_truth', 'worker_label', 'norm_response', 'diff']
+
+        # Save label set TODO make label set the range of values for regression tasks
+        self.label_set = None
+
+        if encode_columns == True:
+            # The default columns to encode for each data subset.
+            encode_columns = {'src', 'type'}
+
+        # label encoder can be used for encoding the
+        self.label_encoder = None
+
+        # TODO merge this with the below classes, such that all functionality is perserved for each use case.
 
 class FirstImpressionsSparse(BaseDataset):
     def __init__(self, dataset='trustworthiness'):
