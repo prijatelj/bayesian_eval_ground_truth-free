@@ -88,7 +88,7 @@ class TruthSurvey2017(BaseDataset):
         self.label_set = set(ground_truth['worker_label'].unique()) if dataset != 'f201_Emotion_FULL' else None
 
         # Add ground_truth to the main dataframe as its own column
-        self.add_ground_truth_to_samples(ground_truth)
+        self.add_ground_truth(ground_truth, inplace=True)
 
         if encode_columns == True:
             # The default columns to encode for each data subset.

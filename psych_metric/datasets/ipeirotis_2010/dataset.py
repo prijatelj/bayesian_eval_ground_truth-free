@@ -87,7 +87,7 @@ class Ipeirotis2010(BaseDataset):
             # Consider labeling as gold, rather than ground_truth.
             ground_truth_file = os.path.join(dataset_filepath, self.dataset, 'gold.txt')
             ground_truth_dict = self.read_csv_to_dict(ground_truth_file, sep='\t')
-            self.add_ground_truth_to_samples(ground_truth_dict, is_dict=True)
+            self.add_ground_truth(ground_truth_dict, inplace=True)
 
         # Read in and save the expected label set, or infer the labels from data
         if 'HITspam-UsingCrowdflower' == dataset:

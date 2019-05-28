@@ -58,15 +58,15 @@ class BaseDataset(object):
                     csv_dict[row[key_column]] = row[value_column]
         return csv_dict
 
-    def add_ground_truth_to_samples(self, ground_truth, inplace=True, is_dict=False, sample_id='sample_id'):
+    def add_ground_truth(self, ground_truth, ground_truth_header='ground_truth', sample_id='sample_id', inplace=False):
         """ Add the ground truth labels to every sample (row) of the main
-        dataframe; in place by default.
+        dataframe in its own column.
 
         Parameters
         ----------
         ground_truth : pandas.DataFrame
             Dataframe of the ground truth,
-        inpalce : bool, optinal
+        inplace : bool, optional
             Update dataframe in place if True, otherwise return the updated
             dataframe
         sample_id : str
@@ -79,21 +79,28 @@ class BaseDataset(object):
             DataFrame with a ground truth labels column returned if inplace is
             False, otherwise returns None.
         """
-        if not is_dict:
+        if isinstance(ground_truth, pd.DataFrame):
             # converts to dict first, may or may not be efficent.
             ground_truth_dict = {}
             for i in range(len(ground_truth)):
-                ground_truth_dict[ground_truth.iloc[i,0]] = ground_truth.iloc[i,1]
+                ground_truth_dict[ground_truth['sample_id'][i]] = ground_truth['ground_truth'][i]
             ground_truth = ground_truth_dict
+        elif not isinstance(ground_truth, dict):
+            raise TypeError('`ground_truth` must be a dictionary of sample_ids to ground truth labels or a pd.DataFrame containing sample_id and ground_truth columns, not of type ' + str(type(ground_truth)))
 
-        ground_truth_col = self.df[sample_id].apply(lambda x: ground_truth[x] if x in ground_truth else None)
+        if self.is_in_annotation_list_format():
+            ground_truth_col = self.df[sample_id].apply(lambda x: ground_truth[x] if x in ground_truth else None)
+        elif isinstance(self.df, pd.SparseDataFrame):
+            # TODO, create ground truth column where the index of df is the sample_id.
+            ground_truth_col = pd.Series(self.df[sample_id]).apply(lambda x: ground_truth[x] if x in ground_truth else self.df.default_fill_value)
+        else:
+            raise TypeError('Cannot add ground truth to a dataframe with a non-standard format.')
 
-        # TODO make this default to not inplace, it's safer that way.
         if inplace:
-            self.df['ground_truth'] = ground_truth_col
+            self.df[ground_truth_header] = ground_truth_col
         else:
             df_copy = self.df.copy()
-            df_copy['ground_truth'] = ground_truth_col
+            df_copy[ground_truth_header] = ground_truth_col
             return df_copy
 
 
