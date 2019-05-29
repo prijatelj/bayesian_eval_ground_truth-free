@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 class MCROC(object):
     def __init__(self, ys, yhats, n_classes, labels=None):
         """
-        ys: list of numpy arrays
+        Parameters
+        ----------
+        ys : list of numpy arrays
             each numpy array is either 1d (class id) or 2d (class prob)
-        yhats: list of numpy arrays
+        yhats : list of numpy arrays
             each numpy array is either 1d (class id) or 2d (class prob)
-        labels: list of strings
+        labels : list of strings
         """
         self.labels = labels
         self.n_classes = n_classes
@@ -26,7 +28,7 @@ class MCROC(object):
 
             self.ys.append(y)
             self.y_class.append(y_class)
-            
+
         self.yhats = list()
         for yhat in yhats:
             if len(yhat.shape) == 1:
@@ -40,7 +42,7 @@ class MCROC(object):
             if i is None: continue
             yoh[i,index] = 1
         return yoh
-    
+
     def get_fpr_tpr_auc_single(self, y, yhat, average='macro'):
         assert average in ['micro', 'macro', None]
         if average == None:
@@ -56,7 +58,7 @@ class MCROC(object):
                 tprs.append(tpr)
                 aucs.append(auc)
             return fprs, tprs, aucs
-                
+
         elif average == 'macro':
             fprs, tprs, _ = self.get_fpr_tpr_auc_single(y, yhat, average=None)
             all_fpr = np.unique(np.concatenate(fprs))
@@ -67,7 +69,7 @@ class MCROC(object):
             auc = sklearn.metrics.auc(all_fpr, mean_tpr)
             auc = np.round(auc, 3)
             return all_fpr, mean_tpr, auc
-            
+
         elif average == 'micro':
             fpr, tpr, t = sklearn.metrics.roc_curve(
                 y_true=np.ravel(y),
@@ -75,7 +77,7 @@ class MCROC(object):
             )
             auc = sklearn.metrics.auc(fpr, tpr)
             return fpr, tpr, auc
-            
+
     def get_fpr_tpr_auc(self, average='macro'):
         self.fprs, self.tprs, self.aucs = list(), list(), list()
         for y, yhat in zip(self.ys, self.yhats):
@@ -83,9 +85,9 @@ class MCROC(object):
             self.fprs.append(fpr)
             self.tprs.append(tpr)
             self.aucs.append(auc)
-            
+
         return self.fprs, self.tprs, self.aucs
-    
+
     def get_auc(self, ys, yhats, _round=True):
         self.aucs = list()
         for y, yhat in zip(ys, yhats):
@@ -95,9 +97,9 @@ class MCROC(object):
             )
             if _round: auc = np.round(auc, 3)
             self.aucs.append(auc)
-            
+
         return self.aucs
-    
+
     def get_overall_accuracies(self, threshold=0.5, _round=True):
         accs = list()
         for y_class, yhat in zip(self.y_class, self.yhats):
@@ -118,7 +120,7 @@ class MCROC(object):
                 accs_i.append(acc)
             accs.append(accs_i)
         return accs
-    
+
     def plot_roc(self, fprs, tprs, aucs, w=10, h=10, title='', ax=None):
         sns.set_style('darkgrid')
         sns.set_palette('husl')
@@ -127,14 +129,14 @@ class MCROC(object):
             label = '{} AUC: {}'.format(label, auc)
             ax.plot(fpr, tpr, linewidth=2, alpha=0.5, label=label)
             # ax.scatter(fpr, tpr)
-            
+
         ax.legend(loc='lower right')
         ax.set_xlim([-0.01,1])
         ax.set_ylim([0,1.01])
         ax.set_xlabel('False Positive Rate')
         ax.set_ylabel('True Positive Rate')
         ax.set_title('ROC Curves' + title)
-    
+
     def plot_roc_one_vs_all(self, h=10, title=''):
         sns.set_style('darkgrid')
         sns.set_palette('husl')
