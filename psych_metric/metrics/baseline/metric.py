@@ -1,23 +1,21 @@
 """
-The baseline metrics used to compare two (or multiple) random variables to one
+The baseine metrics used to compare two (or multiple) random variables to one
 another, providing an (ideally) informative and interpretable distance.
 
 To be mathematically correct, some of these are measures, that provide the size
 or quantity of a set, rather than a distance (such as Mutual Information)
 """
-import itertools
+import csv
 from math import sqrt
+import os
+import json
 
 import numpy as np
 from scipy.stats import multinomial, entropy, wasserstein_distance
 from sklearn.metrics as skl_metrics
 import matplotlib.pyplot as plt
 
-#from psych_metric.metrics.base_metric import BaseMetric
-
-#class BaselineMetrics(BaseMetric):
-#    def __init__(self):
-#        pass
+from psych_metric.datasets import data_handler
 
 def load(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoatation_aggregation.csv', result_filename='metric_analysis_ground_truth_vs_aggregation.csv'):
     """Traverses the given root directory to find directories that contain a
@@ -41,10 +39,43 @@ def load(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoa
 
     Yields
     ------
-    dataset, annotation_aggregation, parent_dir
+        dataset class object, annotation_aggregation pd.DataFrame, parent_dir
+        str, and summary dict
     """
+    # NOTE, this may make more sense as an outside of package script, keeping only calculate() in here.
+    dir_queue = [input_dir]
 
-    yield
+    # Traverse through the directory tree with input_dir as root dir
+    while dir_queue:
+        focus_dir = dir_queue.pop()
+        dir_files = [os.path.join(focus_dir, dir_item) for dir_item in os.listdir(focus_dir)]
+
+        # needs both the corresponding summary.csv and annotation_aggregation.csv
+        summary_file = None
+        annotation_aggregation_file = None
+
+        # Check for summary and annotation aggregation csvs; add dirs to queue
+        while dir_files:
+            focus_file = dir_files.pop()
+
+            if os.is_file(focus_file):
+                focus_file_end = focus_file.rsplit(os.path.sep)[-1]
+
+                if summary_csv == focus_file_end:
+                    summary_file = focus_file
+
+                elif annotation_aggregation_csv == focus_file_end:
+                    annotation_aggregation_file = focus_file
+
+            elif os.is_dir(focus_file):
+                dir_queue = [focus_file] + dir_queue
+
+        if summary_file is not None and annotation_aggregation_file is not None:
+            with open(summary_file, 'r') as summary_fp:
+                reader = csv.reader(summary_fp)
+                summary = {row[0]:row[1] for rows in reader}
+
+            yield data_handler.load_dataset(summary['dataset'], ground_truth=True), pd.read_csv(annotation_aggregation_file), focus_dir, summary
 
 def calculate(target, predictions, task_type=None, metrics=None):
     """Function handler that calls the appropriate metrics on the given data.
@@ -65,7 +96,7 @@ def calculate(target, predictions, task_type=None, metrics=None):
 
     Returns
     -------
-        dict or dataframe of the metrics and their calculations on the data.
+        dict of the metrics and their calculations on the data.
     """
     metric_results = dict()
 
@@ -103,6 +134,7 @@ def calculate(target, predictions, task_type=None, metrics=None):
 
 
     elif 'classification' in task_type:
+        # TODO handle the multi classification cases if they are not already handled by sklearn
         if metrics is None or 'confusion_matrix' in metrics:
             if 'binary' in task_type
                 metric_results['confusion_matrix'] = skl_metrics.confusion_matrix(target, predictions)
@@ -143,13 +175,45 @@ def calculate(target, predictions, task_type=None, metrics=None):
 
 
 def parse_args():
+    """Parses the arguments when this script is called.
 
-    return args
+    Returns
+    -------
+    argparse.Namespace
+        The configuration variables for the experiments to be run.
+    """
+    parser = argparse.ArgumentParser(description='Traverse the directory tree of the given directory and calculates the desired metrics of the saved annotation aggregation csv when compared to the ground truth of the dataset.')
 
+    parser.add_argument('input_dir', default=None, help='Enter the file path to the root input directory.')
+    parser.add_argument('-s', '--summary_csv', default='summary.csv', help='The expected filename of the summary csv.')
+    parser.add_argument('-a', '--annotation_aggregation_csv', default='annotation_aggregation.csv', help='The expected filename of the annotation aggregation csv.')
+    parser.add_argument('-m', '--metrics', default=None, nargs='+', help='List of the metrics to use.')
+    parser.add_argument('-f', '--metrics_filename', default='metric.json', help='The filename of the metric json.')
+    parser.add_argument('--no-meta', action='store_true', help='Providing this flag witholds the meta information from the metric jsons.')
+    parser.add_argument('--overwrite', action='store_true', help='Providing this flag will overwrite any preexisting metric files.')
+
+    return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
 
-    for dataset, annotation_aggregation, parent_dir in load(args.input_dir, args.summary_csv, args.annotation_aggregation_csv):
-        metric_results = calculate(dataset['ground_truth'], annotation_aggregation, dataset.task_type)
-        metric_results.to_csv(os.path.join(parent_dir, args.result_filename), index=False)
+    for dataset, annotation_aggregation, parent_dir, summary in load(args.input_dir, args.summary_csv, args.annotation_aggregation_csv):
+        metric_results = calculate(dataset.df['ground_truth'], annotation_aggregation, dataset.task_type)
+
+        # Save identifying information inside dict for json
+        if not args.no_meta:
+            metric_results['meta'] = {}
+            metric_results['meta']['dataset'] = dataset.dataset
+            metric_results['meta']['task_type'] = dataset.task_type
+            metric_results['meta']['truth_inference_method'] = summary['truth_inference_method']
+            metric_results['meta']['parameters'] = summary['parameters']
+            metric_results['meta']['random_seed'] = summary['random_seed']
+            metric_results['meta']['datetime'] = datetime.now()
+
+        metric_file = os.path.join(parent_dir, args.metrics_filename)
+
+        if os.path.isfile(metric_file) and not args.overwrite:
+            raise FileExistsError('The metric file %s already exists and overwrite flag is not provided. The file will not be overwriten.' % metric_file)
+
+        with open(metric_file, 'w') as results_file:
+            json.dumps(metric_results, results_file, indent=4)
