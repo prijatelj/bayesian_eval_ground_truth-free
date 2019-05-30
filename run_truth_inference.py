@@ -294,18 +294,18 @@ def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, datase
         result.index.name = 'sample_id'
 
     # Create output file path
-    output_dir = os.path.join(output_dir, 'baseline_regression', str(random_seed))
+    output_dir = os.path.join(output_dir, 'baseline_regression', method, str(random_seed))
 
     # Ensure the output directory path exists.
     os.makedirs(output_dir, exist_ok=True)
 
     # Save the result to a csv
     if method == 'mode':
-        result.to_csv(os.path.join(output_dir, method + '.csv'))
+        result.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'))
     else:
-        result.to_csv(os.path.join(output_dir, method + '.csv'), header=['label'])
+        result.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'), header=['label'])
 
-    summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+    summary_csv(os.path.join(output_dir, 'summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
 def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, dataset_filepath, random_seed):
@@ -357,16 +357,16 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
         result.fillna(0)
 
     # Create the filepath to the output directory
-    output_dir = os.path.join(output_dir, 'baseline_classification', str(random_seed))
+    output_dir = os.path.join(output_dir, 'baseline_classification', method, str(random_seed))
 
     # Ensure the output directory path exists.
     os.makedirs(output_dir, exist_ok=True)
 
     # Save the result to a csv
     result.index.name = 'sample_id'
-    result.to_csv(os.path.join(output_dir, method + '.csv'))
+    result.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'))
 
-    summary_csv(os.path.join(output_dir, method + '_summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+    summary_csv(os.path.join(output_dir, 'summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
 def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
@@ -461,7 +461,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
     # Unpack the sample label probability estimates
     sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
     sample_label_probabilities.index.name = 'sample_id'
-    sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
+    sample_label_probabilities.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'))
 
     # Create summary.csv
     summary_csv(os.path.join(output_dir, 'summary.csv'), model, model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
@@ -547,7 +547,7 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
     else:
         sample_label_probabilities = pd.DataFrame(sample_label_probabilities).T
     sample_label_probabilities.index.name = 'sample_id'
-    sample_label_probabilities.to_csv(os.path.join(output_dir, 'sample_label_probabilities.csv'))
+    sample_label_probabilities.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'))
 
     # Save weights as a csv
     weight = pd.DataFrame(weight, index=['weight']).T
