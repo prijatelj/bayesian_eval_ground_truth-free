@@ -42,7 +42,7 @@ def load_dataset(dataset, dataset_filepath=None, encode_columns=None, ground_tru
     """
     #Snow 2008
     if dataset_exists(dataset, 'snow_2008'):
-        return datasets.Snow2008(dataset, dataset_filepath, ground_truth)
+        return datasets.Snow2008(dataset, dataset_filepath)
 
     # Truth Survey 2017
     elif dataset_exists(dataset, 'truth_survey_2017'):
@@ -50,7 +50,7 @@ def load_dataset(dataset, dataset_filepath=None, encode_columns=None, ground_tru
 
     # TREC 2010
     elif dataset_exists(dataset, 'trec-fr10'):
-        return datasets.TRECRelevancy2010(dataset_filepath, encode_columns, ground_truth)
+        return datasets.TRECRelevancy2010(dataset_filepath, encode_columns)
 
     # Ipeirotis
     elif dataset_exists(dataset, 'ipeirotis_2010'):
@@ -58,7 +58,7 @@ def load_dataset(dataset, dataset_filepath=None, encode_columns=None, ground_tru
 
     # Facial Beauty
     elif dataset_exists(dataset, 'facial_beauty'):
-        return datasets.FacialBeauty(dataset, dataset_filepath, encode_columns, ground_truth)
+        return datasets.FacialBeauty(dataset, dataset_filepath, encode_columns)
 
     # First Impressions
     elif dataset_exists(dataset, 'first_impressions'):
