@@ -16,6 +16,7 @@ import pandas as pd
 # TODO setup the init and everything such that this is accessible once installed
 from psych_metric.datasets import data_handler
 from psych_metric.truth_inference import zheng_2017
+from psych_metric.metric import baseline as metric_baseline
 
 import random_seed_generator
 
@@ -28,7 +29,7 @@ def zheng_2017_models_exist(models):
     return any([x in models for x in {'dawid_skene', 'GLAD', 'ZenCrowd', 'minimax', 'BCC', 'CBCC', 'CATD', 'LFC_binary', 'LFC_mutli', 'LFC_continuous', 'pm_crh', 'multidimensional', 'KOS', 'VI-BP', 'VI-MF'}])
 
 
-def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None, print_progress=True):
+def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepaths=None, metrics=False, print_progress=True):
     """Runs experiments on the datasets using the given random seeds.
 
     Parameters
@@ -47,10 +48,14 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
     random_seeds : list(int)
         List of integer random seeds to use for initializing each test of the
         truth inference methods.
-    dataset_filepaths : dict(str:str)
+    dataset_filepaths : dict(str:str), optional
         Dictionary with keys as string dataset identifiers and values as string
         dataset filepaths. If a dataset is not in this dictionary, then it's
         filepath is not provided.
+    metrics : bool or iterable, optional
+        The metrics to be calculated on each annotation aggregation after they
+        have been computed. If True, then it will calculate all that apply. If
+        False, then they will not be calculated.
     """
     # Iterates through all datasets and performs the same experiments on them.
     for i, dataset_id in enumerate(datasets):
@@ -61,8 +66,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
         # Get dataset filepath if given
         dataset_filepath = datasets_filepaths[dataset_id] if datasets_filepaths is not None and dataset_id in datasets_filepaths else None
         # load dataset
-        #data = data_handler.load_dataset(dataset_id, dataset_filepath, encode_columns=True)
-        dataset = data_handler.load_dataset(dataset_id, dataset_filepath)
+        dataset = data_handler.load_dataset(dataset_id, dataset_filepath, ground_truth=bool(metrics))
 
         # if dataset_filepath is None, get it from the dataset class.
         if dataset_filepath is None:
@@ -102,24 +106,24 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
             # Models for any task-type
             if 'CATD' in models:
-                zheng_2017_label_probs_weights('CATD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['CATD'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type)
+                zheng_2017_label_probs_weights('CATD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['CATD'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type, metrics)
 
             if 'pm_crh' in models:
-                zheng_2017_label_probs_weights('pm_crh', samples_to_annotators, annotators_to_samples, dataset.label_set, models['pm_crh'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type)
+                zheng_2017_label_probs_weights('pm_crh', samples_to_annotators, annotators_to_samples, dataset.label_set, models['pm_crh'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type, metrics)
 
             if dataset.task_type == 'regression':
                 # TODO for these, they would be better for sparse matrices OR need a function that finds each for each sample in the annotation list.
                 if 'mean' in models:
                     # return the mean of annotations for each sample
-                    baseline_regression(sparse_dataframe, 'mean', output_data_dir, dataset_id, dataset_filepath, seed)
+                    baseline_regression(sparse_dataframe, 'mean', output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 if 'median' in models:
                     # return the median of annotations for each sample
-                    baseline_regression(sparse_dataframe, 'median', output_data_dir, dataset_id, dataset_filepath, seed)
+                    baseline_regression(sparse_dataframe, 'median', output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 if 'mode' in models:
                     # return the mode of annotations for each sample
-                    baseline_regression(sparse_dataframe, 'mode', output_data_dir, dataset_id, dataset_filepath, seed)
+                    baseline_regression(sparse_dataframe, 'mode', output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 if 'bin_frequency' in models:
                     # TODO The frequency of values within given bins
@@ -129,7 +133,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
 
                 # Truth Inference Survey 2017
                 if 'LFC_continuous' in models:
-                    zheng_2017_label_probs_confusion_matrix('LFC_continuous', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_continuous'], output_data_dir, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_confusion_matrix('LFC_continuous', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_continuous'], output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
             elif 'classification' in dataset.task_type:
                 if 'binary' in dataset.task_type:
@@ -147,22 +151,22 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                         pass
 
                     if 'LFC_binary' in models:
-                        zheng_2017_label_probs_confusion_matrix('LFC_binary', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_binary'], output_data_dir, dataset_id, dataset_filepath, seed)
+                        zheng_2017_label_probs_confusion_matrix('LFC_binary', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_binary'], output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 # Use the multi-classification TI models
 
                 # An Evaluation of Aggregation Technique in Crowdsourcing 2013
                 if 'majority_vote' in models:
                     # return the label values that were most common per sample.
-                    baseline_classification(sparse_dataframe, 'majority_vote', output_data_dir, dataset_id, dataset_filepath, seed)
+                    baseline_classification(sparse_dataframe, 'majority_vote', output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 if 'frequency' in models:
                     # return the frequency of label values for each sample
-                    baseline_classification(sparse_dataframe, 'frequency', output_data_dir, dataset_id, dataset_filepath, seed)
+                    baseline_classification(sparse_dataframe, 'frequency', output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 if 'count_occurences' in models:
                     # return the count of occurences of label values for each sample
-                    baseline_classification(sparse_dataframe, 'count_occurences', output_data_dir, dataset_id, dataset_filepath, seed)
+                    baseline_classification(sparse_dataframe, 'count_occurences', output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 if 'majority_decision' in models:
                     pass
@@ -193,13 +197,13 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                 if 'dawid_skene' in models:
                     # for parameters in models['dawid_skene']: #if list of params.
                     # NOTE, EM is given a prior initial quality! if none, set all to 0.5, or random chance that the annotator is quality (ie. 1/#labels)
-                    zheng_2017_label_probs_confusion_matrix('dawid_skene', samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], output_data_dir, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_confusion_matrix('dawid_skene', samples_to_annotators, annotators_to_samples, dataset.label_set, models['dawid_skene'], output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 if 'ZenCrowd' in models:
-                    zheng_2017_label_probs_weights('ZenCrowd', samples_to_annotators, annotators_to_samples, dataset.label_set, models['ZenCrowd'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type)
+                    zheng_2017_label_probs_weights('ZenCrowd', samples_to_annotators, annotators_to_samples, dataset.label_set, models['ZenCrowd'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type, metrics)
 
                 if 'GLAD' in models:
-                    zheng_2017_label_probs_weights('GLAD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type)
+                    zheng_2017_label_probs_weights('GLAD', samples_to_annotators, annotators_to_samples, dataset.label_set, models['GLAD'], output_data_dir, dataset_id, dataset_filepath, seed, dataset.task_type, metrics)
 
                 if 'minimax' in models:
                     pass
@@ -211,7 +215,7 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     pass
 
                 if 'LFC_multi' in models:
-                    zheng_2017_label_probs_confusion_matrix('LFC_multi', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_multi'], output_data_dir, dataset_id, dataset_filepath, seed)
+                    zheng_2017_label_probs_confusion_matrix('LFC_multi', samples_to_annotators, annotators_to_samples, dataset.label_set, models['LFC_multi'], output_data_dir, dataset_id, dataset_filepath, seed, metrics)
 
                 # Comparison of Bayesian Models of Annotation 2018
                 if 'multinomial' in models:
@@ -249,7 +253,7 @@ def summary_csv(filename, truth_inference_method, parameters, dataset_id, datase
         f.write('datetime_end,%s' % str(datetime_end))
 
 
-def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, dataset_filepath, random_seed):
+def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, dataset_filepath, random_seed, metrics=False, ground_truth=None):
     """Calculates the given baseline regression method on the ddataframe."""
     if method == 'mean':
         # Record start times
@@ -305,10 +309,26 @@ def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, datase
     else:
         result.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'), header=['label'])
 
+    if metrics and ground_truth is not None:
+        metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
+
+        # Save identifying information inside dict for json
+        if not args.no_meta:
+            metric_results['meta'] = {}
+            metric_results['meta']['dataset'] = dataset_id
+            metric_results['meta']['task_type'] = task_type
+            metric_results['meta']['truth_inference_method'] = model
+            metric_results['meta']['parameters'] = model_parameters
+            metric_results['meta']['random_seed'] = random_seed
+            metric_results['meta']['datetime'] = datetime.now()
+
+        with open(os.path.join(output_dir, 'metric_results.json'), 'w') as results_file:
+            json.dumps(metric_results, results_file, indent=4)
+
     summary_csv(os.path.join(output_dir, 'summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
-def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, dataset_filepath, random_seed):
+def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, dataset_filepath, random_seed, metrics=False, ground_truth=None):
     """Calculates the given baseline regression method on the ddataframe."""
     if method == 'majority_vote':
         # NOTE the majority vote can be multiple values, not aggregating to 1 value
@@ -366,10 +386,26 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
     result.index.name = 'sample_id'
     result.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'))
 
+    if metrics and ground_truth is not None:
+        metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
+
+        # Save identifying information inside dict for json
+        if not args.no_meta:
+            metric_results['meta'] = {}
+            metric_results['meta']['dataset'] = dataset_id
+            metric_results['meta']['task_type'] = task_type
+            metric_results['meta']['truth_inference_method'] = model
+            metric_results['meta']['parameters'] = model_parameters
+            metric_results['meta']['random_seed'] = random_seed
+            metric_results['meta']['datetime'] = datetime.now()
+
+        with open(os.path.join(output_dir, 'metric_results.json'), 'w') as results_file:
+            json.dumps(metric_results, results_file, indent=4)
+
     summary_csv(os.path.join(output_dir, 'summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
-def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed):
+def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed, metrics=False, ground_truth=None):
     """Calls the Zheng 2017 implementation of Dawid and Skene EM algorithm and
     saves the results and runtimes of the method.
     """
@@ -463,11 +499,28 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
     sample_label_probabilities.index.name = 'sample_id'
     sample_label_probabilities.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'))
 
+
+    if metrics and ground_truth is not None:
+        metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
+
+        # Save identifying information inside dict for json
+        if not args.no_meta:
+            metric_results['meta'] = {}
+            metric_results['meta']['dataset'] = dataset_id
+            metric_results['meta']['task_type'] = task_type
+            metric_results['meta']['truth_inference_method'] = model
+            metric_results['meta']['parameters'] = model_parameters
+            metric_results['meta']['random_seed'] = random_seed
+            metric_results['meta']['datetime'] = datetime.now()
+
+        with open(os.path.join(output_dir, 'metric_results.json'), 'w') as results_file:
+            json.dumps(metric_results, results_file, indent=4)
+
     # Create summary.csv
     summary_csv(os.path.join(output_dir, 'summary.csv'), model, model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
 
-def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed, task_type=None):
+def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_samples, label_set, model_parameters, output_dir, dataset_id, dataset_filepath, random_seed, task_type=None, metrics=False, ground_truth=None):
     """Calls the Zheng 2017 implementation of GLAD and saves the results and
     runtimes of the method.
     """
@@ -554,6 +607,22 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
     weight.index.name = 'worker_id'
     weight.to_csv(os.path.join(output_dir, 'weight.csv'))
 
+    if metrics and ground_truth is not None:
+        metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
+
+        # Save identifying information inside dict for json
+        if not args.no_meta:
+            metric_results['meta'] = {}
+            metric_results['meta']['dataset'] = dataset_id
+            metric_results['meta']['task_type'] = task_type
+            metric_results['meta']['truth_inference_method'] = model
+            metric_results['meta']['parameters'] = model_parameters
+            metric_results['meta']['random_seed'] = random_seed
+            metric_results['meta']['datetime'] = datetime.now()
+
+        with open(os.path.join(output_dir, 'metric_results.json'), 'w') as results_file:
+            json.dumps(metric_results, results_file, indent=4)
+
     # Create summary.csv
     summary_csv(os.path.join(output_dir, 'summary.csv'), model, model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
@@ -634,6 +703,8 @@ def parse_args():
 
     parser.add_argument('--silent', action='store_true', help='Providing this flag disables all progress print outs from the script.')
 
+    parser.add_argument('--metrics', default=False, nargs='+', help='Metrics to use on the annotation aggregation results relative to the available ground truth for the dataset. If `True`, then processes all metrics that apply.')
+
     args =  parser.parse_args()
 
     # TODO Ensure all arguments are valid and load those missing from config
@@ -709,6 +780,9 @@ def parse_args():
     #if len(args.models) <= 0:
     #    raise Exception('There are no remaining models after removing the unrecognized models.')
 
+    # TODO ensure that the metrics is either False, True, or a list of strings.
+    #if args.metrics:
+
     return args
 
 
@@ -717,4 +791,4 @@ if __name__ == '__main__':
     args = parse_args()
 
     # TODO Run the experiments,
-    run_experiments(args.datasets, args.models, args.output_dir, args.random_seeds, args.datasets_filepaths, not args.silent)
+    run_experiments(args.datasets, args.models, args.output_dir, args.random_seeds, args.datasets_filepaths, False, not args.silent)
