@@ -25,7 +25,7 @@ def dataset_exists(dataset, collection=None):
 
     return dataset == 'trec-rf10-data'
 
-def load_dataset(dataset, dataset_filepath=None, encode_columns=None):
+def load_dataset(dataset, dataset_filepath=None, encode_columns=None, ground_truth=False):
     """
     Handler function for calling the correct datahandler class for a given
     dataset.
@@ -42,30 +42,30 @@ def load_dataset(dataset, dataset_filepath=None, encode_columns=None):
     """
     #Snow 2008
     if dataset_exists(dataset, 'snow_2008'):
-        return datasets.Snow2008(dataset, dataset_filepath)
+        return datasets.Snow2008(dataset, dataset_filepath, ground_truth)
 
     # Truth Survey 2017
     elif dataset_exists(dataset, 'truth_survey_2017'):
-        return datasets.TruthSurvey2017(dataset, dataset_filepath, encode_columns)
+        return datasets.TruthSurvey2017(dataset, dataset_filepath, encode_columns, ground_truth)
 
     # TREC 2010
     elif dataset_exists(dataset, 'trec-fr10'):
-        return datasets.TRECRelevancy2010(dataset_filepath, encode_columns)
+        return datasets.TRECRelevancy2010(dataset_filepath, encode_columns, ground_truth)
 
     # Ipeirotis
     elif dataset_exists(dataset, 'ipeirotis_2010'):
-        return datasets.Ipeirotis2010(dataset, dataset_filepath, encode_columns)
+        return datasets.Ipeirotis2010(dataset, dataset_filepath, encode_columns, ground_truth)
 
     # Facial Beauty
     elif dataset_exists(dataset, 'facial_beauty'):
-        return datasets.FacialBeauty(dataset, dataset_filepath, encode_columns)
+        return datasets.FacialBeauty(dataset, dataset_filepath, encode_columns, ground_truth)
 
     # First Impressions
     elif dataset_exists(dataset, 'first_impressions'):
-        return datasets.FirtImpressions(dataset, dataset_filepath, encode_columns)
+        return datasets.FirtImpressions(dataset, dataset_filepath, encode_columns, ground_truth)
 
     # CrowdLayer
     elif dataset_exists(dataset, 'crowd_layer'):
-        return datasets.CrowdLayer(dataset, dataset_filepath, encode_columns)
+        return datasets.CrowdLayer(dataset, dataset_filepath, encode_columns, ground_truth)
 
     # TODO Google fact evaluation, low priority.

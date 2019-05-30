@@ -95,7 +95,7 @@ class CrowdLayer(BaseDataset):
         if datasplit not in dsets:
             raise ValueError(str(datasplit) + ' is not an acceptable split on the dataset `' + self.dataset + '`. Use only the following data splits: ' + str(dsets))
 
-    def load_LabelMe(self, datasplit='train'):
+    def load_LabelMe(self, datasplit='train', ground_truth=False):
         """Loads the designated split of data from LabelMe into this instance's
             attributes.
 
@@ -125,23 +125,27 @@ class CrowdLayer(BaseDataset):
             annotation_file = os.path.join(self.data_dir, self.dataset, 'answers.txt')
             self.df = pd.read_csv(annotation_file, sep=' ', header=None).to_sparse(fill_value=-1)
 
-        # Load/create the Labels dataframe
-        labels_file = os.path.join(self.data_dir, self.dataset, 'labels_' + datasplit + '.txt')
-        self.labels = pd.read_csv(labels_file, sep=' ', names=['label'])
+        if ground_truth:
+            # NOTE ground truth is stored in self.labels['label']
+            # Load/create the Labels dataframe
+            labels_file = os.path.join(self.data_dir, self.dataset, 'labels_' + datasplit + '.txt')
+            self.labels = pd.read_csv(labels_file, sep=' ', names=['label'])
 
-        label_names_file = os.path.join(self.data_dir, self.dataset, 'labels_' + datasplit + '_names.txt')
-        self.labels['label_name'] = pd.read_csv(label_names_file, sep=' ', names=['label_name'])
+            label_names_file = os.path.join(self.data_dir, self.dataset, 'labels_' + datasplit + '_names.txt')
+            self.labels['label_name'] = pd.read_csv(label_names_file, sep=' ', names=['label_name'])
 
-        filenames_file = os.path.join(self.data_dir, self.dataset, 'filenames_' + datasplit + '.txt')
-        self.labels['filename'] = pd.read_csv(filenames_file, sep=' ', names=['filename'])
+            filenames_file = os.path.join(self.data_dir, self.dataset, 'filenames_' + datasplit + '.txt')
+            self.labels['filename'] = pd.read_csv(filenames_file, sep=' ', names=['filename'])
+        else:
+            self.labels = None
 
         # Load the data dataframe/dict/numpy thing....
         # NOTE I have no idea what this is. It's a ragged array, 1000 samples,
         # 200 max columns, format is #:# for each element, no idea what it means.
-        data_file = os.path.join(self.data_dir, self.dataset, 'data_' + datasplit + '.txt')
-        self.data = pd.read_csv(data_file)
+        #data_file = os.path.join(self.data_dir, self.dataset, 'data_' + datasplit + '.txt')
+        #self.data = pd.read_csv(data_file)
 
-    def load_MovieReviews(self, datasplit='train'):
+    def load_MovieReviews(self, datasplit='answers', ground_truth=False):
         """Loads the designated split of data from MovieReviews into this
             instance's attributes.
         """
@@ -155,7 +159,7 @@ class CrowdLayer(BaseDataset):
         self._check_datasplit(datasplit, {'all', 'train', 'test'})
 
         # Load annotations if they exist
-        if datasplit != 'train':
+        if datasplit != 'answers':
             # Warn about lack of annotations
             raise Warning('The datasplit `' + datasplit + '` of the dataset `' + self.dataset + '` is not annotated. Only the `train` datasplit is annotated.')
             self.df = None
@@ -163,18 +167,23 @@ class CrowdLayer(BaseDataset):
             annotation_file = os.path.join(self.data_dir, self.dataset, 'answers.txt')
             self.df = pd.read_csv(annotation_file, sep=' ', header=None).to_sparse(fill_value=-1)
 
-        # ratings are assumed to be the labels file.
-        labels_file = os.path.join(self.data_dir, self.dataset, 'ratings_' + datasplit + '.txt')
-        self.labels = pd.read_csv(labels_file, sep=' ', names=['label'])
+        if ground_truth:
+            # NOTE ground truth is stored in self.labels['label']
+            # Load/create the Labels dataframe
+            # ratings are assumed to be the labels file.
+            labels_file = os.path.join(self.data_dir, self.dataset, 'ratings_' + datasplit + '.txt')
+            self.labels = pd.read_csv(labels_file, sep=' ', names=['label'])
 
-        ids_file = os.path.join(self.data_dir, self.dataset, 'ids_' + datasplit + '.txt')
-        self.labels['id'] = pd.read_csv(ids_file, sep=' ', names=['id'])
+            ids_file = os.path.join(self.data_dir, self.dataset, 'ids_' + datasplit + '.txt')
+            self.labels['id'] = pd.read_csv(ids_file, sep=' ', names=['id'])
+        else:
+            self.labels = None
 
         # text is the data files.
-        data_file = os.path.join(self.data_dir, self.dataset, 'texts_' + datasplit + '.txt')
-        self.data = pd.read_csv(data_file, sep=' ', names=['text'])
+        #data_file = os.path.join(self.data_dir, self.dataset, 'texts_' + datasplit + '.txt')
+        #self.data = pd.read_csv(data_file, sep=' ', names=['text'])
 
-    def load_ner_mturk(self, datasplit='answers'):
+    def load_ner_mturk(self, datasplit='answers', ground_truth=False):
         """Loads the designated split of data from MovieReviews into this
             instance's attributes.
         """
@@ -199,12 +208,16 @@ class CrowdLayer(BaseDataset):
             self.df = pd.read_csv(annotation_file, sep=' ', na_values='NA', dtype=str).to_sparse(fill_value=np.nan)
             self.df['sequence'] = self.df['sequence'].astype(int)
 
-        # Load/create the Labels dataframe
-        labels_file = datasplit if datasplit == 'ground_truth' else datasplit + 'set'
-        labels_file = os.path.join(self.data_dir, self.dataset, labels_file + '_seq.csv')
+        if ground_truth:
+            # NOTE ground truth is stored in self.labels['label']
+            # Load/create the Labels dataframe
+            labels_file = datasplit if datasplit == 'ground_truth' else datasplit + 'set'
+            labels_file = os.path.join(self.data_dir, self.dataset, labels_file + '_seq.csv')
 
-        # the format of this label one is different due to sequencial samples.
-        self.labels = pd.read_csv(labels_file, sep=' ', na_values='NA', dtype=str)
+            # the format of this label one is different due to sequencial samples.
+            self.labels = pd.read_csv(labels_file, sep=' ', na_values='NA', dtype=str)
+        else:
+            self.labels = None
 
         # TODO encode the labels!
 

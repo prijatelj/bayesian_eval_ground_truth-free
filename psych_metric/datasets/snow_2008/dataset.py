@@ -30,7 +30,7 @@ class Snow2008(BaseDataset):
     ])
 
     def __init__(self, dataset='anger', dataset_filepath=None):
-        """initialize class by loading the data
+        """initialize class by loading the data. Ground truth is always loaded.
 
         Parameters
         ----------
@@ -91,7 +91,7 @@ class Snow2008(BaseDataset):
 
         """
         df = pd.read_csv(f, header=0, delimiter='\t')
-        df.columns = ['amt_annotation_ids', 'worker_id', 'sample_id', 'worker_label', 'gold']
+        df.columns = ['amt_annotation_ids', 'worker_id', 'sample_id', 'worker_label', 'ground_truth']
         # NOTE keeping gold for now, uncertain if only ground_truth will be for those with ACTUAL ground truth able to be determined.
         return df
 

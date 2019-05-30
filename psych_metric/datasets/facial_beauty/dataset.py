@@ -36,7 +36,7 @@ class FacialBeauty(BaseDataset):
     datasets = frozenset(['All_Ratings', 'Asian_Female', 'Asian_Male', 'Caucasian_Female', 'Caucasian_Male'])
 
     def __init__(self, dataset='All_Ratings', dataset_filepath=None, encode_columns=None, sparse_matrix=False):
-        """initialize class by loading the data
+        """initialize class by loading the data. No ground truth available.
 
         Parameters
         ----------

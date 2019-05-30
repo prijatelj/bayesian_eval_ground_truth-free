@@ -41,7 +41,7 @@ class TruthSurvey2017(BaseDataset):
         's5_AdultContent', 'f201_Emotion_FULL'
     ])
 
-    def __init__(self, dataset='d_Duck Identification', dataset_filepath=None, encode_columns=None):
+    def __init__(self, dataset='d_Duck Identification', dataset_filepath=None, encode_columns=None, ground_truth=False):
         """initialize class by loading the data
 
         Parameters
@@ -80,15 +80,16 @@ class TruthSurvey2017(BaseDataset):
         self.df.columns = ['sample_id', 'worker_id', 'worker_label']
 
         labels_file = os.path.join(dataset_filepath, self.dataset, 'truth.csv')
-        ground_truth = pd.read_csv(labels_file)
+        ground_truth_df = pd.read_csv(labels_file)
         # change to standardized column names.
-        ground_truth.columns = ['sample_id', 'worker_label']
+        ground_truth_df.columns = ['sample_id', 'worker_label']
 
         # Save labels set
-        self.label_set = set(ground_truth['worker_label'].unique()) if dataset != 'f201_Emotion_FULL' else None
+        self.label_set = set(ground_truth_df['worker_label'].unique()) if dataset != 'f201_Emotion_FULL' else None
 
         # Add ground_truth to the main dataframe as its own column
-        self.add_ground_truth(ground_truth, inplace=True)
+        if ground_truth:
+            self.add_ground_truth(ground_truth_df, inplace=True)
 
         if encode_columns == True:
             # The default columns to encode for each data subset.
