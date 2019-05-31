@@ -212,4 +212,4 @@ if __name__ == '__main__':
             raise FileExistsError('The metric file %s already exists and overwrite flag is not provided. The file will not be overwriten.' % metric_file)
 
         with open(metric_file, 'w') as results_file:
-            json.dumps(metric_results, results_file, indent=4)
+            json.dump(metric_results, results_file, indent=4)
