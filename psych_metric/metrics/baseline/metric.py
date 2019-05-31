@@ -188,7 +188,7 @@ def parse_args():
     parser.add_argument('-s', '--summary_csv', default='summary.csv', help='The expected filename of the summary csv.')
     parser.add_argument('-a', '--annotation_aggregation_csv', default='annotation_aggregation.csv', help='The expected filename of the annotation aggregation csv.')
     parser.add_argument('-m', '--metrics', default=None, nargs='+', help='List of the metrics to use.')
-    parser.add_argument('-f', '--metrics_filename', default='metric.json', help='The filename of the metric json.')
+    parser.add_argument('-f', '--metrics_filename', default='metrics.json', help='The filename of the metric json.')
     parser.add_argument('--no-meta', action='store_true', help='Providing this flag witholds the meta information from the metric jsons.')
     parser.add_argument('--overwrite', action='store_true', help='Providing this flag will overwrite any preexisting metric files.')
 

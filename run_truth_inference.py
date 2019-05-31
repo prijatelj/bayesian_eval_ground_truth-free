@@ -322,7 +322,7 @@ def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, datase
             metric_results['meta']['random_seed'] = random_seed
             metric_results['meta']['datetime'] = datetime.now()
 
-        with open(os.path.join(output_dir, 'metric_results.json'), 'w') as results_file:
+        with open(os.path.join(output_dir, 'metrics.json'), 'w') as results_file:
             json.dumps(metric_results, results_file, indent=4)
 
     summary_csv(os.path.join(output_dir, 'summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
@@ -399,7 +399,7 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
             metric_results['meta']['random_seed'] = random_seed
             metric_results['meta']['datetime'] = datetime.now()
 
-        with open(os.path.join(output_dir, 'metric_results.json'), 'w') as results_file:
+        with open(os.path.join(output_dir, 'metrics.json'), 'w') as results_file:
             json.dumps(metric_results, results_file, indent=4)
 
     summary_csv(os.path.join(output_dir, 'summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
@@ -513,7 +513,7 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
             metric_results['meta']['random_seed'] = random_seed
             metric_results['meta']['datetime'] = datetime.now()
 
-        with open(os.path.join(output_dir, 'metric_results.json'), 'w') as results_file:
+        with open(os.path.join(output_dir, 'metrics.json'), 'w') as results_file:
             json.dumps(metric_results, results_file, indent=4)
 
     # Create summary.csv
@@ -620,7 +620,7 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
             metric_results['meta']['random_seed'] = random_seed
             metric_results['meta']['datetime'] = datetime.now()
 
-        with open(os.path.join(output_dir, 'metric_results.json'), 'w') as results_file:
+        with open(os.path.join(output_dir, 'metrics.json'), 'w') as results_file:
             json.dumps(metric_results, results_file, indent=4)
 
     # Create summary.csv
