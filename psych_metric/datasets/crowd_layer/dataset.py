@@ -136,6 +136,8 @@ class CrowdLayer(BaseDataset):
 
             filenames_file = os.path.join(self.data_dir, self.dataset, 'filenames_' + datasplit + '.txt')
             self.labels['filename'] = pd.read_csv(filenames_file, sep=' ', names=['filename'])
+
+            self.df['ground_truth'] = self.labels['label']
         else:
             self.labels = None
 
@@ -176,6 +178,8 @@ class CrowdLayer(BaseDataset):
 
             ids_file = os.path.join(self.data_dir, self.dataset, 'ids_' + datasplit + '.txt')
             self.labels['id'] = pd.read_csv(ids_file, sep=' ', names=['id'])
+
+            self.df['ground_truth'] = self.labels['label']
         else:
             self.labels = None
 
@@ -216,6 +220,8 @@ class CrowdLayer(BaseDataset):
 
             # the format of this label one is different due to sequencial samples.
             self.labels = pd.read_csv(labels_file, sep=' ', na_values='NA', dtype=str)
+
+            self.df['ground_truth'] = self.labels['label']
         else:
             self.labels = None
 
