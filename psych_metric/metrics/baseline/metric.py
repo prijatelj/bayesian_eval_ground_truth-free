@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 from psych_metric.datasets import data_handler
 
-def load(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoatation_aggregation.csv', result_filename='metric_analysis_ground_truth_vs_aggregation.csv'):
+def load(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoatation_aggregation.csv'):
     """Traverses the given root directory to find directories that contain a
     summary.csv, loads the dataset with ground truth based on dataset_id, and
     compares that ground truth to the contents within the annotation
@@ -32,10 +32,6 @@ def load(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoa
         The filename of the summary csv
     annotation_aggregation : str, optional
         The filename of the annotation aggregation output.
-    result_filename : str, optional
-        The filename of the file where the metric calculations are stored.
-        Relative to the directory containing the summary and annotation
-        aggregation files. If None, then it simply returns
 
     Yields
     ------
