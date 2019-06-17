@@ -234,25 +234,6 @@ def run_experiments(datasets, models, output_dir, random_seeds, datasets_filepat
                     pass
 
 
-def summary_csv(filename, truth_inference_method, parameters, dataset_id, dataset_filepath, random_seed, runtime_process, runtime_performance, datetime_start, datetime_end):
-    """Convenience function creates a summary csv file at the given path
-    containing the provided arguments.
-
-    Parameters
-    ----------
-    """
-    with open(filename, 'w') as f:
-        f.write('truth_inference_method,%s\n' % truth_inference_method)
-        f.write('parameters,%s\n' % repr(parameters))
-        f.write('dataset,%s\n' % dataset_id)
-        f.write('dataset_filepath,%s\n' % dataset_filepath)
-        f.write('random_seed,%d\n' % random_seed)
-        f.write('runtime_process,%f\n' % runtime_process)
-        f.write('runtime_performance,%f\n' % runtime_performance)
-        f.write('datetime_start,%s\n' % str(datetime_start))
-        f.write('datetime_end,%s' % str(datetime_end))
-
-
 def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, dataset_filepath, random_seed, metrics=False, ground_truth=None):
     """Calculates the given baseline regression method on the ddataframe."""
     if method == 'mean':
@@ -309,21 +290,10 @@ def baseline_regression(sparse_dataframe, method, output_dir, dataset_id, datase
     else:
         result.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'), header=['label'])
 
+    # Calculate and save metrics if metrics and ground_truth provided
     if metrics and ground_truth is not None:
-        metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
-
-        # Save identifying information inside dict for json
-        if not args.no_meta:
-            metric_results['meta'] = {}
-            metric_results['meta']['dataset'] = dataset_id
-            metric_results['meta']['task_type'] = task_type
-            metric_results['meta']['truth_inference_method'] = model
-            metric_results['meta']['parameters'] = model_parameters
-            metric_results['meta']['random_seed'] = random_seed
-            metric_results['meta']['datetime'] = datetime.now()
-
-        with open(os.path.join(output_dir, 'metrics.json'), 'w') as results_file:
-            json.dumps(metric_results, results_file, indent=4)
+        # NOTE consider implementing `args.no_meta` or removing that arg.
+        metric_json(os.path.join(output_dir, 'metrics.json'), ground_truth, result, task_type, metrics, dataset_id, model, model_parameters, random_seed)
 
     summary_csv(os.path.join(output_dir, 'summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
@@ -386,21 +356,10 @@ def baseline_classification(sparse_dataframe, method, output_dir, dataset_id, da
     result.index.name = 'sample_id'
     result.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'))
 
+    # Calculate and save metrics if metrics and ground_truth provided
     if metrics and ground_truth is not None:
-        metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
-
-        # Save identifying information inside dict for json
-        if not args.no_meta:
-            metric_results['meta'] = {}
-            metric_results['meta']['dataset'] = dataset_id
-            metric_results['meta']['task_type'] = task_type
-            metric_results['meta']['truth_inference_method'] = model
-            metric_results['meta']['parameters'] = model_parameters
-            metric_results['meta']['random_seed'] = random_seed
-            metric_results['meta']['datetime'] = datetime.now()
-
-        with open(os.path.join(output_dir, 'metrics.json'), 'w') as results_file:
-            json.dumps(metric_results, results_file, indent=4)
+        # NOTE consider implementing `args.no_meta` or removing that arg.
+        metric_json(os.path.join(output_dir, 'metrics.json'), ground_truth, result, task_type, metrics, dataset_id, model, model_parameters, random_seed)
 
     summary_csv(os.path.join(output_dir, 'summary.csv'), method, None, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
 
@@ -499,22 +458,10 @@ def zheng_2017_label_probs_confusion_matrix(model, samples_to_annotators, annota
     sample_label_probabilities.index.name = 'sample_id'
     sample_label_probabilities.to_csv(os.path.join(output_dir, 'annotation_aggregation.csv'))
 
-
+    # Calculate and save metrics if metrics and ground_truth provided
     if metrics and ground_truth is not None:
-        metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
-
-        # Save identifying information inside dict for json
-        if not args.no_meta:
-            metric_results['meta'] = {}
-            metric_results['meta']['dataset'] = dataset_id
-            metric_results['meta']['task_type'] = task_type
-            metric_results['meta']['truth_inference_method'] = model
-            metric_results['meta']['parameters'] = model_parameters
-            metric_results['meta']['random_seed'] = random_seed
-            metric_results['meta']['datetime'] = datetime.now()
-
-        with open(os.path.join(output_dir, 'metrics.json'), 'w') as results_file:
-            json.dumps(metric_results, results_file, indent=4)
+        # NOTE consider implementing `args.no_meta` or removing that arg.
+        metric_json(os.path.join(output_dir, 'metrics.json'), ground_truth, result, task_type, metrics, dataset_id, model, model_parameters, random_seed)
 
     # Create summary.csv
     summary_csv(os.path.join(output_dir, 'summary.csv'), model, model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
@@ -607,24 +554,50 @@ def zheng_2017_label_probs_weights(model, samples_to_annotators, annotators_to_s
     weight.index.name = 'worker_id'
     weight.to_csv(os.path.join(output_dir, 'weight.csv'))
 
+    # Calculate and save metrics if metrics and ground_truth provided
     if metrics and ground_truth is not None:
-        metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
-
-        # Save identifying information inside dict for json
-        if not args.no_meta:
-            metric_results['meta'] = {}
-            metric_results['meta']['dataset'] = dataset_id
-            metric_results['meta']['task_type'] = task_type
-            metric_results['meta']['truth_inference_method'] = model
-            metric_results['meta']['parameters'] = model_parameters
-            metric_results['meta']['random_seed'] = random_seed
-            metric_results['meta']['datetime'] = datetime.now()
-
-        with open(os.path.join(output_dir, 'metrics.json'), 'w') as results_file:
-            json.dumps(metric_results, results_file, indent=4)
+        # NOTE consider implementing `args.no_meta` or removing that arg.
+        metric_json(os.path.join(output_dir, 'metrics.json'), ground_truth, result, task_type, metrics, dataset_id, model, model_parameters, random_seed)
 
     # Create summary.csv
     summary_csv(os.path.join(output_dir, 'summary.csv'), model, model_parameters, dataset_id, dataset_filepath, random_seed, end_process_time-start_process_time, end_performance_time-start_performance_time, datetime_start, datetime_end)
+
+
+def summary_csv(filename, truth_inference_method, parameters, dataset_id, dataset_filepath, random_seed, runtime_process, runtime_performance, datetime_start, datetime_end):
+    """Convenience function creates a summary csv file at the given path
+    containing the provided arguments.
+
+    Parameters
+    ----------
+    """
+    with open(filename, 'w') as f:
+        f.write('truth_inference_method,%s\n' % truth_inference_method)
+        f.write('parameters,%s\n' % repr(parameters))
+        f.write('dataset,%s\n' % dataset_id)
+        f.write('dataset_filepath,%s\n' % dataset_filepath)
+        f.write('random_seed,%d\n' % random_seed)
+        f.write('runtime_process,%f\n' % runtime_process)
+        f.write('runtime_performance,%f\n' % runtime_performance)
+        f.write('datetime_start,%s\n' % str(datetime_start))
+        f.write('datetime_end,%s' % str(datetime_end))
+
+
+def metric_json(filepath, ground_truth, result, task_type, metrics, dataset_id=None, model=None, model_parameters=None, random_seed=None):
+    """Convenience function for saving the metric json given path."""
+    metric_results = metric_baselines.calculate(ground_truth, result, task_type, None if metrics is True else metrics)
+
+    # Save identifying information inside dict for json
+    if dataset_id is not None or model is not None or model_parameters is not None or random_seed is not None:
+        metric_results['meta'] = {}
+        metric_results['meta']['dataset'] = dataset_id
+        metric_results['meta']['task_type'] = task_type
+        metric_results['meta']['truth_inference_method'] = model
+        metric_results['meta']['parameters'] = model_parameters
+        metric_results['meta']['random_seed'] = random_seed
+        metric_results['meta']['datetime'] = datetime.now()
+
+    with open(filepath, 'w') as results_file:
+        json.dumps(metric_results, results_file, indent=4)
 
 
 def load_config(args):
