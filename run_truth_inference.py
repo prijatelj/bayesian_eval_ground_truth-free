@@ -6,7 +6,7 @@ from datetime import datetime
 from json import loads as json_loads
 import os
 from time import perf_counter, process_time
-import warnings
+import logging
 
 import yaml # need to import PyYAML
 #import numpy as np
@@ -695,7 +695,7 @@ def parse_args():
     else:
         # attempt to create the output directory
         if args.overwrite_output_dir:
-            warnings.warn('The `overwrite_output_dir` argument has been passed. The provided output directory exists and this program may overwrite existing files if the generated results share the same filename.', UserWarning)
+            logging.warning('The `overwrite_output_dir` argument has been passed. The provided output directory exists and this program may overwrite existing files if the generated results share the same filename.')
 
         # if already exists then raise an error, unless overwrite_output_dir
         os.makedirs(args.output_dir, exist_ok=args.overwrite_output_dir)
@@ -709,7 +709,7 @@ def parse_args():
                 args.random_seeds.append(int(seed))
 
     elif args.random_seeds is None and isinstance(args.iterations, int):
-        warnings.warn('A random seeds file was not provided. The random seeds wll be generate for every iteration, totaling  % (iter)d random seeds. A file containing these seeds will be saved along with the output at ` % (output)s/random_seeds_count- % (iter)d.txt`.' % {'iter':args.iterations, 'output':args.output_dir}, UserWarning)
+        logging.warning('A random seeds file was not provided. The random seeds wll be generate for every iteration, totaling  % (iter)d random seeds. A file containing these seeds will be saved along with the output at ` % (output)s/random_seeds_count- % (iter)d.txt`.', {'iter':args.iterations, 'output':args.output_dir})
         args.random_seeds = random_seed_generator.generate(args.iterations)
 
         # Save the newly generated random seeds to a file:
@@ -725,7 +725,7 @@ def parse_args():
     unrecognized_datasets = set()
     for dataset in args.datasets:
         if not data_handler.dataset_exists(dataset):
-            warnings.warn('Unrecognized dataset `%s`. This dataset will be ignored' % dataset, UserWarning)
+            logging.warning('Unrecognized dataset `%s`. This dataset will be ignored', dataset)
             unrecognized_datasets.add(dataset)
 
             # Remove the dataset from the datasets_filepaths dict, if present
@@ -745,7 +745,7 @@ def parse_args():
     #unrecognized_models = set()
     #for model in args.models:
     #    if not truth_inference_model_handler.model_exists(model):
-    #        warnings.warn('Unrecognized model `%s`. This model will be ignored'  % model, UserWarning)
+    #        logging.warning('Unrecognized model `%s`. This model will be ignored', model)
     #        unrecognized_models.add(model)
 
     # Remove unrecognized truth inference models
