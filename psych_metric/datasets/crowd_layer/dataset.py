@@ -95,6 +95,9 @@ class CrowdLayer(BaseDataset):
         if datasplit not in dsets:
             raise ValueError(str(datasplit) + ' is not an acceptable split on the dataset `' + self.dataset + '`. Use only the following data splits: ' + str(dsets))
 
+    def save_tfrecord(outputfile):
+        return
+
     def load_LabelMe(self, datasplit='train', ground_truth=False):
         """Loads the designated split of data from LabelMe into this instance's
             attributes.
@@ -126,7 +129,6 @@ class CrowdLayer(BaseDataset):
             self.df = pd.read_csv(annotation_file, sep=' ', header=None).to_sparse(fill_value=-1)
 
         if ground_truth:
-            # NOTE ground truth is stored in self.labels['label']
             # Load/create the Labels dataframe
             labels_file = os.path.join(self.data_dir, self.dataset, 'labels_' + datasplit + '.txt')
             self.labels = pd.read_csv(labels_file, sep=' ', names=['label'])
@@ -146,6 +148,10 @@ class CrowdLayer(BaseDataset):
         # 200 max columns, format is #:# for each element, no idea what it means.
         #data_file = os.path.join(self.data_dir, self.dataset, 'data_' + datasplit + '.txt')
         #self.data = pd.read_csv(data_file)
+
+        # TODO load images
+
+    def load_images
 
     def load_MovieReviews(self, datasplit='answers', ground_truth=False):
         """Loads the designated split of data from MovieReviews into this
@@ -300,3 +306,63 @@ class CrowdLayer(BaseDataset):
     def convert_to_annotation_list(self, df=None):
         """Converts from sparse matrix format into annotation list format."""
         # TODO Currently expects df to be in sparse matrix format without a check!
+
+    def load_images(image_dir, train_filenames, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None):
+        """Load the images and optionally crop  by the bounding box files.
+
+        Parameters
+        ----------
+        image_dir: str
+            filepath to directory containing images
+        train_filenames: str
+            filepath to file containing filenames of images
+        ground_truth: str
+            filepath to file containing ground truth label
+        majority_vote: str
+            filepath to file containing majority votes of annotations
+        shape: tuple of ints
+            The shape of the images to be reshaped to if provided, otherwise no
+            resizing is done.
+        """
+        if not os.path.isdir(image_dir):
+            raise IOError(f'The directory `{image_dir}` does not exist.')
+
+        # NOTE assumes self.annotation is done and is sparse matrix
+
+        # load train_filenames
+        samples = pd.read_csv(train_filenames, names=['filename'])
+        samples['index'] = samples.index
+        filename_idx = samples.set_index('filename').to_dict()['index']
+
+        if ground_truth:
+            samples['ground_truth'] = pd.read_csv(ground_truth_file, header=None)
+
+        if majority_vote:
+            samples['majority_vote'] = pd.read_csv(majority_vote_file, header=None)
+
+        images = np.empty(len(samples)).tolist()
+        for class_dir in os.listdir(image_dir)
+            class_dir_path = os.path.join(image_dir, class_dir)
+
+            for filename for os.listdir(class_dir_path):
+                if filename in filename_idx:
+                    images[filename_idx[filename]] = cv2.imread(
+                        os.path.join(class_dir_path, filename),
+                        color
+                    )
+                else:
+                    print(f'{filename} not in filename_idx')
+
+        samples['images'] = images
+
+        # put every row of annotations into its index in df
+        if annotations is not None:
+            samples['annotations'] = [annotations[i] for i in range(len(annotations))]
+
+        if isinstance(output, str):
+            # TODO save as TFRecords
+
+        return samples
+
+    def load_tf_records()
+        return
