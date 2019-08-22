@@ -309,7 +309,7 @@ class CrowdLayer(BaseDataset):
         """Converts from sparse matrix format into annotation list format."""
         # TODO Currently expects df to be in sparse matrix format without a check!
 
-    def load_images(self, image_dir, train_filenames, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1):
+    def load_images(self, image_dir, train_filenames, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
         """Load the images and optionally crop  by the bounding box files.
 
         Parameters
@@ -326,7 +326,12 @@ class CrowdLayer(BaseDataset):
             The shape of the images to be reshaped to if provided, otherwise no
             resizing is done.
         color : int
-            The
+            The imread method to use. Defaults to color reading.
+
+        Returns
+        -------
+            images and samples if output is not provided, otherwise saves the
+            tfrecords to file and returns None.
         """
         if not isinstance(image_dir, str) or not os.path.isdir(image_dir):
             raise IOError(f'The directory `{image_dir}` does not exist.')
@@ -338,14 +343,10 @@ class CrowdLayer(BaseDataset):
         samples['index'] = samples.index
         filename_idx = samples.set_index('filename').to_dict()['index']
 
-        if isinstance(ground_truth, str) and os.path.isfile(ground_truth):
-            samples['ground_truth'] = pd.read_csv(ground_truth, header=None)
-
-        if isinstance(majority_vote, str) and os.path.isfile(majority_vote):
-            samples['majority_vote'] = pd.read_csv(majority_vote, header=None)
-
         images = np.empty(len(samples)).tolist()
-        shape = np.empty(len(samples)).tolist()
+        if output and isinstance(output, str):
+            shape = np.empty(len(samples)).tolist()
+
         for class_dir in os.listdir(image_dir):
             class_dir_path = os.path.join(image_dir, class_dir)
 
@@ -358,34 +359,57 @@ class CrowdLayer(BaseDataset):
                         os.path.join(class_dir_path, filename),
                         color
                     )
+
+                    if normalize:
+                        img /= 255.0
+
                     images[filename_idx[filename]] = img
-                    shape[filename_idx[filename]] = img.shape
+                    if output and isinstance(output, str):
+                        shape[filename_idx[filename]] = img.shape
                 else:
                     print(f'{filename} not in filename_idx')
 
-        samples['image'] = images
-        samples['shape'] = shape
+        if isinstance(ground_truth, str) and os.path.isfile(ground_truth):
+            samples['ground_truth'] = pd.read_csv(ground_truth, header=None)
+
+        if isinstance(majority_vote, str) and os.path.isfile(majority_vote):
+            samples['majority_vote'] = pd.read_csv(majority_vote, header=None)
 
         samples.drop(columns=['index', 'filename'], inplace=True)
+
+        # If no output, then no need to create tfrecords, etc.
+        if not output or not isinstance(output, str):
+            return np.stack(images), samples
+
+        samples['image'] = images
+        samples['shape'] = shape
 
         # put every row of annotations into its index in df
         if annotations is not None:
             samples['annotations'] = [annotations.iloc[i] for i in range(len(annotations))]
 
-        if not isinstance(output, str):
-            return samples
-
         # NOTE assumes sparse dataframe
         samples['annotations'] = samples['annotations'].apply(
             lambda x: tf.train.Feature(
+
+
                 int64_list=tf.train.Int64List(value=x)
             )
         )
-        samples['image'] = samples['image'].apply(
-            lambda x: tf.train.Feature(
-                int64_list=tf.train.Int64List(value=x.flatten())
+
+        if normalize:
+            samples['image'] = samples['image'].apply(
+                lambda x: tf.train.Feature(
+                    float_list=tf.train.FloatList(value=x.flatten())
+                )
             )
-        )
+        else:
+            samples['image'] = samples['image'].apply(
+                lambda x: tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=x.flatten())
+                )
+            )
+
         samples['shape'] = samples['shape'].apply(
             lambda x: tf.train.Feature(
                 int64_list=tf.train.Int64List(value=x)
@@ -435,7 +459,7 @@ class CrowdLayer(BaseDataset):
 
         if sample_description or ground_truth or majority_vote:
             sample_description = {
-                'image': tf.FixedLenFeature((256, 256, 3), tf.int64),
+                'image': tf.FixedLenFeature((256, 256, 3), tf.float32),
                 'annotations': tf.FixedLenFeature([77], tf.int64),
                 'shape': tf.FixedLenFeature([3], tf.int64),
             }
