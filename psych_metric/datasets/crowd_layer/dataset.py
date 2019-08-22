@@ -1,9 +1,10 @@
 """Dataset class handler for crowd layer 2018 data."""
 import os
 
+import cv2
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
+import tensorflow as tf
 
 from psych_metric.datasets.base_dataset import BaseDataset
 
@@ -13,6 +14,7 @@ try:
 except KeyError:
     # If ROOT environment variable does not exist, set HERE to None
     HERE = None
+
 
 class CrowdLayer(BaseDataset):
     """class that loads and serves data from crowd layer 2018
@@ -68,7 +70,6 @@ class CrowdLayer(BaseDataset):
         # save the data directory
         self.data_dir = os.path.join(dataset_filepath, 'crowd_layer_data')
 
-
         # All are matrices are sparse matrices. All rows will always be samples
         self.sparse_matrix = True
 
@@ -88,7 +89,7 @@ class CrowdLayer(BaseDataset):
         if encode_columns is None or encode_columns is False or dataset == 'MovieReviews':
             self.label_encoder = None
         else:
-            #self.encode_labels(encode_columns)
+            # self.encode_labels(encode_columns)
             raise NotImplementedError('Encoding of the multiclassification classes not yet implemented. It requires possibly redoing the `encode_labels` to take and return a dataframe or overriding it.')
 
     def _check_datasplit(self, datasplit, dsets={'train', 'valid', 'test'}):
@@ -114,7 +115,7 @@ class CrowdLayer(BaseDataset):
 
         self.label_set = frozenset({0, 1, 2, 3, 4, 5, 6, 7})
         # May want to implement a reverse encoder... but this needs to be ordered and static then.
-        #self.label_set = frozenset({'highway', 'insidecity', 'tallbuilding', 'street', 'forest', 'coast', 'mountain', 'opencountry'})
+        # self.label_set = frozenset({'highway', 'insidecity', 'tallbuilding', 'street', 'forest', 'coast', 'mountain', 'opencountry'})
 
         # Ensure valid datasplit value
         self._check_datasplit(datasplit)
@@ -146,12 +147,10 @@ class CrowdLayer(BaseDataset):
         # Load the data dataframe/dict/numpy thing....
         # NOTE I have no idea what this is. It's a ragged array, 1000 samples,
         # 200 max columns, format is #:# for each element, no idea what it means.
-        #data_file = os.path.join(self.data_dir, self.dataset, 'data_' + datasplit + '.txt')
-        #self.data = pd.read_csv(data_file)
+        # data_file = os.path.join(self.data_dir, self.dataset, 'data_' + datasplit + '.txt')
+        # self.data = pd.read_csv(data_file)
 
         # TODO load images
-
-    def load_images
 
     def load_MovieReviews(self, datasplit='answers', ground_truth=False):
         """Loads the designated split of data from MovieReviews into this
@@ -190,8 +189,8 @@ class CrowdLayer(BaseDataset):
             self.labels = None
 
         # text is the data files.
-        #data_file = os.path.join(self.data_dir, self.dataset, 'texts_' + datasplit + '.txt')
-        #self.data = pd.read_csv(data_file, sep=' ', names=['text'])
+        # data_file = os.path.join(self.data_dir, self.dataset, 'texts_' + datasplit + '.txt')
+        # self.data = pd.read_csv(data_file, sep=' ', names=['text'])
 
     def load_ner_mturk(self, datasplit='answers', ground_truth=False):
         """Loads the designated split of data from MovieReviews into this
@@ -211,7 +210,7 @@ class CrowdLayer(BaseDataset):
         if datasplit != 'answers':
             # Warn about lack of annotations
             raise ValueError('The ' + datasplit + ' datasplit is not implemented. The trainset and testset data are unclear in how they relate to the annotation data. They probably do not, given difference in size and their sum not equalling that of the ground truth labels. Please only use `ground_truth_seq.csv`.')
-            #raise Warning('The datasplit `' + datasplit + '` of the dataset `' + self.dataset + '` is not annotated. Only the `train` datasplit is annotated.')
+            # raise Warning('The datasplit `' + datasplit + '` of the dataset `' + self.dataset + '` is not annotated. Only the `train` datasplit is annotated.')
             self.df = None
         else:
             annotation_file = os.path.join(self.data_dir, self.dataset, 'answers_seq.csv')
@@ -263,13 +262,16 @@ class CrowdLayer(BaseDataset):
         if missing_value is None:
             missing_value = self.df.default_fill_value
 
-        num_workers = len(self.df.columns) - 2 # do not count sequence or token
-        list_df = pd.DataFrame(np.empty((len(self.df.index)*num_workers, 4)), columns=['sample_id', 'token', 'worker_id', 'worker_label'])
+        num_workers = len(self.df.columns) - 2  # do not count sequence or token
+        list_df = pd.DataFrame(
+            np.empty((len(self.df.index) * num_workers, 4)),
+            columns=['sample_id', 'token', 'worker_id', 'worker_label'],
+        )
 
         # Place the correct value in the resulting dataframe list
         for sample_idx in range(len(self.df.index)):
             for worker_idx in range(2, num_workers):
-                list_df.iloc[(sample_idx*num_workers) + worker_idx] = [self.df.iloc[sample_idx, 0], self.df.iloc[sample_idx, 1], worker_idx, self.df.iloc[sample_idx, worker_idx + 2]]
+                list_df.iloc[(sample_idx * num_workers) + worker_idx] = [self.df.iloc[sample_idx, 0], self.df.iloc[sample_idx, 1], worker_idx, self.df.iloc[sample_idx, worker_idx + 2]]
 
         # remove all rows with missing values for labels from dataframe list.
         list_df = list_df[~list_df.eq(missing_value).any(1)]
@@ -297,8 +299,8 @@ class CrowdLayer(BaseDataset):
         dict:
             {header: value, header: value, ...}
         """
-        #row = self.df.iloc[i]
-        #return dict(row)
+        # row = self.df.iloc[i]
+        # return dict(row)
         # TODO Currently uncertiain what would make the most intuitive sense for
         # this feature, given the multiple dataframes.
         raise NotImplementedError
@@ -307,7 +309,7 @@ class CrowdLayer(BaseDataset):
         """Converts from sparse matrix format into annotation list format."""
         # TODO Currently expects df to be in sparse matrix format without a check!
 
-    def load_images(image_dir, train_filenames, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None):
+    def load_images(self, image_dir, train_filenames, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None):
         """Load the images and optionally crop  by the bounding box files.
 
         Parameters
@@ -324,7 +326,7 @@ class CrowdLayer(BaseDataset):
             The shape of the images to be reshaped to if provided, otherwise no
             resizing is done.
         """
-        if not os.path.isdir(image_dir):
+        if not isinstance(image_dir, str) or not os.path.isdir(image_dir):
             raise IOError(f'The directory `{image_dir}` does not exist.')
 
         # NOTE assumes self.annotation is done and is sparse matrix
@@ -334,35 +336,100 @@ class CrowdLayer(BaseDataset):
         samples['index'] = samples.index
         filename_idx = samples.set_index('filename').to_dict()['index']
 
-        if ground_truth:
-            samples['ground_truth'] = pd.read_csv(ground_truth_file, header=None)
+        if isinstance(ground_truth, str) and os.path.isfile(ground_truth):
+            samples['ground_truth'] = pd.read_csv(ground_truth, header=None)
 
-        if majority_vote:
-            samples['majority_vote'] = pd.read_csv(majority_vote_file, header=None)
+        if isinstance(majority_vote, str) and os.path.isfile(majority_vote):
+            samples['majority_vote'] = pd.read_csv(majority_vote, header=None)
 
         images = np.empty(len(samples)).tolist()
-        for class_dir in os.listdir(image_dir)
+        shape = np.empty(len(samples)).tolist()
+        for class_dir in os.listdir(image_dir):
             class_dir_path = os.path.join(image_dir, class_dir)
 
-            for filename for os.listdir(class_dir_path):
+            if not os.path.isdir(class_dir_path):
+                continue
+
+            for filename in os.listdir(class_dir_path):
                 if filename in filename_idx:
-                    images[filename_idx[filename]] = cv2.imread(
+                    img = cv2.imread(
                         os.path.join(class_dir_path, filename),
                         color
                     )
+                    images[filename_idx[filename]] = img
+                    shape[filename_idx[filename]] = img.shape
                 else:
                     print(f'{filename} not in filename_idx')
 
-        samples['images'] = images
+        samples['image'] = images
+        samples['shape'] = shape
+
+        samples.drop(columns=['index', 'filename'], inplace=True)
 
         # put every row of annotations into its index in df
         if annotations is not None:
-            samples['annotations'] = [annotations[i] for i in range(len(annotations))]
+            samples['annotations'] = [annotations.iloc[i] for i in range(len(annotations))]
 
-        if isinstance(output, str):
-            # TODO save as TFRecords
+        if not isinstance(output, str):
+            return samples
 
-        return samples
+        with tf.io.TFRecordWriter(output) as writer:
+            # NOTE assumes sparse dataframe
+            samples['annotations'] = samples['annotations'].apply(
+                lambda x: tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=x)
+                    #bytes_list=tf.train.BytesList(value=[x.values.values.tobytes()])
+                )
+            )
+            samples['image'] = samples['image'].apply(
+                lambda x: tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=x.flatten())
+                )
+            )
+            samples['shape'] = samples['shape'].apply(
+                lambda x: tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=x)
+                )
+            )
 
-    def load_tf_records()
-        return
+            if ground_truth:
+                samples['ground_truth'] = samples['ground_truth'].apply(
+                    lambda x: tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[x])
+                    )
+                )
+
+            if majority_vote:
+                samples['majority_vote'] = samples['majority_vote'].apply(
+                    lambda x: tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[x])
+                    )
+                )
+
+            for i in samples.index:
+                writer.write(
+                    tf.train.Example(
+                        features=tf.train.Features(feature=dict(samples.iloc[i])),
+                    ).SerializeToString()
+                )
+
+    def load_tf_records(self, filepath, sample_description=False, ground_truth=False, majority_vote=False):
+        raw_record = tf.data.TFRecordDataset(filepath)
+
+        if sample_description or ground_truth or majority_vote:
+            sample_description = {
+                'image': tf.FixedLenFeature((256, 256, 3), tf.int64),
+                'annotations': tf.FixedLenFeature([77], tf.int64),
+                'shape': tf.FixedLenFeature([3], tf.int64),
+            }
+
+            if ground_truth:
+                sample_description['ground_truth'] = tf.FixedLenFeature([], tf.int64)
+            if majority_vote:
+                sample_description['majority_vote'] = tf.FixedLenFeature([], tf.int64)
+
+            return raw_record, sample_description
+
+        # TODO need to have output be standardized.
+
+        return raw_record
