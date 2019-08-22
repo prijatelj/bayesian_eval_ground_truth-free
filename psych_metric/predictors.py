@@ -35,19 +35,29 @@ def activation_summary(x):
     tf.summary.histogram(tensor_name + '/activations', x)
     tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
-def kfold_cv(model, data, k=5, random_seed=None, save_pred=True, save_model=True, stratified=True, test_focus_fold=True):
+
+def kfold_cv(model, data, k=5, random_seed=None, save_pred=True, save_model=True, stratified=None, test_focus_fold=True):
     """Generator for kfold cross validation.
 
     Parameters
     ----------
     model :
-        custom class or something needs: train, test, save
+        custom class or something needs: fit/train, eval, save
     data :
+        The data to be split into folds and used in cross validation.
     k : int, optional
+        The number of folds.
     random_seed : int, optional
+        The seed used for initializing the random number generators.
     save_pred : bool, optional
+        returns the predictions in addition to the rest of the output.
     save_model : bool, optional
-    stratified : bool, optional
+        returns the model in addition to the rest of the output.
+    stratified : bool | array-like, optional
+        By default the data splitting is unstratified (default is None). If
+        True, the data is stratified when split to preserve class balance of
+        original dataset. If a 1-D array-like object of same length as data,
+        then it is treated as the strata of the data for splitting.
     test_focus_fold : bool, optional
         If True (default), the single focus fold will be the current
         iteration's test set while the rest are used for training the model,
@@ -56,15 +66,17 @@ def kfold_cv(model, data, k=5, random_seed=None, save_pred=True, save_model=True
     """
 
     # TODO data index splitting
+    if stratified:
 
+    else:
 
     for i, (other_folds, focus_fold) in enumerate(data_folds):
         logging.info(f'{i}/{k} fold cross validation: Training starting')
 
-        model.train(other_folds if test_focus_fold else focus_fold, **train_args)
+        model.fit(other_folds if test_focus_fold else focus_fold, **train_args)
 
         logging.info(f'{i}/{k} fold cross validation: Testing starting')
-        pred = model.predict(test if test_focus_fold else train, **test_args)
+        pred = model.eval(test if test_focus_fold else train, **test_args)
 
         result = [summary]
         if save_pred:
@@ -72,6 +84,7 @@ def kfold_cv(model, data, k=5, random_seed=None, save_pred=True, save_model=True
         if save_model:
             result.append(model)
         yield *result
+
 
 def run_lenet(loss_id, epochs=1, dense_size=500, loss_weights=1.0, joint_loss_method='arithmetic_mean', batch_size=1000, model_id='lenet++', shuffle_data=True, num_target_labels=None, output_dir=None, random_seed=None, sess_config=None, summary_path='', **kwargs):
     """Runs LeNet[++] on MNIST."""
