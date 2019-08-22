@@ -35,7 +35,7 @@ def activation_summary(x):
     tf.summary.histogram(tensor_name + '/activations', x)
     tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
-def kfold_cv(model, data, k=5, random_seed=None, save_pred=True, save_model=True, stratified=True, target_fold_is_test=True):
+def kfold_cv(model, data, k=5, random_seed=None, save_pred=True, save_model=True, stratified=True, test_focus_fold=True):
     """Generator for kfold cross validation.
 
     Parameters
@@ -48,23 +48,23 @@ def kfold_cv(model, data, k=5, random_seed=None, save_pred=True, save_model=True
     save_pred : bool, optional
     save_model : bool, optional
     stratified : bool, optional
-    target_fold_is_test : bool, optional
-        If True (default), the single target fold will be the current
+    test_focus_fold : bool, optional
+        If True (default), the single focus fold will be the current
         iteration's test set while the rest are used for training the model,
-        otherwise the target fold is the only fold used for training and the
+        otherwise the focus fold is the only fold used for training and the
         rest are used for testing.
     """
 
-
     # TODO data index splitting
 
-    # Loop
-    for i, (train, test) in enumerate(data_folds):
-        logging.info(f'{i}/{k} fold cross validation starting.')
 
-        model.train(train, **train_params)
+    for i, (other_folds, focus_fold) in enumerate(data_folds):
+        logging.info(f'{i}/{k} fold cross validation: Training starting')
 
-        pred = model.test(test, **test_params)
+        model.train(other_folds if test_focus_fold else focus_fold, **train_args)
+
+        logging.info(f'{i}/{k} fold cross validation: Testing starting')
+        pred = model.predict(test if test_focus_fold else train, **test_args)
 
         result = [summary]
         if save_pred:

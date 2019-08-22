@@ -296,7 +296,7 @@ class CrowdLayer(BaseDataset):
 
         Returns
         -------
-        dict:
+        dict :
             {header: value, header: value, ...}
         """
         # row = self.df.iloc[i]
@@ -309,22 +309,24 @@ class CrowdLayer(BaseDataset):
         """Converts from sparse matrix format into annotation list format."""
         # TODO Currently expects df to be in sparse matrix format without a check!
 
-    def load_images(self, image_dir, train_filenames, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None):
+    def load_images(self, image_dir, train_filenames, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1):
         """Load the images and optionally crop  by the bounding box files.
 
         Parameters
         ----------
-        image_dir: str
+        image_dir : str
             filepath to directory containing images
-        train_filenames: str
+        train_filenames : str
             filepath to file containing filenames of images
-        ground_truth: str
+        ground_truth : str
             filepath to file containing ground truth label
-        majority_vote: str
+        majority_vote : str
             filepath to file containing majority votes of annotations
-        shape: tuple of ints
+        shape : tuple of ints
             The shape of the images to be reshaped to if provided, otherwise no
             resizing is done.
+        color : int
+            The
         """
         if not isinstance(image_dir, str) or not os.path.isdir(image_dir):
             raise IOError(f'The directory `{image_dir}` does not exist.')
@@ -373,45 +375,60 @@ class CrowdLayer(BaseDataset):
         if not isinstance(output, str):
             return samples
 
-        with tf.io.TFRecordWriter(output) as writer:
-            # NOTE assumes sparse dataframe
-            samples['annotations'] = samples['annotations'].apply(
-                lambda x: tf.train.Feature(
-                    int64_list=tf.train.Int64List(value=x)
-                    #bytes_list=tf.train.BytesList(value=[x.values.values.tobytes()])
-                )
+        # NOTE assumes sparse dataframe
+        samples['annotations'] = samples['annotations'].apply(
+            lambda x: tf.train.Feature(
+                int64_list=tf.train.Int64List(value=x)
             )
-            samples['image'] = samples['image'].apply(
-                lambda x: tf.train.Feature(
-                    int64_list=tf.train.Int64List(value=x.flatten())
-                )
+        )
+        samples['image'] = samples['image'].apply(
+            lambda x: tf.train.Feature(
+                int64_list=tf.train.Int64List(value=x.flatten())
             )
-            samples['shape'] = samples['shape'].apply(
+        )
+        samples['shape'] = samples['shape'].apply(
+            lambda x: tf.train.Feature(
+                int64_list=tf.train.Int64List(value=x)
+            )
+        )
+
+        if ground_truth:
+            samples['ground_truth'] = samples['ground_truth'].apply(
                 lambda x: tf.train.Feature(
-                    int64_list=tf.train.Int64List(value=x)
+                    int64_list=tf.train.Int64List(value=[x])
                 )
             )
 
-            if ground_truth:
-                samples['ground_truth'] = samples['ground_truth'].apply(
-                    lambda x: tf.train.Feature(
-                        int64_list=tf.train.Int64List(value=[x])
+        if majority_vote:
+            samples['majority_vote'] = samples['majority_vote'].apply(
+                lambda x: tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=[x])
+                )
+            )
+
+        if num_tfrecords > 1:
+            # TODO implement the proper saving of multiple TFRecords.
+            raise NotImplementedError
+
+            idx_split = np.floor(np.array(range(0, num_tfrecords + 1) / num_tfrecords) * len(samples))
+            print(idx_split)
+
+            for r in range(num_tfrecords):
+                with tf.io.TFRecordWriter(output) as writer:
+                    for i in samples.index:
+                        writer.write(
+                            tf.train.Example(
+                                features=tf.train.Features(feature=dict(samples.iloc[i])),
+                            ).SerializeToString()
+                        )
+        else:
+            with tf.io.TFRecordWriter(output) as writer:
+                for i in samples.index:
+                    writer.write(
+                        tf.train.Example(
+                            features=tf.train.Features(feature=dict(samples.iloc[i])),
+                        ).SerializeToString()
                     )
-                )
-
-            if majority_vote:
-                samples['majority_vote'] = samples['majority_vote'].apply(
-                    lambda x: tf.train.Feature(
-                        int64_list=tf.train.Int64List(value=[x])
-                    )
-                )
-
-            for i in samples.index:
-                writer.write(
-                    tf.train.Example(
-                        features=tf.train.Features(feature=dict(samples.iloc[i])),
-                    ).SerializeToString()
-                )
 
     def load_tf_records(self, filepath, sample_description=False, ground_truth=False, majority_vote=False):
         raw_record = tf.data.TFRecordDataset(filepath)
