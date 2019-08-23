@@ -44,6 +44,12 @@ def run_experiment(dataset_id, data_config, model_config, kfold_cv_args):
     output_dir_kfolds = os.path.join(output_dir, f'{kfolds}_fold_cv')
     os.makedirs(output_dir_kfolds, exist_ok=True)
 
+    summary = {
+        dataset_id: data_config,
+        'model_config': model_config,
+        'kfold_cv_args': kfold_cv_args,
+    }
+
     kfold_cv(model_config,
         images,
         y_data,
@@ -279,7 +285,7 @@ if __name__ == '__main__':
         '--dataset',
         default='labelme',
         help='The dataset to use',
-        choices=['LabelMe', 'All_Ratings'],
+        choices=['LabelMe', 'FacialBeauty', 'All_Ratings'],
     )
     parser.add_argument(
         'dataset_filepath',
