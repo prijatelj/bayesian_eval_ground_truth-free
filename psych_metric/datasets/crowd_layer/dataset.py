@@ -46,7 +46,7 @@ class CrowdLayer(BaseDataset):
     """
     datasets = frozenset({'LabelMe', 'MovieReviews', 'ner-mturk'})
 
-    def __init__(self, dataset='MovieReviews', dataset_filepath=None, encode_columns=None):
+    def __init__(self, dataset='LabelMe', dataset_filepath=None, encode_columns=None):
         """initialize class by loading the data
 
         Parameters
