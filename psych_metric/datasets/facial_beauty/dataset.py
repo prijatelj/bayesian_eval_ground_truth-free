@@ -33,7 +33,14 @@ class FacialBeauty(BaseDataset):
         False. Default value is False
     """
 
-    datasets = frozenset(['All_Ratings', 'Asian_Female', 'Asian_Male', 'Caucasian_Female', 'Caucasian_Male'])
+    datasets = frozenset([
+        'FacialBeauty',
+        'All_Ratings',
+        'Asian_Female',
+        'Asian_Male',
+        'Caucasian_Female',
+        'Caucasian_Male',
+    ])
 
     def __init__(self, dataset='All_Ratings', dataset_filepath=None, encode_columns=None, sparse_matrix=False):
         """initialize class by loading the data. No ground truth available.
@@ -49,7 +56,7 @@ class FacialBeauty(BaseDataset):
             Convert the data into a dataframe with the sparse matrix structure
         """
         self._check_dataset(dataset, FacialBeauty.datasets)
-        self.dataset = dataset
+        self.dataset = 'All_Ratings' if dataset == 'FacialBeauty' else dataset
         # NOTE this could be percieved as a regression task, or at least an ordinal task
         self.task_type = 'regression' # regression or ordinal due to ints.
 
