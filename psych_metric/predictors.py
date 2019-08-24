@@ -132,12 +132,6 @@ def kfold_cv(
             'focus_fold': i + 1,
         })
 
-        kfold_summary['runtimes'] = {
-            'init_load': {},
-            'train': {},
-            'test': {},
-        }
-
         output_dir_eval_fold = os.path.join(output_dir, f'eval_fold_{i+1}')
         os.makedirs(output_dir_eval_fold, exist_ok=True)
 
@@ -148,8 +142,8 @@ def kfold_cv(
 
         model = load_model(**model_config)
 
-        kfold_summary['runtimes']['init_load']['process'] = process_time() - start_process_time
-        kfold_summary['runtimes']['init_load']['perf'] = perf_counter() - start_perf_time
+        init_load_process = process_time() - start_process_time
+        init_load_perf = perf_counter() - start_perf_time
 
         # Set the correct train and test indices
         if test_focus_fold:
@@ -168,8 +162,8 @@ def kfold_cv(
             **model_config['train_args']
         )
 
-        kfold_summary['runtimes']['train']['process'] = process_time() - start_process_time
-        kfold_summary['runtimes']['train']['perf'] = perf_counter() - start_perf_time
+        train_process = process_time() - start_process_time
+        train_perf = perf_counter() - start_perf_time
 
         if save_model:
             model.save(os.path.join(
@@ -177,7 +171,7 @@ def kfold_cv(
                 f'{model_config["model_id"]}.h5',
             ))
 
-        logging.info(f'{i}/{kfolds} fold cross validation: Testing starting')
+        logging.info(f'{i}/{kfolds} fold cross validation: Testing')
 
         start_process_time = process_time()
         start_perf_time = perf_counter()
@@ -188,8 +182,8 @@ def kfold_cv(
             **model_config['test_args']
         )
 
-        kfold_summary['runtimes']['test']['process'] = process_time() - start_process_time
-        kfold_summary['runtimes']['test']['perf'] = perf_counter() - start_perf_time
+        test_process = process_time() - start_process_time
+        test_perf = perf_counter() - start_perf_time
 
         if save_pred:
             np.savetxt(
@@ -198,8 +192,26 @@ def kfold_cv(
                 delimiter=',',
             )
 
+        kfold_summary['runtimes'] = {
+            'init_load': {
+                'process': init_load_process,
+                'perf': init_load_perf,
+            },
+            'train': {
+                'process': train_process,
+                'perf': train_perf,
+            },
+            'test': {
+                'process': test_process,
+                'perf': test_perf,
+            },
+        }
+
         # save summary
-        save_json(os.path.join(output_dir_eval_fold, 'summary.json'), summary)
+        save_json(
+            os.path.join(output_dir_eval_fold, 'summary.json'),
+            kfold_summary,
+        )
 
 
 def load_model(model_id, crowd_layer=False, **kwargs):
