@@ -309,7 +309,7 @@ class CrowdLayer(BaseDataset):
         """Converts from sparse matrix format into annotation list format."""
         # TODO Currently expects df to be in sparse matrix format without a check!
 
-    def load_images(self, image_dir, train_filenames, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
+    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
         """Load the images and optionally crop  by the bounding box files.
 
         Parameters
@@ -333,8 +333,35 @@ class CrowdLayer(BaseDataset):
             images and samples if output is not provided, otherwise saves the
             tfrecords to file and returns None.
         """
-        if not isinstance(image_dir, str) or not os.path.isdir(image_dir):
+        if image_dir is None:
+            image_dir = os.path.join(
+                self.data_dir,
+                self.dataset,
+                'train',
+            )
+        elif not isinstance(image_dir, str) or not os.path.isdir(image_dir):
             raise IOError(f'The directory `{image_dir}` does not exist.')
+
+        if train_filenames is None:
+            train_filenames = os.path.join(
+                self.data_dir,
+                self.dataset,
+                'filenames_train.txt',
+            )
+
+        if majority_vote is None:
+            majority_vote = os.path.join(
+                self.data_dir,
+                self.dataset,
+                'answers_mv.txt',
+            )
+
+        if ground_truth is None:
+            majority_vote = os.path.join(
+                self.data_dir,
+                self.dataset,
+                'labels_train.txt',
+            )
 
         # NOTE assumes self.annotation is done and is sparse matrix
 
@@ -358,10 +385,10 @@ class CrowdLayer(BaseDataset):
                     img = cv2.imread(
                         os.path.join(class_dir_path, filename),
                         color
-                    )
+                    ).astype(np.uint8)
 
                     if normalize:
-                        img /= 255.0
+                        img = img / 255.0
 
                     images[filename_idx[filename]] = img
                     if output and isinstance(output, str):
