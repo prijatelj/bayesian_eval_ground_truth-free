@@ -159,7 +159,6 @@ def kfold_cv(
 
         pred = model.predict(
             features[test_idx],
-            labels[test_idx],
             **model_config['test'] if 'test' in model_config else {}
         )
 
