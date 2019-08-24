@@ -4,26 +4,31 @@ from copy import deepcopy
 from datetime import datetime
 import json
 import logging
-import math
 import os
 import random
 
 import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import LabelBinarizer
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import KFold, StratifiedKFold
 
 from psych_metric.datasets import data_handler
 
 
-def run_experiment(dataset_id, data_config, model_config, kfold_cv_args):
+def run_experiment(
+        output_dir,
+        label_src,
+        dataset_id,
+        data_config,
+        model_config,
+        kfold_cv_args):
     # Load and prep dataset
     dataset = data_handler.load_dataset(dataset_id, **data_config)
-    images, labels = data.load_images()
+    images, labels = dataset.load_images()
 
     # select the label source for this run
     if label_src == 'annotations':
-        labels = data.df
+        labels = dataset.df
 
         # TODO handle proper binariing of annotations labels.
         raise NotImplementedError
@@ -40,20 +45,17 @@ def run_experiment(dataset_id, data_config, model_config, kfold_cv_args):
             + f'"annotations", but recieved {label_src}',
         )
 
-    # Create the kfolds directory for this experiment.
-    output_dir_kfolds = os.path.join(output_dir, f'{kfolds}_fold_cv')
-    os.makedirs(output_dir_kfolds, exist_ok=True)
-
     summary = {
         dataset_id: data_config,
         'model_config': model_config,
         'kfold_cv_args': kfold_cv_args,
     }
 
-    kfold_cv(model_config,
+    kfold_cv(
+        model_config,
         images,
         y_data,
-        output_dir_kfolds,
+        output_dir,
         summary=summary,
         **kfold_cv_args,
     )
@@ -64,6 +66,7 @@ def kfold_cv(
         features,
         labels,
         output_dir,
+        summary,
         kfolds=5,
         random_seed=None,
         save_pred=True,
@@ -71,8 +74,7 @@ def kfold_cv(
         stratified=None,
         test_focus_fold=True,
         shuffle=True,
-        repeat=None,
-        summary=None):
+        repeat=None):
     """Generator for kfold cross validation.
 
     Parameters
@@ -101,11 +103,15 @@ def kfold_cv(
         rest are used for testing.
     """
     if not random_seed:
-        random_seed = random.randint(0, 2**32-1)
+        random_seed = random.randint(0, 2**32 - 1)
 
         # TODO use same seed for initializing the model everytime or different seeds?
         raise NotImplementedError
         # shuffle param indicates if they want data shuffling or not, ie. seed to be made or not for shuffling only.
+
+    # Create the kfolds directory for this experiment.
+    output_dir_kfolds = os.path.join(output_dir, f'{kfolds}_fold_cv')
+    os.makedirs(output_dir_kfolds, exist_ok=True)
 
     # Data index splitting
     if stratified:
@@ -118,20 +124,16 @@ def kfold_cv(
             np.random.seed(random_seed)
             tf.set_random_seed(random_seed)
 
-        kfold_summary = summary.copy() if summary else {}
-        kfold_summary.update({
+        kfold_summary = summary.copy()
+        kfold_summary['kfold_cv_args'].update({
             'random_seed': random_seed,
-            'kfolds': kfolds,
             'focus_fold': i + 1,
-            'test_focus_fold': test_focus_fold,
-            'stratified': stratified,
-            'shuffle': shuffle,
         })
 
-        output_dir_eval_fold = os.path.join(output_dir, f'eval_fold_{k+1}')
+        output_dir_eval_fold = os.path.join(output_dir, f'eval_fold_{i+1}')
         os.makedirs(output_dir_eval_fold, exist_ok=True)
 
-        logging.info(f'{i}/{k} fold cross validation: Training')
+        logging.info(f'{i}/{kfolds} fold cross validation: Training')
 
         model = load_model(**model_config)
 
@@ -143,7 +145,7 @@ def kfold_cv(
             test_idx = other_folds
 
         # TODO records times (profile) init, fit, and test.
-        #times = timed_func()
+        # times = timed_func()
         model.fit(
             features[train_idx],
             labels[train_idx],
@@ -156,7 +158,7 @@ def kfold_cv(
                 f'{model_config["model_id"]}.h5',
             ))
 
-        logging.info(f'{i}/{k} fold cross validation: Testing starting')
+        logging.info(f'{i}/{kfolds} fold cross validation: Testing starting')
         pred = model.eval(
             features[test_idx],
             labels[test_idx],
@@ -164,12 +166,13 @@ def kfold_cv(
         )
 
         if save_pred:
-            # TODO save predictions? May be saved in summary.
-            raise NotImplementedError
+            np.savetxt(
+                os.path.join(output_dir_eval_fold, 'pred.csv'),
+                pred,
+                delimiter=',',
+            )
 
-        # TODO merics?
-
-        # TODO save summary
+        # save summary
         save_json(os.path.join(output_dir_eval_fold, 'summary'), summary)
 
 
@@ -179,6 +182,7 @@ def load_model(model_id, crowd_layer=False, **kwargs):
 
         if crowd_layer:
             # TODO model.compile('adam', CrowdLayer...)
+            raise NotImplementedError
         else:
             model.compile('adam', 'categorical_crossentropy')
     if model_id.lower() == 'resnext50':
@@ -186,24 +190,25 @@ def load_model(model_id, crowd_layer=False, **kwargs):
 
         if crowd_layer:
             # TODO model.compile('adam', CrowdLayer...)
+            raise NotImplementedError
         else:
             model.compile('adam', 'categorical_crossentropy')
 
     return model
 
 
-def vgg16_model(input_shape=(256, 256, 3), crowd_layer=False)
+def vgg16_model(input_shape=(256, 256, 3), num_labels=8, crowd_layer=False):
     input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
 
     # create model and freeze them model.
-    vgg16 = tf.keras.applications.vgg16.VGG16(input_tensor=x)
+    vgg16 = tf.keras.applications.vgg16.VGG16(input_tensor=input_layer)
     for layer in vgg16.layers:
         layer.trainable = False
 
     # Add the layers specified in Crowd Layer paper.
     x = tf.keras.layers.Dense(128, 'relu')(vgg16)
     x = tf.keras.layers.Dropout(0.5)(x)
-    x = tf.keras.layers.Dense(num_target_labels, 'softmax')(x)
+    x = tf.keras.layers.Dense(num_labels, 'softmax')(x)
 
     if crowd_layer:
         # TODO: Crowd Layer for the VGG16 model.
@@ -212,11 +217,11 @@ def vgg16_model(input_shape=(256, 256, 3), crowd_layer=False)
     return tf.keras.models.Model(inputs=input_layer, outputs=x)
 
 
-def resnext50_model(input_shape=(256, 256, 3), crowd_layer=False)
+def resnext50_model(input_shape=(256, 256, 3), crowd_layer=False):
     input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
 
     # create model and freeze them model.
-    resnext50 = tf.keras.applications.resnext.ResNeXt50(input_tensor=x)
+    resnext50 = tf.keras.applications.resnext.ResNeXt50(input_tensor=input_layer)
 
     # TODO need to do a thing to make the model for the dataset.
 
@@ -224,7 +229,7 @@ def resnext50_model(input_shape=(256, 256, 3), crowd_layer=False)
         # TODO: Crowd Layer for the VGG16 model.
         raise NotImplementedError
 
-    return tf.keras.models.Model(inputs=input_layer, outputs=x)
+    return tf.keras.models.Model(inputs=input_layer, outputs=resnext50)
 
 
 def save_json(filepath, results, additional_info=None, deep_copy=True):
@@ -249,6 +254,14 @@ def save_json(filepath, results, additional_info=None, deep_copy=True):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run proof of concept ')
 
+    # Model args.
+    parser.add_argument(
+        '-m',
+        '--model_id',
+        default='vgg16',
+        help='The model to use',
+        choices=['vgg16', 'resnext50'],
+    )
     parser.add_argument(
         '-b',
         '--batch_size',
@@ -263,23 +276,15 @@ if __name__ == '__main__':
         type=int,
         help='The number of epochs.',
     )
-
     parser.add_argument(
-        '-t',
-        '--num_target_labels',
-        default=10,
+        '-r',
+        '--random_seed',
+        default=None,
         type=int,
-        help='The number of target labels.',
+        help='The random seed to use for initialization of the model.',
     )
 
-    parser.add_argument(
-        '-m',
-        '--model_id',
-        default='vgg16',
-        help='The model to use',
-        choices=['vgg16', 'resnext50'],
-    )
-
+    # Data args
     parser.add_argument(
         '-d',
         '--dataset',
@@ -292,6 +297,7 @@ if __name__ == '__main__':
         help='The filepath to the data directory',
     )
 
+    # Output args
     parser.add_argument(
         '-o',
         '--output_dir',
@@ -305,11 +311,18 @@ if __name__ == '__main__':
         help='Filepath appened to the output directory for saving the summaries.',
     )
     parser.add_argument(
-        '-r',
-        '--random_seed',
-        default=None,
-        type=int,
-        help='The random seed to use for initialization of the model.',
+        '-d',
+        '--dataset',
+        default='labelme',
+        help='The dataset to use',
+        choices=['LabelMe', 'FacialBeauty', 'All_Ratings'],
+    )
+    parser.add_argument(
+        '-l',
+        '--label_src',
+        default='majority_vote',
+        help='The source of labels to use for training.',
+        choices=['majority_vote', 'ground_truth', 'annotations'],
     )
 
     # Hardware
@@ -346,37 +359,48 @@ if __name__ == '__main__':
         type=int,
         help='The number of available CPUs.',
     )
-    parser.add_argument('--shuffle_data',
+    parser.add_argument(
+        '--shuffle_data',
         action='store_false',
         help='Disable shuffling of data.',
     )
-    parser.add_argument('--crowd_layer',
+    parser.add_argument(
+        '--crowd_layer',
         action='store_true',
         help='Use crowd layer in ANNs.',
     )
-    parser.add_argument('--no_save_pred',
+    parser.add_argument(
+        '--no_save_pred',
         action='store_false',
         help='Predictions will not be saved.',
     )
-    parser.add_argument('--no_save_model',
+    parser.add_argument(
+        '--no_save_model',
         action='store_false',
         help='Model will not be saved.',
     )
-    parser.add_argument('--stratified',
+    parser.add_argument(
+        '--stratified',
         action='store_true',
         help='Stratified K fold cross validaiton will be used.',
     )
-    parser.add_argument('--train_focus_fold',
+    parser.add_argument(
+        '--train_focus_fold',
         action='store_true',
-        help='The focus fold in K fold cross validaiton will be used for ' \
-            + 'training and the rest will be used for testing..',
+        help='The focus fold in K fold cross validaiton will be used for '
+        + 'training and the rest will be used for testing..',
     )
 
     args = parser.parse_args()
 
-    if isinstance(args.loss_weights, list):
-        print(args.loss_weights)
-        args.loss_weights = np.array(args.loss_weights, dtype=np.float32)
+    # create identifying directory path for saving results.
+    args.output_dir = os.path.join(
+        args.output_dir,
+        args.dataset_id,
+        args.model_id,
+        args.random_seed,
+        datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+    )
 
     # Set the Hardware
     config = tf.ConfigProto(
@@ -389,8 +413,8 @@ if __name__ == '__main__':
         } if args.gpu >= 0 else {'CPU': args.cpu},
     )
 
-    #params = vars(args)
-    #params['sess_config'] = config
+    # params = vars(args)
+    # params['sess_config'] = config
     tf.keras.backend.tensorflow_backend.set_session(config=tf.Session(config))
 
     # package the arguements:
@@ -418,6 +442,8 @@ if __name__ == '__main__':
         raise NotImplementedError('Selecting specific GPU not implemented.')
     else:
         run_experiment(
+            args.output_dir,
+            args.label_src,
             args.dataset_id,
             data_config,
             model_config,
