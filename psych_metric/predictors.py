@@ -50,6 +50,7 @@ def run_experiment(
         dataset_id: data_config,
         'model_config': model_config,
         'kfold_cv_args': kfold_cv_args,
+        'label_binarizer': label_bin.classes_.tolist()
     }
 
     kfold_cv(
@@ -313,13 +314,20 @@ if __name__ == '__main__':
     parser.add_argument(
         '-d',
         '--dataset',
-        default='labelme',
+        default='LabelMe',
         help='The dataset to use',
         choices=['LabelMe', 'FacialBeauty', 'All_Ratings'],
     )
     parser.add_argument(
         'dataset_filepath',
         help='The filepath to the data directory',
+    )
+    parser.add_argument(
+        '-l',
+        '--label_src',
+        default='majority_vote',
+        help='The source of labels to use for training.',
+        choices=['majority_vote', 'ground_truth', 'annotations'],
     )
 
     # Output args
@@ -334,20 +342,6 @@ if __name__ == '__main__':
         '--summary_path',
         default='',
         help='Filepath appened to the output directory for saving the summaries.',
-    )
-    parser.add_argument(
-        '-d',
-        '--dataset',
-        default='labelme',
-        help='The dataset to use',
-        choices=['LabelMe', 'FacialBeauty', 'All_Ratings'],
-    )
-    parser.add_argument(
-        '-l',
-        '--label_src',
-        default='majority_vote',
-        help='The source of labels to use for training.',
-        choices=['majority_vote', 'ground_truth', 'annotations'],
     )
 
     # Hardware
