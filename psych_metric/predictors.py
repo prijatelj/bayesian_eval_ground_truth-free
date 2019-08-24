@@ -135,16 +135,6 @@ def kfold_cv(
         output_dir_eval_fold = os.path.join(output_dir_kfolds, f'eval_fold_{i+1}')
         os.makedirs(output_dir_eval_fold, exist_ok=True)
 
-        logging.info(f'{i}/{kfolds} fold cross validation: Training')
-
-        start_process_time = process_time()
-        start_perf_time = perf_counter()
-
-        model = load_model(model_config['model_id'], **model_config['init'])
-
-        init_load_process = process_time() - start_process_time
-        init_load_perf = perf_counter() - start_perf_time
-
         # Set the correct train and test indices
         if test_focus_fold:
             train_idx = other_folds
@@ -153,30 +143,21 @@ def kfold_cv(
             train_idx = focus_fold
             test_idx = other_folds
 
-        start_process_time = process_time()
-        start_perf_time = perf_counter()
+        logging.info(f'{i}/{kfolds} fold cross validation: Training')
 
-        model.fit(
+        model, init_times, train_times = prepare_model(
+            model_config,
             features[train_idx],
             labels[train_idx],
-            **model_config['train'] if 'train' in model_config else {}
+            output_dir_eval_fold,
         )
-
-        train_process = process_time() - start_process_time
-        train_perf = perf_counter() - start_perf_time
-
-        if save_model:
-            model.save(os.path.join(
-                output_dir_eval_fold,
-                f'{model_config["model_id"]}.h5',
-            ))
 
         logging.info(f'{i}/{kfolds} fold cross validation: Testing')
 
         start_process_time = process_time()
         start_perf_time = perf_counter()
 
-        pred = model.evaluate(
+        pred = model.predict(
             features[test_idx],
             labels[test_idx],
             **model_config['test'] if 'test' in model_config else {}
@@ -193,14 +174,8 @@ def kfold_cv(
             )
 
         kfold_summary['runtimes'] = {
-            'init_load': {
-                'process': init_load_process,
-                'perf': init_load_perf,
-            },
-            'train': {
-                'process': train_process,
-                'perf': train_perf,
-            },
+            'init': init_times,
+            'train': train_times,
             'test': {
                 'process': test_process,
                 'perf': test_perf,
@@ -212,6 +187,40 @@ def kfold_cv(
             os.path.join(output_dir_eval_fold, 'summary.json'),
             kfold_summary,
         )
+
+
+def prepare_model(model_config, features, labels, output_dir=None):
+    if 'filepath' in model_config:
+        # TODO could remove from here and put into calling code when loading is possible
+        return tf.keras.models.load_model(model_config['filepath']), None, None
+
+    start_process_time = process_time()
+    start_perf_time = perf_counter()
+
+    model = load_model(model_config['model_id'], **model_config['init'])
+
+    init_process = process_time() - start_process_time
+    init_perf = perf_counter() - start_perf_time
+
+    start_process_time = process_time()
+    start_perf_time = perf_counter()
+
+    model.fit(
+        features,
+        labels,
+        **model_config['train'] if 'train' in model_config else {}
+    )
+
+    train_process = process_time() - start_process_time
+    train_perf = perf_counter() - start_perf_time
+
+    if isinstance(output_dir, str) and os.path.isdir(output_dir):
+        model.save(os.path.join(output_dir, f'{model_config["model_id"]}.h5'))
+
+    init_times = {'process': init_process, 'perf': init_perf}
+    train_times = {'process': train_process, 'perf': train_perf}
+
+    return model, init_times, train_times
 
 
 def load_model(model_id, crowd_layer=False, **kwargs):
