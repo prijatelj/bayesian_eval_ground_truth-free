@@ -117,9 +117,9 @@ def kfold_cv(
 
     # Data index splitting
     if stratified:
-        fold_indices = StratifiedKFold(kfolds, shuffle, random_seed)
+        fold_indices = StratifiedKFold(kfolds, shuffle, random_seed).split(features, labels)
     else:
-        fold_indices = KFold(kfolds, shuffle, random_seed)
+        fold_indices = KFold(kfolds, shuffle, random_seed).split(features)
 
     for i, (other_folds, focus_fold) in enumerate(fold_indices):
         if random_seed:
@@ -132,7 +132,7 @@ def kfold_cv(
             'focus_fold': i + 1,
         })
 
-        output_dir_eval_fold = os.path.join(output_dir, f'eval_fold_{i+1}')
+        output_dir_eval_fold = os.path.join(output_dir_kfolds, f'eval_fold_{i+1}')
         os.makedirs(output_dir_eval_fold, exist_ok=True)
 
         logging.info(f'{i}/{kfolds} fold cross validation: Training')
@@ -140,7 +140,7 @@ def kfold_cv(
         start_process_time = process_time()
         start_perf_time = perf_counter()
 
-        model = load_model(**model_config)
+        model = load_model(model_config['model_id'], **model_config['init'])
 
         init_load_process = process_time() - start_process_time
         init_load_perf = perf_counter() - start_perf_time
@@ -159,7 +159,7 @@ def kfold_cv(
         model.fit(
             features[train_idx],
             labels[train_idx],
-            **model_config['train_args']
+            **model_config['train'] if 'train' in model_config else {}
         )
 
         train_process = process_time() - start_process_time
@@ -176,10 +176,10 @@ def kfold_cv(
         start_process_time = process_time()
         start_perf_time = perf_counter()
 
-        pred = model.eval(
+        pred = model.evaluate(
             features[test_idx],
             labels[test_idx],
-            **model_config['test_args']
+            **model_config['test'] if 'test' in model_config else {}
         )
 
         test_process = process_time() - start_process_time
@@ -239,12 +239,13 @@ def vgg16_model(input_shape=(256, 256, 3), num_labels=8, crowd_layer=False):
     input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
 
     # create model and freeze them model.
-    vgg16 = tf.keras.applications.vgg16.VGG16(input_tensor=input_layer)
+    vgg16 = tf.keras.applications.vgg16.VGG16(False, input_tensor=input_layer)
     for layer in vgg16.layers:
         layer.trainable = False
 
     # Add the layers specified in Crowd Layer paper.
-    x = tf.keras.layers.Dense(128, 'relu')(vgg16)
+    x = tf.keras.layers.Flatten()(vgg16.layers[-1].output)
+    x = tf.keras.layers.Dense(128, 'relu')(x)
     x = tf.keras.layers.Dropout(0.5)(x)
     x = tf.keras.layers.Dense(num_labels, 'softmax')(x)
 
@@ -325,7 +326,7 @@ if __name__ == '__main__':
     # Data args
     parser.add_argument(
         '-d',
-        '--dataset',
+        '--dataset_id',
         default='LabelMe',
         help='The dataset to use',
         choices=['LabelMe', 'FacialBeauty', 'All_Ratings'],
@@ -429,7 +430,7 @@ if __name__ == '__main__':
         args.output_dir,
         args.dataset_id,
         args.model_id,
-        args.random_seed,
+        str(args.random_seed),
         datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
     )
 
@@ -446,7 +447,7 @@ if __name__ == '__main__':
 
     # params = vars(args)
     # params['sess_config'] = config
-    tf.keras.backend.tensorflow_backend.set_session(config=tf.Session(config))
+    tf.keras.backend.set_session(tf.Session(config=config))
 
     # package the arguements:
     data_config = {'dataset_filepath': args.dataset_filepath}
