@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import random
+from time import perf_counter, process_time
 
 import numpy as np
 import tensorflow as tf
@@ -130,13 +131,26 @@ def kfold_cv(
             'focus_fold': i + 1,
         })
 
+        kfold_summary['runtimes'] = {
+            'init_load': {},
+            'train': {},
+            'test': {},
+        }
+
         output_dir_eval_fold = os.path.join(output_dir, f'eval_fold_{i+1}')
         os.makedirs(output_dir_eval_fold, exist_ok=True)
 
         logging.info(f'{i}/{kfolds} fold cross validation: Training')
 
+        start_process_time = process_time()
+        start_perf_time = perf_counter()
+
         model = load_model(**model_config)
 
+        kfold_summary['runtimes']['init_load']['process'] = process_time() - start_process_time
+        kfold_summary['runtimes']['init_load']['perf'] = perf_counter() - start_perf_time
+
+        # Set the correct train and test indices
         if test_focus_fold:
             train_idx = other_folds
             test_idx = focus_fold
@@ -144,13 +158,17 @@ def kfold_cv(
             train_idx = focus_fold
             test_idx = other_folds
 
-        # TODO records times (profile) init, fit, and test.
-        # times = timed_func()
+        start_process_time = process_time()
+        start_perf_time = perf_counter()
+
         model.fit(
             features[train_idx],
             labels[train_idx],
             **model_config['train_args']
         )
+
+        kfold_summary['runtimes']['train']['process'] = process_time() - start_process_time
+        kfold_summary['runtimes']['train']['perf'] = perf_counter() - start_perf_time
 
         if save_model:
             model.save(os.path.join(
@@ -159,11 +177,18 @@ def kfold_cv(
             ))
 
         logging.info(f'{i}/{kfolds} fold cross validation: Testing starting')
+
+        start_process_time = process_time()
+        start_perf_time = perf_counter()
+
         pred = model.eval(
             features[test_idx],
             labels[test_idx],
             **model_config['test_args']
         )
+
+        kfold_summary['runtimes']['test']['process'] = process_time() - start_process_time
+        kfold_summary['runtimes']['test']['perf'] = perf_counter() - start_perf_time
 
         if save_pred:
             np.savetxt(
@@ -173,7 +198,7 @@ def kfold_cv(
             )
 
         # save summary
-        save_json(os.path.join(output_dir_eval_fold, 'summary'), summary)
+        save_json(os.path.join(output_dir_eval_fold, 'summary.json'), summary)
 
 
 def load_model(model_id, crowd_layer=False, **kwargs):
