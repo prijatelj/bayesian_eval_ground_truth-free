@@ -22,7 +22,8 @@ def run_experiment(
     dataset_id,
     data_config,
     model_config,
-    kfold_cv_args
+    kfold_cv_args,
+    random_seeds=None
 ):
     # Load and prep dataset
     dataset = data_handler.load_dataset(dataset_id, **data_config)
@@ -54,14 +55,30 @@ def run_experiment(
         'label_binarizer': label_bin.classes_.tolist()
     }
 
-    kfold_cv(
-        model_config,
-        images,
-        y_data,
-        output_dir,
-        summary=summary,
-        **kfold_cv_args,
-    )
+    if random_seeds:
+        kfold_cv_args.pop('random_seed', None)
+
+        for i, r in enumerate(random_seeds):
+            logging.info(f'{i}/{len(random_seeds)} Random Seeds: {r}')
+
+            kfold_cv(
+                model_config,
+                images,
+                y_data,
+                output_dir,
+                summary=summary,
+                random_seed=r,
+                **kfold_cv_args,
+            )
+    else:
+        kfold_cv(
+            model_config,
+            images,
+            y_data,
+            output_dir,
+            summary=summary,
+            **kfold_cv_args,
+        )
 
 
 def kfold_cv(
@@ -198,7 +215,7 @@ def prepare_model(model_config, features, labels, output_dir=None):
     start_perf_time = perf_counter()
     start_process_time = process_time()
 
-    model = load_model(model_config['model_id'], **model_config['init'])
+    model = load_model(model_config['model_id'], parts=model_config['parts'], **model_config['init'])
 
     init_process = process_time() - start_process_time
     init_perf = perf_counter() - start_perf_time
@@ -224,9 +241,9 @@ def prepare_model(model_config, features, labels, output_dir=None):
     return model, init_times, train_times
 
 
-def load_model(model_id, crowd_layer=False, **kwargs):
+def load_model(model_id, crowd_layer=False, parts='labelme', **kwargs):
     if model_id.lower() == 'vgg16':
-        model = vgg16_model(crowd_layer=crowd_layer, **kwargs)
+        model = vgg16_model(crowd_layer=crowd_layer, parts=parts, **kwargs)
 
         if crowd_layer:
             # TODO model.compile('adam', CrowdLayer...)
@@ -249,7 +266,7 @@ def vgg16_model(
     input_shape=(256, 256, 3),
     num_labels=8,
     crowd_layer=False,
-    parts='full',
+    parts='labelme',
 ):
     if parts == 'full' or parts == 'vgg16':
         input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
@@ -325,6 +342,13 @@ if __name__ == '__main__':
         default='vgg16',
         help='The model to use',
         choices=['vgg16', 'resnext50'],
+    )
+    parser.add_argument(
+        '-p',
+        '--parts',
+        default='labelme',
+        help='The part of the model to use, if parts are allowed (vgg16)',
+        choices=['full', 'vgg16', 'labelme'],
     )
     parser.add_argument(
         '-b',
@@ -481,6 +505,7 @@ if __name__ == '__main__':
         'model_id': args.model_id,
         'init': {'crowd_layer': args.crowd_layer},
         'train': {'epochs': args.epochs, 'batch_size': args.batch_size},
+        'parts': args.parts,
     }
 
     kfold_cv_args = {
