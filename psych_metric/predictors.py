@@ -56,21 +56,42 @@ def run_experiment(
     }
 
     if random_seeds:
-        kfold_cv_args.pop('random_seed', None)
+        output_dir = os.path.join(
+            output_dir,
+            dataset_id,
+            model_config['model_id'],
+        )
 
         for i, r in enumerate(random_seeds):
+            kfold_cv_args.pop('random_seed', None)
+
             logging.info(f'{i}/{len(random_seeds)} Random Seeds: {r}')
+
+            r_output_dir = os.path.join(
+                output_dir,
+                str(r),
+                datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+            )
 
             kfold_cv(
                 model_config,
                 images,
                 y_data,
-                output_dir,
+                r_output_dir,
                 summary=summary,
                 random_seed=r,
                 **kfold_cv_args,
             )
     else:
+        # create identifying directory path for saving results.
+        output_dir = os.path.join(
+            output_dir,
+            dataset_id,
+            model_config['model_id'],
+            str(kfold_cv_args['random_seed']),
+            datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+        )
+
         kfold_cv(
             model_config,
             images,
@@ -145,7 +166,7 @@ def kfold_cv(
             np.random.seed(random_seed)
             tf.set_random_seed(random_seed)
 
-        kfold_summary = summary.copy()
+        kfold_summary = deepcopy(summary)
         kfold_summary['kfold_cv_args'].update({
             'random_seed': random_seed,
             'focus_fold': i + 1,
@@ -366,8 +387,9 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-r',
-        '--random_seed',
+        '--random_seeds',
         default=None,
+        nargs='+',
         type=int,
         help='The random seed to use for initialization of the model.',
     )
@@ -472,16 +494,29 @@ if __name__ == '__main__':
         + 'training and the rest will be used for testing..',
     )
 
+    # Logging
+    parser.add_argument(
+        '--log_level',
+        default='WARNING',
+        help='The log level to be logged.',
+    )
+    parser.add_argument(
+        '--log_file',
+        default=None,
+        type=str,
+        help='The log file to be written to.',
+    )
+
     args = parser.parse_args()
 
-    # create identifying directory path for saving results.
-    args.output_dir = os.path.join(
-        args.output_dir,
-        args.dataset_id,
-        args.model_id,
-        str(args.random_seed),
-        datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
-    )
+    # Set logging configuration
+    numeric_level = getattr(logging, args.log_level.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError('Invalid log level: %s' % args.log_level)
+    if args.log_file is not None:
+        logging.basicConfig(filename=args.log_file, level=numeric_level)
+    else:
+        logging.basicConfig(level=numeric_level)
 
     # Set the Hardware
     config = tf.ConfigProto(
@@ -494,8 +529,6 @@ if __name__ == '__main__':
         } if args.gpu >= 0 else {'CPU': args.cpu},
     )
 
-    # params = vars(args)
-    # params['sess_config'] = config
     tf.keras.backend.set_session(tf.Session(config=config))
 
     # package the arguements:
@@ -510,7 +543,6 @@ if __name__ == '__main__':
 
     kfold_cv_args = {
         'kfolds': args.kfolds,
-        'random_seed': args.random_seed,
         'save_pred': args.no_save_pred,
         'save_model': args.no_save_model,
         'stratified': args.stratified,
@@ -518,6 +550,12 @@ if __name__ == '__main__':
         'shuffle': args.shuffle_data,
         # 'repeat': None,
     }
+
+    if len(args.random_seeds) == 1:
+        kfold_cv_args['random_seed'] = args.random_seeds[0]
+        random_seeds = None
+    else:
+        random_seeds = args.random_seeds
 
     if args.which_gpu:
         # TODO does not work atm...
@@ -530,4 +568,5 @@ if __name__ == '__main__':
             data_config,
             model_config,
             kfold_cv_args,
+            random_seeds=random_seeds,
         )
