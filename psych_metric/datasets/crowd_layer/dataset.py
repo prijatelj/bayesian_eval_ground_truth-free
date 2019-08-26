@@ -2,6 +2,7 @@
 import os
 
 import cv2
+import h5py
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -339,8 +340,8 @@ class CrowdLayer(BaseDataset):
                 self.dataset,
                 'train',
             )
-        elif not isinstance(image_dir, str) or not os.path.isdir(image_dir):
-            raise IOError(f'The directory `{image_dir}` does not exist.')
+        elif not isinstance(image_dir, str) or not os.path.exist(image_dir):
+            raise IOError(f'The path `{image_dir}` does not exist.')
 
         if train_filenames is None:
             train_filenames = os.path.join(
@@ -374,27 +375,32 @@ class CrowdLayer(BaseDataset):
         if output and isinstance(output, str):
             shape = np.empty(len(samples)).tolist()
 
-        for class_dir in os.listdir(image_dir):
-            class_dir_path = os.path.join(image_dir, class_dir)
+        if os.path.isdir(image_dir):
+            for class_dir in os.listdir(image_dir):
+                class_dir_path = os.path.join(image_dir, class_dir)
 
-            if not os.path.isdir(class_dir_path):
-                continue
+                if not os.path.isdir(class_dir_path):
+                    continue
 
-            for filename in os.listdir(class_dir_path):
-                if filename in filename_idx:
-                    img = cv2.imread(
-                        os.path.join(class_dir_path, filename),
-                        color
-                    ).astype(np.uint8)
+                for filename in os.listdir(class_dir_path):
+                    if filename in filename_idx:
+                        img = cv2.imread(
+                            os.path.join(class_dir_path, filename),
+                            color
+                        ).astype(np.uint8)
 
-                    if normalize:
-                        img = img / 255.0
+                        if normalize:
+                            img = img / 255.0
 
-                    images[filename_idx[filename]] = img
-                    if output and isinstance(output, str):
-                        shape[filename_idx[filename]] = img.shape
-                else:
-                    print(f'{filename} not in filename_idx')
+                        images[filename_idx[filename]] = img
+                        if output and isinstance(output, str):
+                            shape[filename_idx[filename]] = img.shape
+                    else:
+                        print(f'{filename} not in filename_idx')
+            images = np.stack(images)
+        elif os.path.isfile(image_dir):
+            with h5py.File(image_dir) as h5f:
+                images = h5f['images_vgg16_encoded'][:]
 
         if isinstance(ground_truth, str) and os.path.isfile(ground_truth):
             samples['ground_truth'] = pd.read_csv(ground_truth, header=None)
@@ -406,7 +412,7 @@ class CrowdLayer(BaseDataset):
 
         # If no output, then no need to create tfrecords, etc.
         if not output or not isinstance(output, str):
-            return np.stack(images), samples
+            return images, samples
 
         samples['image'] = images
         samples['shape'] = shape
