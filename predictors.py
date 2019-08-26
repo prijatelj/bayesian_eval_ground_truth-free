@@ -514,6 +514,8 @@ if __name__ == '__main__':
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % args.log_level)
     if args.log_file is not None:
+        dir_part = args.log_file.rpartition(os.path.sep)[0]
+        os.makedirs(dir_part, exist_ok=True)
         logging.basicConfig(filename=args.log_file, level=numeric_level)
     else:
         logging.basicConfig(level=numeric_level)
