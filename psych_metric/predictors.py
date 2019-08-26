@@ -17,12 +17,13 @@ from psych_metric.datasets import data_handler
 
 
 def run_experiment(
-        output_dir,
-        label_src,
-        dataset_id,
-        data_config,
-        model_config,
-        kfold_cv_args):
+    output_dir,
+    label_src,
+    dataset_id,
+    data_config,
+    model_config,
+    kfold_cv_args
+):
     # Load and prep dataset
     dataset = data_handler.load_dataset(dataset_id, **data_config)
     images, labels = dataset.load_images()
@@ -64,19 +65,20 @@ def run_experiment(
 
 
 def kfold_cv(
-        model_config,
-        features,
-        labels,
-        output_dir,
-        summary,
-        kfolds=5,
-        random_seed=None,
-        save_pred=True,
-        save_model=True,
-        stratified=None,
-        test_focus_fold=True,
-        shuffle=True,
-        repeat=None):
+    model_config,
+    features,
+    labels,
+    output_dir,
+    summary,
+    kfolds=5,
+    random_seed=None,
+    save_pred=True,
+    save_model=True,
+    stratified=None,
+    test_focus_fold=True,
+    shuffle=True,
+    repeat=None,
+):
     """Generator for kfold cross validation.
 
     Parameters
@@ -154,8 +156,8 @@ def kfold_cv(
 
         logging.info(f'{i}/{kfolds} fold cross validation: Testing')
 
-        start_process_time = process_time()
         start_perf_time = perf_counter()
+        start_process_time = process_time()
 
         pred = model.predict(
             features[test_idx],
@@ -193,16 +195,16 @@ def prepare_model(model_config, features, labels, output_dir=None):
         # TODO could remove from here and put into calling code when loading is possible
         return tf.keras.models.load_model(model_config['filepath']), None, None
 
-    start_process_time = process_time()
     start_perf_time = perf_counter()
+    start_process_time = process_time()
 
     model = load_model(model_config['model_id'], **model_config['init'])
 
     init_process = process_time() - start_process_time
     init_perf = perf_counter() - start_perf_time
 
-    start_process_time = process_time()
     start_perf_time = perf_counter()
+    start_process_time = process_time()
 
     model.fit(
         features,
@@ -224,7 +226,7 @@ def prepare_model(model_config, features, labels, output_dir=None):
 
 def load_model(model_id, crowd_layer=False, **kwargs):
     if model_id.lower() == 'vgg16':
-        model = vgg16_model(crowd_layer=crowd_layer)
+        model = vgg16_model(crowd_layer=crowd_layer, **kwargs)
 
         if crowd_layer:
             # TODO model.compile('adam', CrowdLayer...)
@@ -232,7 +234,7 @@ def load_model(model_id, crowd_layer=False, **kwargs):
         else:
             model.compile('adam', 'categorical_crossentropy')
     if model_id.lower() == 'resnext50':
-        model = resnext50_model(crowd_layer=crowd_layer)
+        model = resnext50_model(crowd_layer=crowd_layer, **kwargs)
 
         if crowd_layer:
             # TODO model.compile('adam', CrowdLayer...)
@@ -243,16 +245,31 @@ def load_model(model_id, crowd_layer=False, **kwargs):
     return model
 
 
-def vgg16_model(input_shape=(256, 256, 3), num_labels=8, crowd_layer=False):
-    input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
+def vgg16_model(
+    input_shape=(256, 256, 3),
+    num_labels=8,
+    crowd_layer=False,
+    parts='full',
+):
+    if parts == 'full' or parts == 'vgg16':
+        input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
 
-    # create model and freeze them model.
-    vgg16 = tf.keras.applications.vgg16.VGG16(False, input_tensor=input_layer)
-    for layer in vgg16.layers:
-        layer.trainable = False
+        # create model and freeze them model.
+        vgg16 = tf.keras.applications.vgg16.VGG16(False, input_tensor=input_layer)
+        for layer in vgg16.layers:
+            layer.trainable = False
+        x = vgg16.layers[-1].output
+
+        if parts == 'vgg16':
+            return tf.keras.models.Model(inputs=input_layer, outputs=x)
+    elif parts.lower() == 'labelme':
+        input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
+        x = input_layer
+    else:
+        raise ValueError('`parts`: expected "full", "vgg16", or "labelme", but recieved `f{parts}`.')
 
     # Add the layers specified in Crowd Layer paper.
-    x = tf.keras.layers.Flatten()(vgg16.layers[-1].output)
+    x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dense(128, 'relu')(x)
     x = tf.keras.layers.Dropout(0.5)(x)
     x = tf.keras.layers.Dense(num_labels, 'softmax')(x)
