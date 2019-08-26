@@ -13,9 +13,9 @@ BASE_PATH="$HOME/Public/psych_metric"
 module load cudnn cuda tensorflow
 conda activate metric
 
-seed="$(sed "$SGE_TASK_IDq;d" $BASE_PATH/experiment/random_seeds/random_seeds_count-30.txt)"
+seed="$(sed "$SGE_TASK_ID q;d" $BASE_PATH/experiment/random_seeds/random_seeds_count-30.txt)"
 
-python3 "$BASE_PATH/psych_metric/predictors.py" \
+python3 "$BASE_PATH/predictors.py" \
     "$BASE_PATH/psych_metric/datasets/crowd_layer/" \
     --cpu 1 \
     --cpu_cores 4 \
