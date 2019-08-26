@@ -61,8 +61,8 @@ def load_dataset(dataset, *args, **kwargs):
         return datasets.FacialBeauty(dataset, *args, **kwargs)
 
     # First Impressions
-    elif dataset_exists(dataset, 'first_impressions'):
-        return datasets.FirtImpressions(dataset, *args, **kwargs)
+    # elif dataset_exists(dataset, 'first_impressions'):
+    #    return datasets.FirtImpressions(dataset, *args, **kwargs)
 
     # CrowdLayer
     elif dataset_exists(dataset, 'crowd_layer'):
