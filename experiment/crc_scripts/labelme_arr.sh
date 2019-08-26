@@ -11,6 +11,7 @@
 BASE_PATH="$HOME/Public/psych_metric"
 
 module load cudnn cuda tensorflow
+conda activate metric
 
 seed="$(sed "$SGE_TASK_IDq;d" $BASE_PATH/experiment/random_seeds/random_seeds_count-30.txt)"
 
