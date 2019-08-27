@@ -25,9 +25,19 @@ def run_experiment(
     kfold_cv_args,
     random_seeds=None
 ):
+    """Runs the kfold cross validation  experiment with same model and data,
+    just different seeds.
+    """
     # Load and prep dataset
     dataset = data_handler.load_dataset(dataset_id, **data_config)
-    images, labels = dataset.load_images()
+    if model_config['parts'] == 'labelme':
+        images, labels = dataset.load_images(os.path.join(
+            dataset.data_dir,
+            dataset.dataset,
+            'labelme_vgg16_encoded.h5'
+        ))
+    else:
+        images, labels = dataset.load_images()
 
     # select the label source for this run
     if label_src == 'annotations':
@@ -301,7 +311,7 @@ def vgg16_model(
         if parts == 'vgg16':
             return tf.keras.models.Model(inputs=input_layer, outputs=x)
     elif parts.lower() == 'labelme':
-        input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
+        input_layer = tf.keras.layers.Input(shape=(8, 8, 512), dtype='float32')
         x = input_layer
     else:
         raise ValueError('`parts`: expected "full", "vgg16", or "labelme", but recieved `f{parts}`.')
