@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#$ -pe smp 4                # Specify parallel environment and legal core size
-#$ -N labv_mv		# Specify job name
+#$ -pe smp 4        # Specify parallel environment and legal core size
+#$ -N labv_mv       # Specify job name
 #$ -q gpu@@cvrl_gpu
 #$ -l gpu_card=1
 #$ -o logs/label_me/mv/logs/
@@ -10,10 +10,12 @@
 
 BASE_PATH="$HOME/Public/psych_metric"
 
+# set up the environment
 module load cudnn cuda tensorflow
 conda activate metric
 
-seed="$(sed "$SGE_TASK_ID q;d" $BASE_PATH/experiment/random_seeds/random_seeds_count-100.txt)"
+# get the random seed for the specific job from file.
+SEED="$(sed "$SGE_TASK_ID q;d" $BASE_PATH/experiment/random_seeds/random_seeds_count-100.txt)"
 
 python3 "$BASE_PATH/predictors.py" \
     "$BASE_PATH/psych_metric/datasets/crowd_layer/" \
@@ -23,7 +25,7 @@ python3 "$BASE_PATH/predictors.py" \
     --log_level INFO \
     --log_file 'logs/label_me/vgg16_mv.log' \
     --output_dir "$BASE_PATH/results/predictors/" \
-    --random_seeds "$seed" \
+    --random_seeds "$SEED" \
     --epochs 10 \
     --batch_size 32 \
     --model_id vgg16 \
