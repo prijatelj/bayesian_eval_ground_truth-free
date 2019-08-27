@@ -340,7 +340,7 @@ class CrowdLayer(BaseDataset):
                 self.dataset,
                 'train',
             )
-        elif not isinstance(image_dir, str) or not os.path.exist(image_dir):
+        elif not isinstance(image_dir, str) or not os.path.exists(image_dir):
             raise IOError(f'The path `{image_dir}` does not exist.')
 
         if train_filenames is None:
@@ -401,6 +401,8 @@ class CrowdLayer(BaseDataset):
         elif os.path.isfile(image_dir):
             with h5py.File(image_dir) as h5f:
                 images = h5f['images_vgg16_encoded'][:]
+        else:
+            raise IOError(f'The path `{image_dir}` does not exist...')
 
         if isinstance(ground_truth, str) and os.path.isfile(ground_truth):
             samples['ground_truth'] = pd.read_csv(ground_truth, header=None)
