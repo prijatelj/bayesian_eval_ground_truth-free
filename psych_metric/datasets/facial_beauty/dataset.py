@@ -115,6 +115,91 @@ class FacialBeauty(BaseDataset):
         #TODO decide if this is desireable, then implement if it is desireable.
         raise NotImplementedError
 
+    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
+        """Load the images and optionally crop  by the bounding box files.
+
+        Parameters
+        ----------
+        image_dir : str
+            filepath to directory containing images
+        train_filenames : str
+            filepath to file containing filenames of images
+        ground_truth : str
+            filepath to file containing ground truth label
+        majority_vote : str
+            filepath to file containing majority votes of annotations
+        shape : tuple of ints
+            The shape of the images to be reshaped to if provided, otherwise no
+            resizing is done.
+        color : int
+            The imread method to use. Defaults to color reading.
+
+        Returns
+        -------
+            images and samples if output is not provided, otherwise saves the
+            tfrecords to file and returns None.
+        """
+        if image_dir is None:
+            image_dir = os.path.join(
+                self.data_dir,
+                'Images',
+            )
+        elif not isinstance(image_dir, str) or not os.path.exists(image_dir):
+            raise IOError(f'The path `{image_dir}` does not exist.')
+
+        # TODO need to put annotations in "sparse" matrix format.
+
+        if majority_vote is None:
+            pass
+            # TODO need to calculate from data
+
+        # load train_filenames
+        samples = pd.read_csv(train_filenames, names=['filename'])
+        samples['index'] = samples.index
+        filename_idx = samples.set_index('filename').to_dict()['index']
+
+        images = np.empty(len(samples)).tolist()
+        if output and isinstance(output, str):
+            shape = np.empty(len(samples)).tolist()
+
+        if os.path.isdir(image_dir):
+            for class_dir in os.listdir(image_dir):
+                class_dir_path = os.path.join(image_dir, class_dir)
+
+                if not os.path.isdir(class_dir_path):
+                    continue
+
+                for filename in os.listdir(class_dir_path):
+                    if filename in filename_idx:
+                        img = cv2.imread(
+                            os.path.join(class_dir_path, filename),
+                            color
+                        ).astype(np.uint8)
+
+                        if normalize:
+                            img = img / 255.0
+
+                        images[filename_idx[filename]] = img
+                        if output and isinstance(output, str):
+                            shape[filename_idx[filename]] = img.shape
+                    else:
+                        print(f'{filename} not in filename_idx')
+            images = np.stack(images)
+        elif os.path.isfile(image_dir):
+            with h5py.File(image_dir, 'r') as h5f:
+                images = h5f['images_vgg16_encoded'][:]
+        else:
+            raise IOError(f'The path `{image_dir}` does not exist...')
+
+        #if isinstance(majority_vote, str) and os.path.isfile(majority_vote):
+        #    samples['majority_vote'] = pd.read_csv(majority_vote, header=None)
+
+        samples.drop(columns=['index', 'filename'], inplace=True)
+
+        # If no output, then no need to create tfrecords, etc.
+        if not output or not isinstance(output, str):
+            return images, samples
+
     def __len__(self):
         """ get size of dataset
 
