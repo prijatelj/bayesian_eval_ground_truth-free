@@ -6,14 +6,14 @@
 #$ -l gpu_card=1
 #$ -o logs/label_me/mv/logs/
 #$ -e logs/label_me/mv/logs/
-#$ -t 1-30
+#$ -t 1-50
 
 BASE_PATH="$HOME/Public/psych_metric"
 
 module load cudnn cuda tensorflow
 conda activate metric
 
-seed="$(sed "$SGE_TASK_ID q;d" $BASE_PATH/experiment/random_seeds/random_seeds_count-30.txt)"
+seed="$(sed "$SGE_TASK_ID q;d" $BASE_PATH/experiment/random_seeds/random_seeds_count-100.txt)"
 
 python3 "$BASE_PATH/predictors.py" \
     "$BASE_PATH/psych_metric/datasets/crowd_layer/" \
