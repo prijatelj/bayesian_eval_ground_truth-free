@@ -399,7 +399,7 @@ class CrowdLayer(BaseDataset):
                         print(f'{filename} not in filename_idx')
             images = np.stack(images)
         elif os.path.isfile(image_dir):
-            with h5py.File(image_dir) as h5f:
+            with h5py.File(image_dir, 'r') as h5f:
                 images = h5f['images_vgg16_encoded'][:]
         else:
             raise IOError(f'The path `{image_dir}` does not exist...')
