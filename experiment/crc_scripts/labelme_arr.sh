@@ -24,3 +24,7 @@ python3 "$BASE_PATH/predictors.py" \
     --log_file 'logs/label_me/vgg16_mv.log' \
     --output_dir "$BASE_PATH/results/predictors/" \
     --random_seeds "$seed"
+    --epochs 10
+    --batch_size 32
+    --model_id vgg16
+    --parts labelme
