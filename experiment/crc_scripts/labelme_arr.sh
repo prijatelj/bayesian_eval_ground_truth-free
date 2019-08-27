@@ -4,8 +4,8 @@
 #$ -N labv_mv		# Specify job name
 #$ -q gpu@@cvrl_gpu
 #$ -l gpu_card=1
-#$ -o logs/labelme/mv/logs/
-#$ -e logs/labelme/mv/logs/
+#$ -o logs/label_me/mv/logs/
+#$ -e logs/label_me/mv/logs/
 #$ -t 1-30
 
 BASE_PATH="$HOME/Public/psych_metric"
