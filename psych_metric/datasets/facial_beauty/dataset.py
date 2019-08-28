@@ -1,6 +1,9 @@
 """Dataset class handler for facial beauty 2018 data."""
 import os
 
+import cv2
+import h5py
+import numpy as np
 import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset
@@ -10,6 +13,7 @@ try:
     HERE = os.path.join(ROOT, 'psych_metric/datasets/facial_beauty/facial_beauty_data/')
 except:
     HERE = None
+
 
 class FacialBeauty(BaseDataset):
     """class that loads and serves data from facial beauty 2018
@@ -58,7 +62,7 @@ class FacialBeauty(BaseDataset):
         self._check_dataset(dataset, FacialBeauty.datasets)
         self.dataset = 'All_Ratings' if dataset == 'FacialBeauty' else dataset
         # NOTE this could be percieved as a regression task, or at least an ordinal task
-        self.task_type = 'regression' # regression or ordinal due to ints.
+        self.task_type = 'regression'  # regression or ordinal due to ints.
 
         if dataset_filepath is None:
             if HERE is None or 'facial_beauty_data' not in HERE:
@@ -76,10 +80,10 @@ class FacialBeauty(BaseDataset):
         self.df.columns = ['worker_id', 'sample_id', 'worker_label', 'original_rating']
 
         # Save labels set
-        #self.label_set = frozenset((1,2,3,4,5)) # NOTE treating this as regression task
+        # self.label_set = frozenset((1,2,3,4,5)) # NOTE treating this as regression task
         self.label_set = None
 
-        if encode_columns == True:
+        if encode_columns is True:
             encode_columns = {'sample_id'}
 
         # Encode the labels and data if desired
@@ -91,28 +95,6 @@ class FacialBeauty(BaseDataset):
 
     # TODO get_image
     def get_image(self):
-        raise NotImplementedError
-
-    def convert_to_sparse_matrix(self, df):
-        """Convert provided dataframe into a sparse matrix equivalent.
-
-        Converts the given dataframe of expected format equivalent to this
-        dataset's datafile structure into a sparse matrix dataframe where the
-        row corresponds to each sample and the columns are structured as
-        features, annotations of worker_id, where missing annotations are NA.
-
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            Dataframe to be converted into a sparse matrix format.
-
-        Returns
-        -------
-        pandas.DataFrame
-            Data Frame of annotations in a sparse matrix format.
-
-        """
-        #TODO decide if this is desireable, then implement if it is desireable.
         raise NotImplementedError
 
     def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
@@ -148,6 +130,8 @@ class FacialBeauty(BaseDataset):
             raise IOError(f'The path `{image_dir}` does not exist.')
 
         # TODO need to put annotations in "sparse" matrix format.
+        if df.is_in_annotation_list_format():
+            df.annotation_list_to_sparse_matrix(inplace=True)
 
         if majority_vote is None:
             pass
@@ -191,7 +175,7 @@ class FacialBeauty(BaseDataset):
         else:
             raise IOError(f'The path `{image_dir}` does not exist...')
 
-        #if isinstance(majority_vote, str) and os.path.isfile(majority_vote):
+        # if isinstance(majority_vote, str) and os.path.isfile(majority_vote):
         #    samples['majority_vote'] = pd.read_csv(majority_vote, header=None)
 
         samples.drop(columns=['index', 'filename'], inplace=True)
