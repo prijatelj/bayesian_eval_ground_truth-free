@@ -180,9 +180,7 @@ class FacialBeauty(BaseDataset):
 
         samples.drop(columns=['index', 'filename'], inplace=True)
 
-        # If no output, then no need to create tfrecords, etc.
-        if not output or not isinstance(output, str):
-            return images, samples
+        return images, samples
 
     def __len__(self):
         """ get size of dataset
