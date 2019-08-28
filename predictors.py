@@ -207,10 +207,10 @@ def kfold_cv(
         start_perf_time = perf_counter()
         start_process_time = process_time()
 
-        pred = model.predict(
-            features[test_idx],
-            **model_config['test'] if 'test' in model_config else {}
-        )
+        if 'test' in model_config:
+            pred = model.predict(features[test_idx], **model_config['test'])
+        else:
+            pred = model.predict(features[test_idx])
 
         test_process = process_time() - start_process_time
         test_perf = perf_counter() - start_perf_time
@@ -246,7 +246,11 @@ def prepare_model(model_config, features, labels, output_dir=None):
     start_perf_time = perf_counter()
     start_process_time = process_time()
 
-    model = load_model(model_config['model_id'], parts=model_config['parts'], **model_config['init'])
+    model = load_model(
+        model_config['model_id'],
+        parts=model_config['parts'],
+        **model_config['init'],
+    )
 
     init_process = process_time() - start_process_time
     init_perf = perf_counter() - start_perf_time
@@ -254,11 +258,10 @@ def prepare_model(model_config, features, labels, output_dir=None):
     start_perf_time = perf_counter()
     start_process_time = process_time()
 
-    model.fit(
-        features,
-        labels,
-        **model_config['train'] if 'train' in model_config else {}
-    )
+    if 'train' in model_config:
+        model.fit(features, labels, **model_config['train'])
+    else:
+        model.fit(features, labels)
 
     train_process = process_time() - start_process_time
     train_perf = perf_counter() - start_perf_time
