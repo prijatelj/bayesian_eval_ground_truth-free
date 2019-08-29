@@ -173,7 +173,7 @@ class FacialBeauty(BaseDataset):
 
         # samples.drop(columns=['index', 'filename'], inplace=True)
 
-        if samples:
+        if samples is not None:
             return images, samples
         return images
 
