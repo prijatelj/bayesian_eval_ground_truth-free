@@ -10,6 +10,7 @@ from time import perf_counter, process_time
 
 import numpy as np
 import pandas as pd
+import keras
 import tensorflow as tf
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -38,7 +39,10 @@ def run_experiment(
             'labelme_vgg16_encoded.h5'
         ))
     else:
-        images, labels = dataset.load_images(majority_vote=True)
+        images, labels = dataset.load_images(
+            majority_vote=True,
+            img_shape=(224, 224, 3),
+        )
 
     # select the label source for this run
     if label_src == 'annotations':
@@ -336,18 +340,22 @@ def vgg16_model(
 
 
 def resnext50_model(
-    input_shape=(350, 350, 3),
+    input_shape=(224, 224, 3),
     num_labels=5,
     crowd_layer=False,
 ):
     """Creates the ResNeXt50 model."""
-    input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
+    input_layer = keras.layers.Input(shape=input_shape, dtype='float32')
 
     # create model and freeze them model.
-    resnext50 = tf.keras.applications.resnext.ResNeXt50(False, input_tensor=input_layer)
-    x = resnext50.layers[-1].output
+    # NOTE this requires readding ResNeXt codelines in merge:
+    # https://github.com/keras-team/keras/pull/11203/files
+    resnext50 = keras.applications.resnext.ResNeXt50(input_tensor=input_layer)
+    x = resnext50.layers[-2].output
 
-    # TODO need to do a thing to make the model for the FB dataset... ie. output layers. Match the pytorch implementation.
+    # TODO need to do a thing to make the model for the FB dataset...
+    # ie. output layers. Match the pytorch implementation.
+    x = keras.layers.Dense(num_labels, 'softmax')(x)
 
     if crowd_layer:
         # TODO
