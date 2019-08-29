@@ -97,7 +97,7 @@ class FacialBeauty(BaseDataset):
     def get_image(self):
         raise NotImplementedError
 
-    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
+    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=False, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
         """Load the images and optionally crop  by the bounding box files.
 
         Parameters
@@ -130,57 +130,52 @@ class FacialBeauty(BaseDataset):
             raise IOError(f'The path `{image_dir}` does not exist.')
 
         # TODO need to put annotations in "sparse" matrix format.
-        if df.is_in_annotation_list_format():
-            df.annotation_list_to_sparse_matrix(inplace=True)
-
-        if majority_vote is None:
-            pass
-            # TODO need to calculate from data
+        if self.is_in_annotation_list_format():
+            self.annotation_list_to_sparse_matrix(inplace=True)
 
         # load train_filenames
-        samples = pd.read_csv(train_filenames, names=['filename'])
-        samples['index'] = samples.index
-        filename_idx = samples.set_index('filename').to_dict()['index']
+        if majority_vote:
+            # NOTE this is basically argmax, lowest mode is selected as vote.
+            # TODO weighted mean of class values then round to closest?
+            samples = self.df.mode(axis=1)[0]
+            samples.name = 'majority_vote'
+        else:
+            samples = None
 
-        images = np.empty(len(samples)).tolist()
+        filename_idx = {idx: i for i, idx in enumerate(self.df.index)}
+
+        images = np.empty(len(self.df)).tolist()
         if output and isinstance(output, str):
             shape = np.empty(len(samples)).tolist()
 
         if os.path.isdir(image_dir):
-            for class_dir in os.listdir(image_dir):
-                class_dir_path = os.path.join(image_dir, class_dir)
+            for filename in os.listdir(image_dir):
+                if filename in filename_idx:
+                    img = cv2.imread(
+                        os.path.join(image_dir, filename),
+                        color,
+                    ).astype(np.uint8)
 
-                if not os.path.isdir(class_dir_path):
-                    continue
+                    if normalize:
+                        img = img / 255.0
 
-                for filename in os.listdir(class_dir_path):
-                    if filename in filename_idx:
-                        img = cv2.imread(
-                            os.path.join(class_dir_path, filename),
-                            color
-                        ).astype(np.uint8)
-
-                        if normalize:
-                            img = img / 255.0
-
-                        images[filename_idx[filename]] = img
-                        if output and isinstance(output, str):
-                            shape[filename_idx[filename]] = img.shape
-                    else:
-                        print(f'{filename} not in filename_idx')
+                    images[filename_idx[filename]] = img
+                    if output and isinstance(output, str):
+                        shape[filename_idx[filename]] = img.shape
+                else:
+                    print(f'{filename} not in filename_idx')
             images = np.stack(images)
         elif os.path.isfile(image_dir):
             with h5py.File(image_dir, 'r') as h5f:
-                images = h5f['images_vgg16_encoded'][:]
+                images = h5f['images'][:]
         else:
             raise IOError(f'The path `{image_dir}` does not exist...')
 
-        # if isinstance(majority_vote, str) and os.path.isfile(majority_vote):
-        #    samples['majority_vote'] = pd.read_csv(majority_vote, header=None)
+        # samples.drop(columns=['index', 'filename'], inplace=True)
 
-        samples.drop(columns=['index', 'filename'], inplace=True)
-
-        return images, samples
+        if samples:
+            return images, samples
+        return images
 
     def __len__(self):
         """ get size of dataset
