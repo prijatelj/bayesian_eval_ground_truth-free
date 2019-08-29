@@ -55,7 +55,7 @@ def run_experiment(
         if isinstance(labels, pd.SparseDataFrame):
             labels = labels[label_src].values.values
         elif isinstance(labels, pd.SparseSeries):
-            labels = labels[label_src].values.values
+            labels = labels.values.values
         elif isinstance(labels, pd.DataFrame):
             labels = labels[label_src]
 
