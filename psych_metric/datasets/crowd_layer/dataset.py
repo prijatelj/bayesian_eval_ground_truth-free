@@ -358,7 +358,7 @@ class CrowdLayer(BaseDataset):
             )
 
         if ground_truth is None:
-            majority_vote = os.path.join(
+            ground_truth = os.path.join(
                 self.data_dir,
                 self.dataset,
                 'labels_train.txt',
