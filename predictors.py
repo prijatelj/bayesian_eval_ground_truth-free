@@ -53,9 +53,11 @@ def run_experiment(
 
     elif label_src == 'majority_vote' or label_src == 'ground_truth':
         if isinstance(labels, pd.SparseDataFrame):
-            labels = labels[label_src].values.values
+            # NOTE assumes labels are ints and w/in [0,255]
+            labels = labels[label_src].values.values.astype('uint8')
         elif isinstance(labels, pd.SparseSeries):
-            labels = labels.values.values
+            # NOTE assumes labels are ints and w/in [0,255]
+            labels = labels.values.values.astype('uint8')
         elif isinstance(labels, pd.DataFrame):
             labels = labels[label_src]
 
