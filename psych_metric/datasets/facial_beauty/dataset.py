@@ -97,7 +97,7 @@ class FacialBeauty(BaseDataset):
     def get_image(self):
         raise NotImplementedError
 
-    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=False, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
+    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=False, img_shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
         """Load the images and optionally crop  by the bounding box files.
 
         Parameters
@@ -110,7 +110,7 @@ class FacialBeauty(BaseDataset):
             filepath to file containing ground truth label
         majority_vote : str
             filepath to file containing majority votes of annotations
-        shape : tuple of ints
+        img_shape : tuple of ints
             The shape of the images to be reshaped to if provided, otherwise no
             resizing is done.
         color : int
@@ -155,6 +155,9 @@ class FacialBeauty(BaseDataset):
                         os.path.join(image_dir, filename),
                         color,
                     ).astype(np.uint8)
+
+                    if img_shape and img.shape != img_shape:
+                        img = cv2.resize(img, img_shape, interpolation=cv2.INTER_CUBIC)
 
                     if normalize:
                         img = img / 255.0
