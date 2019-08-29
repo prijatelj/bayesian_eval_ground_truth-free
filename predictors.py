@@ -41,7 +41,7 @@ def run_experiment(
     else:
         images, labels = dataset.load_images(
             majority_vote=True,
-            img_shape=(224, 224, 3),
+            img_shape=(224, 224),
         )
 
     # select the label source for this run
