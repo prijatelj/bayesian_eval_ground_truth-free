@@ -37,7 +37,7 @@ def run_experiment(
             'labelme_vgg16_encoded.h5'
         ))
     else:
-        images, labels = dataset.load_images()
+        images, labels = dataset.load_images(majority_vote=True)
 
     # select the label source for this run
     if label_src == 'annotations':
@@ -45,8 +45,10 @@ def run_experiment(
 
         # TODO handle proper binariing of annotations labels.
         raise NotImplementedError
+
     elif label_src == 'majority_vote' or label_src == 'ground_truth':
-        labels = labels[label_src]
+        if isinstance(labels, pd.DataFrame):
+            labels = labels[label_src]
 
         # Binarize the label data
         label_bin = LabelBinarizer()
