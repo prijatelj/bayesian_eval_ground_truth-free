@@ -310,7 +310,7 @@ class CrowdLayer(BaseDataset):
         """Converts from sparse matrix format into annotation list format."""
         # TODO Currently expects df to be in sparse matrix format without a check!
 
-    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=None, shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
+    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=None, img_shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
         """Load the images and optionally crop  by the bounding box files.
 
         Parameters
@@ -323,7 +323,7 @@ class CrowdLayer(BaseDataset):
             filepath to file containing ground truth label
         majority_vote : str
             filepath to file containing majority votes of annotations
-        shape : tuple of ints
+        img_shape : tuple of ints
             The shape of the images to be reshaped to if provided, otherwise no
             resizing is done.
         color : int
@@ -388,6 +388,9 @@ class CrowdLayer(BaseDataset):
                             os.path.join(class_dir_path, filename),
                             color
                         ).astype(np.uint8)
+
+                        if img_shape and img.shape != img_shape:
+                            img = cv2.resize(img, img_shape, interpolation=cv2.INTER_CUBIC)
 
                         if normalize:
                             img = img / 255.0
