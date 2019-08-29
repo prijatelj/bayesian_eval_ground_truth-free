@@ -52,7 +52,7 @@ def run_experiment(
         raise NotImplementedError
 
     elif label_src == 'majority_vote' or label_src == 'ground_truth':
-        elif isinstance(labels, pd.SparseDataFrame):
+        if isinstance(labels, pd.SparseDataFrame):
             labels = labels[label_src].values.values
         elif isinstance(labels, pd.SparseSeries):
             labels = labels[label_src].values.values
