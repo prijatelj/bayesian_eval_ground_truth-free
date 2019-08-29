@@ -9,6 +9,7 @@ import random
 from time import perf_counter, process_time
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -334,19 +335,25 @@ def vgg16_model(
     return tf.keras.models.Model(inputs=input_layer, outputs=x)
 
 
-def resnext50_model(input_shape=(256, 256, 3), crowd_layer=False):
+def resnext50_model(
+    input_shape=(350, 350, 3),
+    num_labels=5,
+    crowd_layer=False,
+):
+    """Creates the ResNeXt50 model."""
     input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
 
     # create model and freeze them model.
-    resnext50 = tf.keras.applications.resnext.ResNeXt50(input_tensor=input_layer)
+    resnext50 = tf.keras.applications.resnext.ResNeXt50(False, input_tensor=input_layer)
+    x = resnext50.layers[-1].output
 
-    # TODO need to do a thing to make the model for the dataset.
+    # TODO need to do a thing to make the model for the FB dataset... ie. output layers. Match the pytorch implementation.
 
     if crowd_layer:
-        # TODO: Crowd Layer for the VGG16 model.
+        # TODO
         raise NotImplementedError
 
-    return tf.keras.models.Model(inputs=input_layer, outputs=resnext50)
+    return tf.keras.models.Model(inputs=input_layer, outputs=x)
 
 
 def save_json(filepath, results, additional_info=None, deep_copy=True):
