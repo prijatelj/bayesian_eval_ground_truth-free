@@ -32,7 +32,7 @@ def run_experiment(
     """
     # Load and prep dataset
     dataset = data_handler.load_dataset(dataset_id, **data_config)
-    if model_config['parts'] == 'labelme':
+    if dataset_id == 'LabelMe' and model_config['parts'] == 'labelme':
         images, labels = dataset.load_images(os.path.join(
             dataset.data_dir,
             dataset.dataset,
