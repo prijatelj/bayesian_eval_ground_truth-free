@@ -361,7 +361,7 @@ def resnext50_model(
 
     # TODO need to do a thing to make the model for the FB dataset...
     # ie. output layers. Match the pytorch implementation.
-    x = keras.layers.Dense(num_labels, 'softmax')(x)
+    x = keras.layers.Dense(num_labels, activation='softmax')(x)
 
     if crowd_layer:
         # TODO
