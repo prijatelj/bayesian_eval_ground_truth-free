@@ -367,7 +367,7 @@ def resnext50_model(
         # TODO
         raise NotImplementedError
 
-    return tf.keras.models.Model(inputs=input_layer, outputs=x)
+    return keras.models.Model(inputs=input_layer, outputs=x)
 
 
 def save_json(filepath, results, additional_info=None, deep_copy=True):
