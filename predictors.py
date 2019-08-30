@@ -29,6 +29,10 @@ def run_experiment(
 ):
     """Runs the kfold cross validation  experiment with same model and data,
     just different seeds.
+
+    Parameters
+    ----------
+
     """
     # Load and prep dataset
     dataset = data_handler.load_dataset(dataset_id, **data_config)
@@ -139,6 +143,7 @@ def kfold_cv(
     test_focus_fold=True,
     shuffle=True,
     repeat=None,
+    period=0,
 ):
     """Generator for kfold cross validation.
 
@@ -166,6 +171,13 @@ def kfold_cv(
         iteration's test set while the rest are used for training the model,
         otherwise the focus fold is the only fold used for training and the
         rest are used for testing.
+    shuffle: bool, optional
+        Whether or not to shuffle the data prior to splitting for KFold CV.
+    repeat: int, optional
+        Number of times to repeat the K fold CV.
+    period: int, optional
+        Number of epochs to save the model checkpoints. Defaults to 0, meaning
+        no checkpoints will be saved. The checkpoints save model weights only.
     """
     if not random_seed:
         random_seed = random.randint(0, 2**32 - 1)
@@ -206,6 +218,19 @@ def kfold_cv(
             train_idx = focus_fold
             test_idx = other_folds
 
+        # TODO create callbacks for the model.
+        if period > 0:
+            checkpoint_dir = os.path.join(output_dir_eval_fold, 'checkpoints')
+            os.makedirs(checkpoint_dir, exist_ok=True)
+
+            callbacks = [keras.callbacks.ModelCheckpoint(
+                os.path.join(checkpoint_dir, 'weights.{epoch:02d}.hdf5'),
+                save_weights_only=True,
+                period=period,
+            )]
+        else:
+            callbacks = None
+
         logging.info(f'{i}/{kfolds} fold cross validation: Training')
 
         model, init_times, train_times = prepare_model(
@@ -213,6 +238,7 @@ def kfold_cv(
             features[train_idx],
             labels[train_idx],
             output_dir_eval_fold,
+            callbacks=callbacks,
         )
 
         logging.info(f'{i}/{kfolds} fold cross validation: Testing')
@@ -251,7 +277,13 @@ def kfold_cv(
         )
 
 
-def prepare_model(model_config, features, labels, output_dir=None):
+def prepare_model(model_config, features, labels, output_dir=None, callbacks=None):
+    """
+
+    Parameters
+    ----------
+
+    """
     if 'filepath' in model_config:
         # TODO could remove from here and put into calling code when loading is possible
         return tf.keras.models.load_model(model_config['filepath']), None, None
@@ -268,13 +300,14 @@ def prepare_model(model_config, features, labels, output_dir=None):
     init_process = process_time() - start_process_time
     init_perf = perf_counter() - start_perf_time
 
+    # TODO if callbacks exist, make one that keeps track of runtimes for checkpoint models.
     start_perf_time = perf_counter()
     start_process_time = process_time()
 
     if 'train' in model_config:
-        model.fit(features, labels, **model_config['train'])
+        model.fit(features, labels, callbacks=callbacks, **model_config['train'])
     else:
-        model.fit(features, labels)
+        model.fit(features, labels, callbacks=callbacks)
 
     train_process = process_time() - start_process_time
     train_perf = perf_counter() - start_perf_time
@@ -289,6 +322,12 @@ def prepare_model(model_config, features, labels, output_dir=None):
 
 
 def load_model(model_id, crowd_layer=False, parts='labelme', **kwargs):
+    """
+
+    Parameters
+    ----------
+
+    """
     if model_id.lower() == 'vgg16':
         model = vgg16_model(crowd_layer=crowd_layer, parts=parts, **kwargs)
 
@@ -315,6 +354,12 @@ def vgg16_model(
     crowd_layer=False,
     parts='labelme',
 ):
+    """
+
+    Parameters
+    ----------
+
+    """
     if parts == 'full' or parts == 'vgg16':
         input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
 
@@ -334,9 +379,9 @@ def vgg16_model(
 
     # Add the layers specified in Crowd Layer paper.
     x = tf.keras.layers.Flatten()(x)
-    x = tf.keras.layers.Dense(128, 'relu')(x)
+    x = tf.keras.layers.Dense(128, activation='relu')(x)
     x = tf.keras.layers.Dropout(0.5)(x)
-    x = tf.keras.layers.Dense(num_labels, 'softmax')(x)
+    x = tf.keras.layers.Dense(num_labels, activation='softmax')(x)
 
     if crowd_layer:
         # TODO: Crowd Layer for the VGG16 model.
@@ -350,7 +395,12 @@ def resnext50_model(
     num_labels=5,
     crowd_layer=False,
 ):
-    """Creates the ResNeXt50 model."""
+    """Creates the ResNeXt50 model.
+
+    Parameters
+    ----------
+
+    """
     input_layer = keras.layers.Input(shape=input_shape, dtype='float32')
 
     # create model and freeze them model.
@@ -371,6 +421,12 @@ def resnext50_model(
 
 
 def save_json(filepath, results, additional_info=None, deep_copy=True):
+    """
+
+    Parameters
+    ----------
+
+    """
     if deep_copy:
         results = deepcopy(results)
     if additional_info:
@@ -530,6 +586,13 @@ if __name__ == '__main__':
         + 'training and the rest will be used for testing..',
     )
 
+    parser.add_argument(
+        '--period',
+        default=0,
+        type=int,
+        help='The number of epochs between checkpoints for ModelCheckpoint.',
+    )
+
     # Logging
     parser.add_argument(
         '--log_level',
@@ -587,6 +650,7 @@ if __name__ == '__main__':
         'test_focus_fold': not args.train_focus_fold,
         'shuffle': args.shuffle_data,
         # 'repeat': None,
+        'period': args.period,
     }
 
     if len(args.random_seeds) == 1:
