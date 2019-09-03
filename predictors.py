@@ -32,7 +32,22 @@ def run_experiment(
 
     Parameters
     ----------
-
+    output_dir : str
+        The output directory to save the results of the model.
+    label_src : str
+        The source of the labels to train the supervised models.
+    dataset_id : str
+        The dataset identifier of the dataset to load.
+    data_config : dict
+        The arguments related to the datasets to load and use..
+    model_config : dict
+        The arguments related to the model initialization, training, and testing.
+    kfold_cv_args : dict
+        The arguments related to the kfold cross validation.
+    random_seeds : int | list of ints, optional
+        The random seed(s) used to initialize the random number generator for
+        the k fold cross validation data splitting and for the intial
+        initialization of the models for each training session.
     """
     # Load and prep dataset
     dataset = data_handler.load_dataset(dataset_id, **data_config)
@@ -145,7 +160,7 @@ def kfold_cv(
     repeat=None,
     period=0,
 ):
-    """Generator for kfold cross validation.
+    """Performs kfold cross validation on the model and saves the results.
 
     Parameters
     ----------
@@ -278,11 +293,26 @@ def kfold_cv(
 
 
 def prepare_model(model_config, features, labels, output_dir=None, callbacks=None):
-    """
+    """Prepares the model by initializing it and training it.
 
     Parameters
     ----------
+    model_config : dict
+        The arguments related to the model initialization, training, and testing.
+    features : array-like
+        The feature data used as input to the model for training.
+    labels : array-like
+        The labels associated with the samples in features for training.
+    output_dir : str
+        The output directory to save the results of the model.
+    callbacks : list
+        Callbacks to be used by Keras when training the model.
 
+    Returns
+    -------
+    tuple(keras.models.Model, float, float)
+        The trained keras Model and the runtimes for initializing and training
+        that model.
     """
     if 'filepath' in model_config:
         # TODO could remove from here and put into calling code when loading is possible
@@ -322,12 +352,28 @@ def prepare_model(model_config, features, labels, output_dir=None, callbacks=Non
 
 
 def load_model(model_id, crowd_layer=False, parts='labelme', **kwargs):
-    """
+    """Either initializes the model or loads the model from file.
 
     Parameters
     ----------
+    model_id : str
+        The model identifier of the model to load.
+    crowd_layer : bool
+        Uses crowd layer in model if True, standard model output otherwise.
+    parts : str
+        indicates the part of the model to be loaded, either the DNN only, the
+        classifier at the end only, or the full model. Useful for preprocessing
+        and training of frozen DNN encoded samples.
+    kwargs : dict
+        The remaining key word arguements to use in loading the model.
 
+    Returns
+    -------
+    The model either initialized or  loaded from file.
     """
+
+    # TODO add loading of model and model weights from file for each.
+
     if model_id.lower() == 'vgg16':
         model = vgg16_model(crowd_layer=crowd_layer, parts=parts, **kwargs)
 
@@ -354,11 +400,24 @@ def vgg16_model(
     crowd_layer=False,
     parts='labelme',
 ):
-    """
+    """VGG16 model used in Crowd Layer paper on LabelMe dataset.
 
     Parameters
     ----------
+    input_shape : tuple(ints)
+        Dimensions of an image
+    num_label : int
+        The number of labels to be classified.
+    crowd_layer : bool
+        Uses crowd layer in model if True, standard model output otherwise.
+    parts : str
+        indicates the part of the model to be loaded, either the DNN only, the
+        classifier at the end only, or the full model. Useful for preprocessing
+        and training of frozen DNN encoded samples.
 
+    Returns
+    -------
+        The initialized VGG16 model.
     """
     if parts == 'full' or parts == 'vgg16':
         input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
@@ -376,6 +435,8 @@ def vgg16_model(
         x = input_layer
     else:
         raise ValueError('`parts`: expected "full", "vgg16", or "labelme", but recieved `f{parts}`.')
+
+    # TODO make all these calls from vanilla Keras, not tf.keras
 
     # Add the layers specified in Crowd Layer paper.
     x = tf.keras.layers.Flatten()(x)
@@ -399,12 +460,21 @@ def resnext50_model(
 
     Parameters
     ----------
+    input_shape : tuple(ints)
+        Dimensions of an image
+    num_label : int
+        The number of labels to be classified.
+    crowd_layer : bool
+        Uses crowd layer in model if True, standard model output otherwise.
 
+    Returns
+    -------
+        The initialized ResNeXt50 model from Keras.
     """
     input_layer = keras.layers.Input(shape=input_shape, dtype='float32')
 
     # create model and freeze them model.
-    # NOTE this requires readding ResNeXt codelines in merge:
+    # NOTE this requires re-adding ResNeXt codelines in merge:
     # https://github.com/keras-team/keras/pull/11203/files
     resnext50 = keras.applications.resnext.ResNeXt50(input_tensor=input_layer)
     x = resnext50.layers[-2].output
@@ -421,15 +491,24 @@ def resnext50_model(
 
 
 def save_json(filepath, results, additional_info=None, deep_copy=True):
-    """
+    """Saves the content in results and additional info to a JSON.
 
     Parameters
     ----------
-
+    filepath : str
+        The filepath to the resulting JSON.
+    results : dict
+        The dictionary to be saved to file as a JSON.
+    additional_info : dict
+        Additional information to be added to results (to be removed).
+    deep_copy : bool
+        Deep copies the dictionary prior to saving due to making the contents
+        JSON serializable.
     """
     if deep_copy:
         results = deepcopy(results)
     if additional_info:
+        # TODO remove this if deemed superfulous
         results.update(additional_info)
 
     with open(filepath, 'w') as summary_file:
