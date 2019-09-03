@@ -40,7 +40,7 @@ class Ipeirotis2010(BaseDataset):
         'JeroenVuurens'
     ])
 
-    def __init__(self, dataset='AdultContent', dataset_filepath=None, encode_columns=None):
+    def __init__(self, dataset='AdultContent', dataset_filepath=None, encode_columns=None, ground_truth=False):
         """initialize class by loading the data
 
         Parameters
@@ -54,9 +54,9 @@ class Ipeirotis2010(BaseDataset):
             Convert the data into a dataframe with the sparse matrix structure
         """
 
-        self.load_dataset(dataset, dataset_filepath, encode_columns)
+        self.load_dataset(dataset, dataset_filepath, encode_columns, ground_truth)
 
-    def load_dataset(self, dataset='AdultContent', dataset_filepath=None, encode_columns=None):
+    def load_dataset(self, dataset='AdultContent', dataset_filepath=None, encode_columns=None, ground_truth=False):
         self._check_dataset(dataset, Ipeirotis2010.datasets)
 
         if dataset_filepath is None:
@@ -83,11 +83,17 @@ class Ipeirotis2010(BaseDataset):
             self.df = self.df[['sample_id', 'worker_id', 'worker_label']]
 
         # Read in ground truth, if any.
-        if ('Adult' in dataset and '3' not in dataset) or dataset == 'CopyrightInfringement':
-            # Consider labeling as gold, rather than ground_truth.
-            ground_truth_file = os.path.join(dataset_filepath, self.dataset, 'gold.txt')
-            ground_truth_dict = self.read_csv_to_dict(ground_truth_file, sep='\t')
-            self.add_ground_truth(ground_truth_dict, inplace=True)
+        if ground_truth:
+            if ('Adult' in dataset and '3' not in dataset) or dataset == 'CopyrightInfringement' or 'HITspam-Using' in dataset:
+                ground_truth_file = os.path.join(dataset_filepath, self.dataset, 'gold.txt')
+                ground_truth_dict = self.read_csv_to_dict(ground_truth_file, sep='\t')
+                self.add_ground_truth(ground_truth_dict, inplace=True)
+
+            elif dataset == 'BarzanMozafari':
+                ground_truth_file = os.path.join(dataset_filepath, self.dataset, 'evaluation.txt')
+                ground_truth_dict = self.read_csv_to_dict(ground_truth_file, sep='\t')
+                self.add_ground_truth(ground_truth_dict, inplace=True)
+
 
         # Read in and save the expected label set, or infer the labels from data
         if 'HITspam-UsingCrowdflower' == dataset:

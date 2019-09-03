@@ -1,6 +1,9 @@
 """Dataset class handler for facial beauty 2018 data."""
 import os
 
+import cv2
+import h5py
+import numpy as np
 import pandas as pd
 
 from psych_metric.datasets.base_dataset import BaseDataset
@@ -10,6 +13,7 @@ try:
     HERE = os.path.join(ROOT, 'psych_metric/datasets/facial_beauty/facial_beauty_data/')
 except:
     HERE = None
+
 
 class FacialBeauty(BaseDataset):
     """class that loads and serves data from facial beauty 2018
@@ -33,10 +37,17 @@ class FacialBeauty(BaseDataset):
         False. Default value is False
     """
 
-    datasets = frozenset(['All_Ratings', 'Asian_Female', 'Asian_Male', 'Caucasian_Female', 'Caucasian_Male'])
+    datasets = frozenset([
+        'FacialBeauty',
+        'All_Ratings',
+        'Asian_Female',
+        'Asian_Male',
+        'Caucasian_Female',
+        'Caucasian_Male',
+    ])
 
     def __init__(self, dataset='All_Ratings', dataset_filepath=None, encode_columns=None, sparse_matrix=False):
-        """initialize class by loading the data
+        """initialize class by loading the data. No ground truth available.
 
         Parameters
         ----------
@@ -49,9 +60,9 @@ class FacialBeauty(BaseDataset):
             Convert the data into a dataframe with the sparse matrix structure
         """
         self._check_dataset(dataset, FacialBeauty.datasets)
-        self.dataset = dataset
+        self.dataset = 'All_Ratings' if dataset == 'FacialBeauty' else dataset
         # NOTE this could be percieved as a regression task, or at least an ordinal task
-        self.task_type = 'regression' # regression or ordinal due to ints.
+        self.task_type = 'regression'  # regression or ordinal due to ints.
 
         if dataset_filepath is None:
             if HERE is None or 'facial_beauty_data' not in HERE:
@@ -69,10 +80,10 @@ class FacialBeauty(BaseDataset):
         self.df.columns = ['worker_id', 'sample_id', 'worker_label', 'original_rating']
 
         # Save labels set
-        #self.label_set = frozenset((1,2,3,4,5)) # NOTE treating this as regression task
+        # self.label_set = frozenset((1,2,3,4,5)) # NOTE treating this as regression task
         self.label_set = None
 
-        if encode_columns == True:
+        if encode_columns is True:
             encode_columns = {'sample_id'}
 
         # Encode the labels and data if desired
@@ -86,27 +97,88 @@ class FacialBeauty(BaseDataset):
     def get_image(self):
         raise NotImplementedError
 
-    def convert_to_sparse_matrix(self, df):
-        """Convert provided dataframe into a sparse matrix equivalent.
-
-        Converts the given dataframe of expected format equivalent to this
-        dataset's datafile structure into a sparse matrix dataframe where the
-        row corresponds to each sample and the columns are structured as
-        features, annotations of worker_id, where missing annotations are NA.
+    def load_images(self, image_dir=None, train_filenames=None, annotations=None, ground_truth=None, majority_vote=False, img_shape=None, color=cv2.IMREAD_COLOR, output=None, num_tfrecords=1, normalize=True):
+        """Load the images and optionally crop  by the bounding box files.
 
         Parameters
         ----------
-        df : pandas.DataFrame
-            Dataframe to be converted into a sparse matrix format.
+        image_dir : str
+            filepath to directory containing images
+        train_filenames : str
+            filepath to file containing filenames of images
+        ground_truth : str
+            filepath to file containing ground truth label
+        majority_vote : str
+            filepath to file containing majority votes of annotations
+        img_shape : tuple of ints
+            The shape of the images to be reshaped to if provided, otherwise no
+            resizing is done.
+        color : int
+            The imread method to use. Defaults to color reading.
 
         Returns
         -------
-        pandas.DataFrame
-            Data Frame of annotations in a sparse matrix format.
-
+            images and samples if output is not provided, otherwise saves the
+            tfrecords to file and returns None.
         """
-        #TODO decide if this is desireable, then implement if it is desireable.
-        raise NotImplementedError
+        if image_dir is None:
+            image_dir = os.path.join(
+                self.data_dir,
+                'Images',
+            )
+        elif not isinstance(image_dir, str) or not os.path.exists(image_dir):
+            raise IOError(f'The path `{image_dir}` does not exist.')
+
+        # TODO need to put annotations in "sparse" matrix format.
+        if self.is_in_annotation_list_format():
+            self.annotation_list_to_sparse_matrix(inplace=True)
+
+        # load train_filenames
+        if majority_vote:
+            # NOTE this is basically argmax, lowest mode is selected as vote.
+            # TODO weighted mean of class values then round to closest?
+            samples = self.df.mode(axis=1)[0]
+            samples.name = 'majority_vote'
+        else:
+            samples = None
+
+        filename_idx = {idx: i for i, idx in enumerate(self.df.index)}
+
+        images = np.empty(len(self.df)).tolist()
+        if output and isinstance(output, str):
+            shape = np.empty(len(samples)).tolist()
+
+        if os.path.isdir(image_dir):
+            for filename in os.listdir(image_dir):
+                if filename in filename_idx:
+                    img = cv2.imread(
+                        os.path.join(image_dir, filename),
+                        color,
+                    ).astype(np.uint8)
+
+                    if img_shape and img.shape != img_shape:
+                        img = cv2.resize(img, img_shape, interpolation=cv2.INTER_CUBIC)
+
+                    if normalize:
+                        img = img / 255.0
+
+                    images[filename_idx[filename]] = img
+                    if output and isinstance(output, str):
+                        shape[filename_idx[filename]] = img.shape
+                else:
+                    print(f'{filename} not in filename_idx')
+            images = np.stack(images)
+        elif os.path.isfile(image_dir):
+            with h5py.File(image_dir, 'r') as h5f:
+                images = h5f['images'][:]
+        else:
+            raise IOError(f'The path `{image_dir}` does not exist...')
+
+        # samples.drop(columns=['index', 'filename'], inplace=True)
+
+        if samples is not None:
+            return images, samples
+        return images
 
     def __len__(self):
         """ get size of dataset

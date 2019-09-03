@@ -34,7 +34,7 @@ class TRECRelevancy2010(BaseDataset):
     """
 
     def __init__(self, dataset_filepath=None, encode_columns=None, sparse_matrix=False):
-        """initialize class by loading the data
+        """initialize class by loading the data. Ground truth is always loaded.
 
         Parameters
         ----------
@@ -62,7 +62,7 @@ class TRECRelevancy2010(BaseDataset):
         # Read in and save data
         annotation_file = os.path.join(dataset_filepath, self.dataset + '.txt')
         self.df = pd.read_csv(annotation_file, delimiter='\t')
-        self.df.columns = ['topic_id', 'worker_id', 'sample_id', 'gold', 'worker_label']
+        self.df.columns = ['topic_id', 'worker_id', 'sample_id', 'ground_truth', 'worker_label']
 
         # Save the expected labels, or infer the labels from data
         self.label_set = frozenset({-2, -1, 0, 1, 2})

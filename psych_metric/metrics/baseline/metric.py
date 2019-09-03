@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 from psych_metric.datasets import data_handler
 
-def load(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoatation_aggregation.csv', result_filename='metric_analysis_ground_truth_vs_aggregation.csv'):
+def load(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoatation_aggregation.csv'):
     """Traverses the given root directory to find directories that contain a
     summary.csv, loads the dataset with ground truth based on dataset_id, and
     compares that ground truth to the contents within the annotation
@@ -32,10 +32,6 @@ def load(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoa
         The filename of the summary csv
     annotation_aggregation : str, optional
         The filename of the annotation aggregation output.
-    result_filename : str, optional
-        The filename of the file where the metric calculations are stored.
-        Relative to the directory containing the summary and annotation
-        aggregation files. If None, then it simply returns
 
     Yields
     ------
@@ -188,7 +184,7 @@ def parse_args():
     parser.add_argument('-s', '--summary_csv', default='summary.csv', help='The expected filename of the summary csv.')
     parser.add_argument('-a', '--annotation_aggregation_csv', default='annotation_aggregation.csv', help='The expected filename of the annotation aggregation csv.')
     parser.add_argument('-m', '--metrics', default=None, nargs='+', help='List of the metrics to use.')
-    parser.add_argument('-f', '--metrics_filename', default='metric.json', help='The filename of the metric json.')
+    parser.add_argument('-f', '--metrics_filename', default='metrics.json', help='The filename of the metric json.')
     parser.add_argument('--no-meta', action='store_true', help='Providing this flag witholds the meta information from the metric jsons.')
     parser.add_argument('--overwrite', action='store_true', help='Providing this flag will overwrite any preexisting metric files.')
 
@@ -216,4 +212,4 @@ if __name__ == '__main__':
             raise FileExistsError('The metric file %s already exists and overwrite flag is not provided. The file will not be overwriten.' % metric_file)
 
         with open(metric_file, 'w') as results_file:
-            json.dumps(metric_results, results_file, indent=4)
+            json.dump(metric_results, results_file, indent=4)

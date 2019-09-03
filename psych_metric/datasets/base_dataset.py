@@ -197,13 +197,22 @@ class BaseDataset(object):
         if missing_value is None:
             missing_value = self.df.default_fill_value
 
-        num_workers = len(self.df.columns)
-        list_df = pd.DataFrame(np.empty((len(self.df.index)*num_workers, 3)), columns=['sample_id', 'worker_id', 'worker_label'])
+        if 'ground_truth' in self.df.columns:
+            num_workers = len(self.df.columns) - 1
+            list_df = pd.DataFrame(np.empty((len(self.df.index)*num_workers, 4)), columns=['sample_id', 'worker_id', 'worker_label', 'ground_truth'])
+        else:
+            num_workers = len(self.df.columns)
+            list_df = pd.DataFrame(np.empty((len(self.df.index)*num_workers, 3)), columns=['sample_id', 'worker_id', 'worker_label'])
 
         # Place the correct value in the resulting dataframe list
-        for sample_idx in range(len(self.df.index)):
-            for worker_idx in range(num_workers):
-                list_df.iloc[(sample_idx*num_workers) + worker_idx] = [sample_idx, worker_idx, self.df.iloc[sample_idx, worker_idx]]
+        if 'ground_truth' in self.df.columns:
+            for sample_idx in range(len(self.df.index)):
+                for worker_idx in range(num_workers):
+                    list_df.iloc[(sample_idx*num_workers) + worker_idx] = [sample_idx, worker_idx, self.df.iloc[sample_idx, worker_idx], self.df['ground_truth'].iloc[sample_idx]]
+        else:
+            for sample_idx in range(len(self.df.index)):
+                for worker_idx in range(num_workers):
+                    list_df.iloc[(sample_idx*num_workers) + worker_idx] = [sample_idx, worker_idx, self.df.iloc[sample_idx, worker_idx]]
 
         # remove all rows with missing values for labels from dataframe list.
         list_df = list_df[~list_df.eq(missing_value).any(1)]
@@ -217,7 +226,7 @@ class BaseDataset(object):
         # NOTE assumes that df is always a pd.DataFrame if in this list format.
         return isinstance(self.df, pd.DataFrame) and 'sample_id' in self.df.columns and 'worker_id' in self.df.columns and 'worker_label' in self.df.columns
 
-    def annotation_list_to_sparse_matrix(self, fill_value=None, inplace=False, keep_ground_truth=True):
+    def annotation_list_to_sparse_matrix(self, fill_value=None, inplace=False):
         """Convert provided dataframe into a matrix format, possibly sparse.
 
         Parameters
@@ -246,31 +255,35 @@ class BaseDataset(object):
         # Create a dictionary for mapping of all workers to their matrix index
         worker_to_matrix_idx = {worker:i for i, worker in enumerate(unique_worker_ids)}
 
-        # Create the initial dense matrix and fill it's entries with the missing_value
-        #matrix = np.empty((len(unique_sample_ids), len(unique_worker_ids)))
-        matrix = np.full((len(unique_sample_ids), len(unique_worker_ids)), None)
-
-        # Gets a label value from the original dataframe.
-        #value = self.df['worker_label'].iloc[0]
-        #matrix = matrix.astype(type(value))
-        #matrix.fill(fill_value)
-
         # TODO Store visited workers per each sample to detect multiple samplings
         # NOTE unnecesary, can check if value is fill_value at matrix spot prior to filling, this informs of duplicates and will then require whatever action to be taken. Could default for now to using the last seen label value of the worker for that sample.
 
         # TODO Put the existing annotations into the matrix, by each sample
-        for i, sample_id in enumerate(unique_sample_ids):
-            # Get worker's labels for this sample
-            sample_instances = np.nonzero(unique_sample_ids_inverse == i)[0]
-            # Put each worker's label into the sample_id row of matrix
-            for sample_idx in sample_instances:
-                # TODO handle multiple labels of a sample from one worker
-                #if matrix[i][worker_to_matrix_idx[self.df['worker_id'].iloc[sample_idx]]] != missing_value
-                matrix[i][worker_to_matrix_idx[self.df['worker_id'].iloc[sample_idx]]] = self.df['worker_label'].iloc[sample_idx]
+        if 'ground_truth' in self.df.columns:
+            # Create the initial dense matrix and fill it's entries with the missing_value
+            matrix = np.full((len(unique_sample_ids), len(unique_worker_ids) + 1), None)
 
-        # TODO implement keep_ground_truth by adding ground truth column to matrix
-        #if 'ground_truth' in self.df.columns:
-        # NOTE should just include ground truth with the rest of the workers, and ignore its 'multiple' labels
+            for i, sample_id in enumerate(unique_sample_ids):
+                # Get worker's labels for this sample
+                sample_instances = np.nonzero(unique_sample_ids_inverse == i)[0]
+                # Put each worker's label into the sample_id row of matrix
+                for sample_idx in sample_instances:
+                    # TODO handle multiple labels of a sample from one worker
+                    #if matrix[i][worker_to_matrix_idx[self.df['worker_id'].iloc[sample_idx]]] != missing_value
+                    matrix[i, worker_to_matrix_idx[self.df['worker_id'].iloc[sample_idx]]] = self.df['worker_label'].iloc[sample_idx]
+                    matrix[i, -1] = self.df['ground_truth'].iloc[sample_idx]
+        else:
+            # Create the initial dense matrix and fill it's entries with the missing_value
+            matrix = np.full((len(unique_sample_ids), len(unique_worker_ids)), None)
+
+            for i, sample_id in enumerate(unique_sample_ids):
+                # Get worker's labels for this sample
+                sample_instances = np.nonzero(unique_sample_ids_inverse == i)[0]
+                # Put each worker's label into the sample_id row of matrix
+                for sample_idx in sample_instances:
+                    # TODO handle multiple labels of a sample from one worker
+                    #if matrix[i][worker_to_matrix_idx[self.df['worker_id'].iloc[sample_idx]]] != missing_value
+                    matrix[i, worker_to_matrix_idx[self.df['worker_id'].iloc[sample_idx]]] = self.df['worker_label'].iloc[sample_idx]
 
         # Make the matrix a sparse dataframe.
         matrix = pd.DataFrame(matrix, columns=unique_worker_ids, index=unique_sample_ids).to_sparse(fill_value)
