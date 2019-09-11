@@ -316,7 +316,7 @@ def prepare_model(model_config, features, labels, output_dir=None, callbacks=Non
     """
     if 'filepath' in model_config:
         # TODO could remove from here and put into calling code when loading is possible
-        return tf.keras.models.load_model(model_config['filepath']), None, None
+        return keras.models.load_model(model_config['filepath']), None, None
 
     start_perf_time = perf_counter()
     start_process_time = process_time()
@@ -420,35 +420,33 @@ def vgg16_model(
         The initialized VGG16 model.
     """
     if parts == 'full' or parts == 'vgg16':
-        input_layer = tf.keras.layers.Input(shape=input_shape, dtype='float32')
+        input_layer = keras.layers.Input(shape=input_shape, dtype='float32')
 
         # create model and freeze them model.
-        vgg16 = tf.keras.applications.vgg16.VGG16(False, input_tensor=input_layer)
+        vgg16 = keras.applications.vgg16.VGG16(False, input_tensor=input_layer)
         for layer in vgg16.layers:
             layer.trainable = False
         x = vgg16.layers[-1].output
 
         if parts == 'vgg16':
-            return tf.keras.models.Model(inputs=input_layer, outputs=x)
+            return keras.models.Model(inputs=input_layer, outputs=x)
     elif parts.lower() == 'labelme':
-        input_layer = tf.keras.layers.Input(shape=(8, 8, 512), dtype='float32')
+        input_layer = keras.layers.Input(shape=(8, 8, 512), dtype='float32')
         x = input_layer
     else:
         raise ValueError('`parts`: expected "full", "vgg16", or "labelme", but recieved `f{parts}`.')
 
-    # TODO make all these calls from vanilla Keras, not tf.keras
-
     # Add the layers specified in Crowd Layer paper.
-    x = tf.keras.layers.Flatten()(x)
-    x = tf.keras.layers.Dense(128, activation='relu')(x)
-    x = tf.keras.layers.Dropout(0.5)(x)
-    x = tf.keras.layers.Dense(num_labels, activation='softmax')(x)
+    x = keras.layers.Flatten()(x)
+    x = keras.layers.Dense(128, activation='relu')(x)
+    x = keras.layers.Dropout(0.5)(x)
+    x = keras.layers.Dense(num_labels, activation='softmax')(x)
 
     if crowd_layer:
         # TODO: Crowd Layer for the VGG16 model.
         raise NotImplementedError
 
-    return tf.keras.models.Model(inputs=input_layer, outputs=x)
+    return keras.models.Model(inputs=input_layer, outputs=x)
 
 
 def resnext50_model(
