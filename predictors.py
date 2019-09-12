@@ -351,7 +351,13 @@ def prepare_model(model_config, features, labels, output_dir=None, callbacks=Non
     return model, init_times, train_times
 
 
-def load_model(model_id, crowd_layer=False, parts='labelme', **kwargs):
+def load_model(
+    model_id,
+    crowd_layer=False,
+    parts='labelme',
+    weights_file=False,
+    **kwargs,
+):
     """Either initializes the model or loads the model from file.
 
     Parameters
@@ -364,6 +370,8 @@ def load_model(model_id, crowd_layer=False, parts='labelme', **kwargs):
         indicates the part of the model to be loaded, either the DNN only, the
         classifier at the end only, or the full model. Useful for preprocessing
         and training of frozen DNN encoded samples.
+    weights_file : str
+        Filepath to the model weights to be loaded after creating the model.
     kwargs : dict
         The remaining key word arguements to use in loading the model.
 
@@ -390,6 +398,9 @@ def load_model(model_id, crowd_layer=False, parts='labelme', **kwargs):
             raise NotImplementedError
         else:
             model.compile('adam', 'categorical_crossentropy')
+
+    if isinstance(weights_file, str) and os.path.isfile(weights_file):
+        model.load_weights(weights_file)
 
     return model
 
