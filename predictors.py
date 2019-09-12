@@ -17,6 +17,57 @@ from sklearn.model_selection import KFold, StratifiedKFold
 
 from psych_metric.datasets import data_handler
 
+class CheckpointValidaitonOutput(keras.callbacks.Callback):
+    """Saves the validaiton output and target pairs to a csv file for every
+    period.
+
+    Attributes
+    ----------
+        filepath : str
+        period : int
+            Interval (number of epochs) between checkpoints.
+        validate_shape : bool
+    """
+    def __init__(self, filepath, period=1, validate_shape=False, delimiter=','):
+        super(CheckpointValidaitonOutput, self).__init__()
+        self.filepath = filepath
+        self.period = period
+        self.validate_shape = validate_shape
+        self.delimiter = delimiter
+
+        self.epochs_since_last_save = 0
+
+        self.targets = []
+        self.outputs = []
+
+        self.var_y_true = tf.Variable(0., validate_shape=validate_shape)
+        self.var_y_pred = tf.Variable(0., validate_shape=validate_shape)
+
+    def on_test_batch_end(self, batch, logs=None):
+        """Extract the targets and model outputs for this batch."""
+        if self.epochs_since_last_save >= self.period:
+            self.targets.append(keras.backend.K.eval(self.var_y_true))
+            self.outputs.append(keras.backend.K.eval(self.var_y_pred))
+
+    def on_epoch_begin(self, epoch, logs=None):
+        """Check if the current epoch is the one to be recorded."""
+        self.epochs_since_last_save += 1
+
+    def on_epoch_end(self, epoch, logs=None):
+        """Save the targets and model outputs of the most recent epoch."""
+        if self.epochs_since_last_save >= self.period:
+            self.epochs_since_last_save = 0
+
+            with open(self.filepath, 'w') as csvfile:
+                writer = csv.writer(csvfile, delimiter=self.delimiter)
+                writer.writerow(['targets', 'outputs'])
+
+                for i in range(len(self.targets)):
+                    writer.writerow([self.targets[i]] + [self.outputs[i]])
+
+            # Clear targets and outputs for next period's final epoch.
+            self.targets = []
+            self.outputs = []
 
 def run_experiment(
     output_dir,
@@ -255,6 +306,10 @@ def kfold_cv(
                 save_weights_only=True,
                 period=period,
             )]
+
+            if period_save_pred:
+                period_save_pred = os.makedirs(checkpoint_dir, 'pred.{epoch:02d}.csv')
+
         else:
             callbacks = None
 
@@ -266,6 +321,7 @@ def kfold_cv(
             labels[train_idx],
             output_dir_eval_fold,
             callbacks=callbacks,
+            period_save_preds=period_save_preds,
         )
 
         logging.info(f'{i + 1}/{kfolds} fold cross validation: Testing')
@@ -304,7 +360,13 @@ def kfold_cv(
         )
 
 
-def prepare_model(model_config, features, labels, output_dir=None, callbacks=None):
+def prepare_model(model_config,
+    features,
+    labels,
+    output_dir=None,
+    callbacks=None,
+    period_save_pred=False,
+):
     """Prepares the model by initializing it and training it.
 
     Parameters
@@ -319,6 +381,8 @@ def prepare_model(model_config, features, labels, output_dir=None, callbacks=Non
         The output directory to save the results of the model.
     callbacks : list
         Callbacks to be used by Keras when training the model.
+    period_save_pred : bool
+        If model checkpoint exists, then
 
     Returns
     -------
@@ -343,6 +407,17 @@ def prepare_model(model_config, features, labels, output_dir=None, callbacks=Non
     init_perf = perf_counter() - start_perf_time
 
     # TODO if callbacks exist, make one that keeps track of runtimes for checkpoint models.
+    if period_save_pred and callbacks:
+        checkpoint_dir = os.path.join(output_dir, 'checkpoints')
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
+        callbacks.append(
+            CheckpointValidationOutput(
+                os.path.join(output_dir, 'checkpoints', ),
+                os.path.join(checkpoint_dir, 'weights.{epoch:02d}.hdf5'),
+                callbacks[0].period,
+        ))
+
     start_perf_time = perf_counter()
     start_process_time = process_time()
 
