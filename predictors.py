@@ -25,7 +25,8 @@ def run_experiment(
     data_config,
     model_config,
     kfold_cv_args,
-    random_seeds=None
+    focus_fold=None,
+    random_seeds=None,
 ):
     """Runs the kfold cross validation  experiment with same model and data,
     just different seeds.
@@ -44,6 +45,11 @@ def run_experiment(
         The arguments related to the model initialization, training, and testing.
     kfold_cv_args : dict
         The arguments related to the kfold cross validation.
+    focus_fold : int, optional
+        Specifies the fold of the data to focus for running a single train-eval
+        session of the model on the data. If given, K fold cross validation
+        does not execute, only that single data partition is run. Defaults to
+        None.
     random_seeds : int | list of ints, optional
         The random seed(s) used to initialize the random number generator for
         the k fold cross validation data splitting and for the intial
@@ -134,14 +140,19 @@ def run_experiment(
             datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
         )
 
-        kfold_cv(
-            model_config,
-            images,
-            y_data,
-            output_dir,
-            summary=summary,
-            **kfold_cv_args,
-        )
+        # TODO decide how to handle output_dir
+
+        if focus_fold:
+            # TODO run single train, test, maybe put in kfold_cv? idk.
+        else:
+            kfold_cv(
+                model_config,
+                images,
+                y_data,
+                output_dir,
+                summary=summary,
+                **kfold_cv_args,
+            )
 
 
 def kfold_cv(
@@ -573,6 +584,12 @@ if __name__ == '__main__':
         type=int,
         help='The random seed to use for initialization of the model.',
     )
+    parser.add_argument(
+        '-w',
+        '--weights_file',
+        default=None,
+        help='The file containing the model weights to set at initialization.',
+    )
 
     # Data args
     parser.add_argument(
@@ -592,6 +609,12 @@ if __name__ == '__main__':
         default='majority_vote',
         help='The source of labels to use for training.',
         choices=['majority_vote', 'ground_truth', 'annotations'],
+    )
+    parser.add_argument(
+        '--focus_fold',
+        default=None,
+        type=int,
+        help='The focus fold to split the data on to form train and test sets for a singlemodel train and evaluate session (No K-fold Cross Validation; Just evaluates one partition).',
     )
 
     # Output args
@@ -747,6 +770,9 @@ if __name__ == '__main__':
     else:
         random_seeds = args.random_seeds
 
+    # TODO implement testing of a specific model and data partition from summary.json
+    # TODO then implement that on wide scale for all 'checkpoints' missing predictions.
+
     if args.which_gpu:
         # TODO does not work atm...
         raise NotImplementedError('Selecting specific GPU not implemented.')
@@ -758,5 +784,6 @@ if __name__ == '__main__':
             data_config,
             model_config,
             kfold_cv_args,
+            focus_fold=args.focus_fold,
             random_seeds=random_seeds,
         )
