@@ -113,7 +113,7 @@ def run_experiment(
         for i, r in enumerate(random_seeds):
             kfold_cv_args.pop('random_seed', None)
 
-            logging.info(f'{i}/{len(random_seeds)} Random Seeds: {r}')
+            logging.info(f'{i + 1}/{len(random_seeds)} Random Seeds: {r}')
 
             r_output_dir = os.path.join(
                 output_dir,
@@ -144,6 +144,7 @@ def run_experiment(
 
         if focus_fold:
             # TODO run single train, test, maybe put in kfold_cv? idk.
+            pass
         else:
             kfold_cv(
                 model_config,
@@ -257,7 +258,7 @@ def kfold_cv(
         else:
             callbacks = None
 
-        logging.info(f'{i}/{kfolds} fold cross validation: Training')
+        logging.info(f'{i + 1}/{kfolds} fold cross validation: Training')
 
         model, init_times, train_times = prepare_model(
             model_config,
@@ -267,7 +268,7 @@ def kfold_cv(
             callbacks=callbacks,
         )
 
-        logging.info(f'{i}/{kfolds} fold cross validation: Testing')
+        logging.info(f'{i + 1}/{kfolds} fold cross validation: Testing')
 
         start_perf_time = perf_counter()
         start_process_time = process_time()
