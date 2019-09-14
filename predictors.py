@@ -1,6 +1,7 @@
 """Simple testing concept."""
 import argparse
 from copy import deepcopy
+import csv
 from datetime import datetime
 import json
 import logging
@@ -8,6 +9,7 @@ import os
 import random
 from time import perf_counter, process_time
 
+import h5py
 import numpy as np
 import pandas as pd
 import keras
@@ -23,51 +25,39 @@ class CheckpointValidaitonOutput(keras.callbacks.Callback):
 
     Attributes
     ----------
-        filepath : str
-        period : int
-            Interval (number of epochs) between checkpoints.
-        validate_shape : bool
+    filepath : str
+    period : int
+        Interval (number of epochs) between checkpoints.
+    delimiter : str
+        The character to use as the delmiter of the csv files.
     """
-    def __init__(self, filepath, period=1, validate_shape=False, delimiter=','):
+    def __init__(self, filepath, period=1, delimiter=','):
         super(CheckpointValidaitonOutput, self).__init__()
         self.filepath = filepath
         self.period = period
-        self.validate_shape = validate_shape
         self.delimiter = delimiter
 
         self.epochs_since_last_save = 0
 
-        self.targets = []
-        self.outputs = []
-
-        self.var_y_true = tf.Variable(0., validate_shape=validate_shape)
-        self.var_y_pred = tf.Variable(0., validate_shape=validate_shape)
-
-    def on_test_batch_end(self, batch, logs=None):
-        """Extract the targets and model outputs for this batch."""
-        if self.epochs_since_last_save >= self.period:
-            self.targets.append(keras.backend.K.eval(self.var_y_true))
-            self.outputs.append(keras.backend.K.eval(self.var_y_pred))
-
-    def on_epoch_begin(self, epoch, logs=None):
-        """Check if the current epoch is the one to be recorded."""
-        self.epochs_since_last_save += 1
-
     def on_epoch_end(self, epoch, logs=None):
         """Save the targets and model outputs of the most recent epoch."""
+        self.epochs_since_last_save += 1
+
         if self.epochs_since_last_save >= self.period:
             self.epochs_since_last_save = 0
 
-            with open(self.filepath, 'w') as csvfile:
+            with h5py.File(f'{self.filepath}.{epoch:02d}.hdf5', 'w') as h5f:
+                h5f['pred'] = self.validation_data[0]
+
+            """
+            with open(f'{self.filepath}.{epoch:02d}.csv', 'w') as csvfile:
                 writer = csv.writer(csvfile, delimiter=self.delimiter)
-                writer.writerow(['targets', 'outputs'])
+                #writer.writerow(['targets', 'outputs'])
+                writer.writerow(['outputs'])
 
-                for i in range(len(self.targets)):
-                    writer.writerow([self.targets[i]] + [self.outputs[i]])
-
-            # Clear targets and outputs for next period's final epoch.
-            self.targets = []
-            self.outputs = []
+                for i in range(len(self.validation_data[1])):
+                    writer.writerow([self.validation_data[0]])
+            """
 
 def run_experiment(
     output_dir,
@@ -222,6 +212,7 @@ def kfold_cv(
     shuffle=True,
     repeat=None,
     period=0,
+    period_save_pred=False,
 ):
     """Performs kfold cross validation on the model and saves the results.
 
@@ -256,6 +247,9 @@ def kfold_cv(
     period: int, optional
         Number of epochs to save the model checkpoints. Defaults to 0, meaning
         no checkpoints will be saved. The checkpoints save model weights only.
+    period_save_pred : bool, optional
+        If True and model checkpoint exists, then save the validation input and
+        output.
     """
     if not random_seed:
         random_seed = random.randint(0, 2**32 - 1)
@@ -308,21 +302,33 @@ def kfold_cv(
             )]
 
             if period_save_pred:
-                period_save_pred = os.makedirs(checkpoint_dir, 'pred.{epoch:02d}.csv')
-
+                callbacks.append(CheckpointValidaitonOutput(
+                    os.path.join(checkpoint_dir, 'pred'),
+                    period=period,
+                ))
         else:
             callbacks = None
 
         logging.info(f'{i + 1}/{kfolds} fold cross validation: Training')
 
-        model, init_times, train_times = prepare_model(
-            model_config,
-            features[train_idx],
-            labels[train_idx],
-            output_dir_eval_fold,
-            callbacks=callbacks,
-            period_save_preds=period_save_preds,
-        )
+        if period_save_pred:
+            # TODO handle filling in Y True for validation data...
+            model, init_times, train_times = prepare_model(
+                model_config,
+                features[train_idx],
+                labels[train_idx],
+                output_dir_eval_fold,
+                callbacks=callbacks,
+                validation_data=(features[test_idx], np.empty((len(test_idx), 8))),
+            )
+        else:
+            model, init_times, train_times = prepare_model(
+                model_config,
+                features[train_idx],
+                labels[train_idx],
+                output_dir_eval_fold,
+                callbacks=callbacks,
+            )
 
         logging.info(f'{i + 1}/{kfolds} fold cross validation: Testing')
 
@@ -365,7 +371,7 @@ def prepare_model(model_config,
     labels,
     output_dir=None,
     callbacks=None,
-    period_save_pred=False,
+    validation_data=None,
 ):
     """Prepares the model by initializing it and training it.
 
@@ -381,8 +387,8 @@ def prepare_model(model_config,
         The output directory to save the results of the model.
     callbacks : list
         Callbacks to be used by Keras when training the model.
-    period_save_pred : bool
-        If model checkpoint exists, then
+    validation_data : , optional
+
 
     Returns
     -------
@@ -406,25 +412,39 @@ def prepare_model(model_config,
     init_process = process_time() - start_process_time
     init_perf = perf_counter() - start_perf_time
 
-    # TODO if callbacks exist, make one that keeps track of runtimes for checkpoint models.
-    if period_save_pred and callbacks:
-        checkpoint_dir = os.path.join(output_dir, 'checkpoints')
-        os.makedirs(checkpoint_dir, exist_ok=True)
-
-        callbacks.append(
-            CheckpointValidationOutput(
-                os.path.join(output_dir, 'checkpoints', ),
-                os.path.join(checkpoint_dir, 'weights.{epoch:02d}.hdf5'),
-                callbacks[0].period,
-        ))
+    # TODO callbacks exist: make one that keeps track of runtimes for checkpoint models.
 
     start_perf_time = perf_counter()
     start_process_time = process_time()
 
     if 'train' in model_config:
-        model.fit(features, labels, callbacks=callbacks, **model_config['train'])
+        if validation_data:
+            # NOTE validaiton_data will obviously add prediction time to training. Use checkpoints to handle appropriate time training.
+            model.fit(
+                features,
+                labels,
+                callbacks=callbacks,
+                validation_data=validation_data,
+                **model_config['train'],
+            )
+        else:
+            model.fit(
+                features,
+                labels,
+                callbacks=callbacks,
+                **model_config['train'],
+            )
     else:
-        model.fit(features, labels, callbacks=callbacks)
+        if validation_data:
+            model.fit(
+                features,
+                labels,
+                validation_data=validation_data,
+                callbacks=callbacks,
+                **model_config['train']
+            )
+        else:
+            model.fit(features, labels, callbacks=callbacks)
 
     train_process = process_time() - start_process_time
     train_perf = perf_counter() - start_perf_time
@@ -780,6 +800,12 @@ if __name__ == '__main__':
         help='The number of epochs between checkpoints for ModelCheckpoint.',
     )
 
+    parser.add_argument(
+        '--period_save_pred',
+        action='store_true',
+        help='Saves trained models performance on validation data for every period.',
+    )
+
     # Logging
     parser.add_argument(
         '--log_level',
@@ -838,6 +864,7 @@ if __name__ == '__main__':
         'shuffle': args.shuffle_data,
         # 'repeat': None,
         'period': args.period,
+        'period_save_pred': args.period_save_pred,
     }
 
     if len(args.random_seeds) == 1:
