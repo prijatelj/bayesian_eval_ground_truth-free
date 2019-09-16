@@ -29,6 +29,7 @@ python3 "$BASE_PATH/predictors.py" \
     --epochs 15 \
     --batch_size 32 \
     --model_id vgg16 \
+    --dataset_id LabelMe \
     --label_src majority_vote \
     --parts labelme \
     --period 1 \
