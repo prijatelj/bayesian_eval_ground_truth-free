@@ -319,7 +319,7 @@ def kfold_cv(
                 labels[train_idx],
                 output_dir_eval_fold,
                 callbacks=callbacks,
-                validation_data=(features[test_idx], np.empty((len(test_idx), 8))),
+                validation_data=(features[test_idx], np.empty((len(test_idx), len(labels[0])))),
             )
         else:
             model, init_times, train_times = prepare_model(
