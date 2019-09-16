@@ -762,7 +762,7 @@ if __name__ == '__main__':
         help='The number of available CPUs.',
     )
     parser.add_argument(
-        '--shuffle_data',
+        '--no_shuffle_data',
         action='store_false',
         help='Disable shuffling of data.',
     )
@@ -861,7 +861,7 @@ if __name__ == '__main__':
         'save_model': args.no_save_model,
         'stratified': args.stratified,
         'test_focus_fold': not args.train_focus_fold,
-        'shuffle': args.shuffle_data,
+        'shuffle': args.no_shuffle_data,
         # 'repeat': None,
         'period': args.period,
         'period_save_pred': args.period_save_pred,
