@@ -6,7 +6,7 @@
 #$ -l gpu_card=1
 #$ -o logs/fb/rnxt50_mv/logs/
 #$ -e logs/fb/rnxt50_mv/logs/
-#$ -t 1-5
+#$ -t 1-25
 
 BASE_PATH="$HOME/Public/psych_metric"
 
@@ -31,6 +31,5 @@ python3 "$BASE_PATH/predictors.py" \
     --batch_size 16 \
     --model_id resnext50 \
     --label_src majority_vote \
-    --dataset_id FacialBeauty \
     --period 1 \
     --period_save_pred
