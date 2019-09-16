@@ -46,7 +46,7 @@ class CheckpointValidaitonOutput(keras.callbacks.Callback):
         if self.epochs_since_last_save >= self.period:
             self.epochs_since_last_save = 0
 
-            with h5py.File(f'{self.filepath}.{epoch:02d}.hdf5', 'w') as h5f:
+            with h5py.File(f'{self.filepath}.{epoch + 1:02d}.hdf5', 'w') as h5f:
                 h5f['pred'] = self.validation_data[0]
 
             """
