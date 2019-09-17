@@ -59,6 +59,54 @@ class CheckpointValidaitonOutput(keras.callbacks.Callback):
                     writer.writerow([self.validation_data[0]])
             """
 
+
+def load_prep_data(dataset_id, data_config, label_src):
+    """Load and prep dataset."""
+    # TODO this should probably all be handled mostly in the dataset class itself. Specifically the label encoding and binarization.
+
+    dataset = data_handler.load_dataset(dataset_id, **data_config)
+    if dataset_id == 'LabelMe' and model_config['parts'] == 'labelme':
+        images, labels = dataset.load_images(os.path.join(
+            dataset.data_dir,
+            dataset.dataset,
+            'labelme_vgg16_encoded.h5'
+        ))
+    else:
+        images, labels = dataset.load_images(
+            majority_vote=True,
+            img_shape=(224, 224),
+        )
+
+    # select the label source for this run
+    if label_src == 'annotations':
+        labels = dataset.df
+
+        # TODO handle proper binariing of annotations labels.
+        raise NotImplementedError
+
+    elif label_src == 'majority_vote' or label_src == 'ground_truth':
+        if isinstance(labels, pd.SparseDataFrame):
+            # NOTE assumes labels are ints and w/in [0,255]
+            labels = labels[label_src].values.values.astype('uint8')
+        elif isinstance(labels, pd.SparseSeries):
+            # NOTE assumes labels are ints and w/in [0,255]
+            labels = labels.values.values.astype('uint8')
+        elif isinstance(labels, pd.DataFrame):
+            labels = labels[label_src]
+
+        # Binarize the label data
+        label_bin = LabelBinarizer()
+        label_bin.fit(labels)
+        y_data = label_bin.transform(labels).astype('float32', copy=False)
+
+        return images, y_data
+    else:
+        raise ValueError(
+            'expected `label_src` to be "majority_vote", "ground_truth", or '
+            + f'"annotations", but recieved {label_src}',
+        )
+
+
 def run_experiment(
     output_dir,
     label_src,
@@ -96,46 +144,7 @@ def run_experiment(
         the k fold cross validation data splitting and for the intial
         initialization of the models for each training session.
     """
-    # Load and prep dataset
-    dataset = data_handler.load_dataset(dataset_id, **data_config)
-    if dataset_id == 'LabelMe' and model_config['parts'] == 'labelme':
-        images, labels = dataset.load_images(os.path.join(
-            dataset.data_dir,
-            dataset.dataset,
-            'labelme_vgg16_encoded.h5'
-        ))
-    else:
-        images, labels = dataset.load_images(
-            majority_vote=True,
-            img_shape=(224, 224),
-        )
-
-    # select the label source for this run
-    if label_src == 'annotations':
-        labels = dataset.df
-
-        # TODO handle proper binariing of annotations labels.
-        raise NotImplementedError
-
-    elif label_src == 'majority_vote' or label_src == 'ground_truth':
-        if isinstance(labels, pd.SparseDataFrame):
-            # NOTE assumes labels are ints and w/in [0,255]
-            labels = labels[label_src].values.values.astype('uint8')
-        elif isinstance(labels, pd.SparseSeries):
-            # NOTE assumes labels are ints and w/in [0,255]
-            labels = labels.values.values.astype('uint8')
-        elif isinstance(labels, pd.DataFrame):
-            labels = labels[label_src]
-
-        # Binarize the label data
-        label_bin = LabelBinarizer()
-        label_bin.fit(labels)
-        y_data = label_bin.transform(labels).astype('float32', copy=False)
-    else:
-        raise ValueError(
-            'expected `label_src` to be "majority_vote", "ground_truth", or '
-            + f'"annotations", but recieved {label_src}',
-        )
+    images, labels = load_prep_data(dataset_id, data_config, label_src)
 
     summary = {
         dataset_id: data_config,
@@ -165,7 +174,7 @@ def run_experiment(
             kfold_cv(
                 model_config,
                 images,
-                y_data,
+                labels,
                 r_output_dir,
                 summary=summary,
                 random_seed=r,
@@ -190,7 +199,7 @@ def run_experiment(
             kfold_cv(
                 model_config,
                 images,
-                y_data,
+                labels,
                 output_dir,
                 summary=summary,
                 **kfold_cv_args,
