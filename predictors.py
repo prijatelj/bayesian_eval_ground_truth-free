@@ -60,12 +60,12 @@ class CheckpointValidaitonOutput(keras.callbacks.Callback):
             """
 
 
-def load_prep_data(dataset_id, data_config, label_src):
+def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
     """Load and prep dataset."""
     # TODO this should probably all be handled mostly in the dataset class itself. Specifically the label encoding and binarization.
 
     dataset = data_handler.load_dataset(dataset_id, **data_config)
-    if dataset_id == 'LabelMe' and model_config['parts'] == 'labelme':
+    if dataset_id == 'LabelMe' and parts == 'labelme':
         images, labels = dataset.load_images(os.path.join(
             dataset.data_dir,
             dataset.dataset,
@@ -82,7 +82,8 @@ def load_prep_data(dataset_id, data_config, label_src):
         labels = dataset.df
 
         # TODO handle proper binariing of annotations labels.
-        raise NotImplementedError
+        #raise NotImplementedError
+        return images, labels
 
     elif label_src == 'majority_vote' or label_src == 'ground_truth':
         if isinstance(labels, pd.SparseDataFrame):
@@ -144,7 +145,12 @@ def run_experiment(
         the k fold cross validation data splitting and for the intial
         initialization of the models for each training session.
     """
-    images, labels = load_prep_data(dataset_id, data_config, label_src)
+    images, labels = load_prep_data(
+        dataset_id,
+        data_config,
+        label_src,
+        model_config['parts'],
+    )
 
     summary = {
         dataset_id: data_config,
