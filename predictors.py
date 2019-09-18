@@ -100,7 +100,7 @@ def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
         label_bin.fit(labels)
         y_data = label_bin.transform(labels).astype('float32', copy=False)
 
-        return images, y_data
+        return images, y_data, label_bin.classes_.tolist()
     else:
         raise ValueError(
             'expected `label_src` to be "majority_vote", "ground_truth", or '
@@ -145,7 +145,7 @@ def run_experiment(
         the k fold cross validation data splitting and for the intial
         initialization of the models for each training session.
     """
-    images, labels = load_prep_data(
+    images, labels, bin_classes = load_prep_data(
         dataset_id,
         data_config,
         label_src,
@@ -156,7 +156,7 @@ def run_experiment(
         dataset_id: data_config,
         'model_config': model_config,
         'kfold_cv_args': kfold_cv_args,
-        'label_binarizer': label_bin.classes_.tolist()
+        'label_binarizer': bin_classes
     }
 
     if random_seeds:
@@ -858,7 +858,7 @@ if __name__ == '__main__':
         } if args.gpu >= 0 else {'CPU': args.cpu},
     )
 
-    tf.keras.backend.set_session(tf.Session(config=config))
+    keras.backend.set_session(tf.Session(config=config))
 
     # package the arguements:
     data_config = {'dataset_filepath': args.dataset_filepath}
