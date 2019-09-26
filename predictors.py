@@ -74,6 +74,7 @@ def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
     else:
         images, labels = dataset.load_images(
             majority_vote=True,
+            #label_src=label_src,
             img_shape=(224, 224),
         )
 
@@ -81,8 +82,13 @@ def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
     if label_src == 'annotations':
         labels = dataset.df
 
-        # TODO handle proper binariing of annotations labels.
+        # TODO handle proper binarizing of annotations labels.
         #raise NotImplementedError
+        return images, labels
+    elif label_src == 'frequency':
+        # TODO perhaps should be handled in dataset class load_images function.
+        labels = dataset.df.apply(lambda x: x.value_counts(True), axis=1).fillna(0)
+
         return images, labels
 
     elif label_src == 'majority_vote' or label_src == 'ground_truth':
@@ -145,12 +151,21 @@ def run_experiment(
         the k fold cross validation data splitting and for the intial
         initialization of the models for each training session.
     """
-    images, labels, bin_classes = load_prep_data(
-        dataset_id,
-        data_config,
-        label_src,
-        model_config['parts'],
-    )
+    if label_src == 'majority_vote' or label_src == 'ground_truth':
+        images, labels, bin_classes = load_prep_data(
+            dataset_id,
+            data_config,
+            label_src,
+            model_config['parts'],
+        )
+    else:
+        images, labels = load_prep_data(
+            dataset_id,
+            data_config,
+            label_src,
+            model_config['parts'],
+        )
+        bin_classes = labels.columns.tolist()
 
     summary = {
         dataset_id: data_config,
@@ -478,6 +493,7 @@ def load_model(
     crowd_layer=False,
     parts='labelme',
     weights_file=False,
+    kl_div=False,
     **kwargs,
 ):
     """Either initializes the model or loads the model from file.
@@ -494,6 +510,8 @@ def load_model(
         and training of frozen DNN encoded samples.
     weights_file : str
         Filepath to the model weights to be loaded after creating the model.
+    kl_div : bool
+        Whether to use KL divergence as loss or not.
     kwargs : dict
         The remaining key word arguements to use in loading the model.
 
@@ -518,6 +536,8 @@ def load_model(
         if crowd_layer:
             # TODO model.compile('adam', CrowdLayer...)
             raise NotImplementedError
+        elif kl_div:
+            model.compile('adam', 'kullback_leibler_divergence')
         else:
             model.compile('adam', 'categorical_crossentropy')
 
@@ -701,6 +721,11 @@ if __name__ == '__main__':
         default=None,
         help='The file containing the model weights to set at initialization.',
     )
+    parser.add_argument(
+        '--kl_div',
+        action='store_true',
+        help='Uses Kullback Leibler Divergence as loss instead of Categorical Cross Entropy',
+    )
 
     # Data args
     parser.add_argument(
@@ -719,7 +744,7 @@ if __name__ == '__main__':
         '--label_src',
         default='majority_vote',
         help='The source of labels to use for training.',
-        choices=['majority_vote', 'ground_truth', 'annotations'],
+        choices=['majority_vote', 'frequency', 'ground_truth', 'annotations'],
     )
     parser.add_argument(
         '--focus_fold',
@@ -865,7 +890,7 @@ if __name__ == '__main__':
 
     model_config = {
         'model_id': args.model_id,
-        'init': {'crowd_layer': args.crowd_layer},
+        'init': {'crowd_layer': args.crowd_layer, 'kl_div': args.kl_div},
         'train': {'epochs': args.epochs, 'batch_size': args.batch_size},
         'parts': args.parts,
     }
