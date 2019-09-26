@@ -89,13 +89,20 @@ def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
         # TODO -1 is hardcoded expected Missing value for annotator. Good for only LabelMe
         # TODO avoid the usage of pd.SparseDataFrame as it contains critical bugs in latest pandas releases (its depracted)
         # TODO remove useless columns (those that only contain -1: no labels)
-        labels = pd.DataFrame(dataset.df.values).replace(-1, np.NaN).dropna(
-            'columns',
-            'all',
-        ).apply(
-            lambda x: x.value_counts(True),
-            axis=1,
-        ).fillna(0)
+        if dataset_id == 'LabelMe':
+            labels = pd.DataFrame(dataset.df.values).replace(-1, np.NaN).dropna(
+                'columns',
+                'all',
+            ).apply(
+                lambda x: x.value_counts(True),
+                axis=1,
+            ).fillna(0)
+        else:
+            labels = pd.DataFrame(dataset.df.values).apply(
+                lambda x: x.value_counts(True),
+                axis=1,
+            ).fillna(0)
+
 
         return images, labels.values, labels.columns.tolist()
 
