@@ -74,7 +74,6 @@ def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
     else:
         images, labels = dataset.load_images(
             majority_vote=True,
-            #label_src=label_src,
             img_shape=(224, 224),
         )
 
@@ -87,9 +86,18 @@ def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
         return images, labels
     elif label_src == 'frequency':
         # TODO perhaps should be handled in dataset class load_images function.
-        labels = dataset.df.apply(lambda x: x.value_counts(True), axis=1).fillna(0)
+        # TODO -1 is hardcoded expected Missing value for annotator. Good for only LabelMe
+        # TODO avoid the usage of pd.SparseDataFrame as it contains critical bugs in latest pandas releases (its depracted)
+        # TODO remove useless columns (those that only contain -1: no labels)
+        labels = pd.DataFrame(dataset.df.values).replace(-1, np.NaN).dropna(
+            'columns',
+            'all',
+        ).apply(
+            lambda x: x.value_counts(True),
+            axis=1,
+        ).fillna(0)
 
-        return images, labels
+        return images, labels.values, labels.columns.tolist()
 
     elif label_src == 'majority_vote' or label_src == 'ground_truth':
         if isinstance(labels, pd.SparseDataFrame):
@@ -151,7 +159,7 @@ def run_experiment(
         the k fold cross validation data splitting and for the intial
         initialization of the models for each training session.
     """
-    if label_src == 'majority_vote' or label_src == 'ground_truth':
+    if label_src == 'majority_vote' or label_src == 'ground_truth' or label_src == 'frequency':
         images, labels, bin_classes = load_prep_data(
             dataset_id,
             data_config,
@@ -159,6 +167,8 @@ def run_experiment(
             model_config['parts'],
         )
     else:
+        # NOTE annotatoins not implemented yet.
+        raise NotImplementedError("annotations label src not implemented.")
         images, labels = load_prep_data(
             dataset_id,
             data_config,
