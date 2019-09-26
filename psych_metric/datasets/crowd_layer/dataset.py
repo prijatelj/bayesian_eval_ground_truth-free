@@ -11,7 +11,7 @@ from psych_metric.datasets.base_dataset import BaseDataset
 
 try:
     ROOT = os.environ['ROOT']
-    HERE = os.path.join(ROOT, 'psych_metric/datasets/crowd_layer/')
+    HERE = os.path.join(ROOT, 'psych_metric/datasets/crowd_layer/crowd_layer_data')
 except KeyError:
     # If ROOT environment variable does not exist, set HERE to None
     HERE = None
@@ -69,7 +69,8 @@ class CrowdLayer(BaseDataset):
             dataset_filepath = HERE
 
         # save the data directory
-        self.data_dir = os.path.join(dataset_filepath, 'crowd_layer_data')
+        #self.data_dir = os.path.join(dataset_filepath, 'crowd_layer_data')
+        self.data_dir = dataset_filepath
 
         # All are matrices are sparse matrices. All rows will always be samples
         self.sparse_matrix = True
