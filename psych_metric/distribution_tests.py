@@ -9,22 +9,22 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 
-def AIC(mle, num_params):
+def aic(mle, num_params):
     """Akaike information criterion."""
     return 2 * (num_params - math.log(mle))
 
 
-def BIC(mle, num_params, num_samples):
+def bic(mle, num_params, num_samples):
     """Bayesian information criterion. Approx. Bayes Factor"""
     return num_params * math.log(num_samples) - 2 * math.log(mle)
 
 
-def HQC(mle, num_params, num_samples):
+def hqc(mle, num_params, num_samples):
     """Hannan-Quinn information criterion."""
     return 2 * (num_params * math.log(math.log(num_samples)) - mle)
 
 
-def DIC(likelihood_function, num_params, num_samples, mle=None, mean_lf=None):
+def dic(likelihood_function, num_params, num_samples, mle=None, mean_lf=None):
     """Deviance information criterion.
 
     Parameters
@@ -147,7 +147,7 @@ def mle_adam(
         top_likelihoods = []
 
         params_history = []
-        loss_histoy = []
+        loss_history = []
         grad_history = []
 
         i = 0
@@ -161,7 +161,7 @@ def mle_adam(
             })
 
             if iter_results['neg_log_likelihood'] < top_likelihoods[-1]:
-                # update top likelihoods
+                # update top likelihoods and their respective params
                 if num_top_likelihoods <= 1:
                     top_likelihoods[0] = (
                         iter_results['neg_log_likelihood'],
@@ -179,7 +179,7 @@ def mle_adam(
 
             # Save observed vars of interest
             params_history.append(iter_results['params'])
-            loss_histoy.append(iter_results['neg_log_likelihood'])
+            loss_history.append(iter_results['neg_log_likelihood'])
             grad_history.append(iter_results['grad'])
 
             if tb_summary_dir:
@@ -188,20 +188,20 @@ def mle_adam(
                 summary_writer.flush()
 
             # Calculate Termination Conditions
-            if prior_params and np.linalg.norm(prior_params, iter_results['params']) < tol_param:
-                logging.info(f'Parameter convergence in {i} iterations.')
+            if params_history and np.linalg.norm(params_history[-1], iter_results['params']) < tol_param:
+                logging.info('Parameter convergence in %d iterations.', i)
                 break
 
-            if prior_loss and np.abs(iter_results['loss'] - prior_loss) < tol_param:
-                logging.info(f'Loss convergence in {i} iterations.')
+            if loss_history and np.abs(iter_results['loss'] - loss_history[-1]) < tol_param:
+                logging.info('Loss convergence in %d iterations.', i)
                 break
 
-            if prior_params and np.linalg.norm(iter_results['grad']) < tol_param:
-                logging.info(f'Gradient convergence in {i} iterations.')
+            if grad_history and np.linalg.norm(iter_results['grad']) < tol_param:
+                logging.info('Gradient convergence in %d iterations.', i)
                 break
 
             if i > max_iter:
-                logging.info(f'Maimum iterations ({max_iter}) reached without convergence.')
+                logging.info('Maimum iterations (%d) reached without convergence.', max_iter)
                 break
 
             i += 1
@@ -210,6 +210,7 @@ def mle_adam(
         summary_writer.close()
 
     return top_likelihoods
+    # return top_likelihoods, {'params': params_history, 'loss': loss_history, 'grad': grad_history}
 
 
 def get_distrib_param_vars(
