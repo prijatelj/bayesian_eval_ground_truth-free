@@ -50,7 +50,7 @@ def DIC(likelihood_function, num_params, num_samples, mle=None, mean_lf=None):
 
 # NOTE MLE search over params  could be done in SHADHO instead
 def mle_adam(
-    distribution,
+    distrib_id,
     data,
     init_params=None,
     optimizer_args=None,
@@ -68,7 +68,7 @@ def mle_adam(
 
     Parameters
     ----------
-    distribution : str
+    distrib_id : str
         Name of the distribution whoe MLE is being found.
     data : np.ndarray
     init_params : dict, optional
@@ -98,13 +98,13 @@ def mle_adam(
         if isinstance(data, np.ndarray):
             data = tf.placeholder(dtype=tf.float32, name='data')
 
-        # create dict of the distribution's parameters
-        params = get_param_vars(distribution, init_params)
+        # create distribution and dict of the distribution's parameters
+        distrib, params = get_distrib_param_vars(distrib_id, init_params)
 
         # TODO why negative? is this necessary? should it be a user passed flag?
         # because ths is the minimized loss, and we want the Maximumg Likelihood
         neg_log_likelihood = -1.0 * tf.reduce_sum(
-            distribution.log_prob(value=data),
+            distrib.log_prob(value=data),
             name='log_likelihood_sum',
         )
 
@@ -112,14 +112,18 @@ def mle_adam(
         optimizer = tf.train.AdamOptimizer(**optimizer_args)
         global_step = tf.Variable(0, name='global_step', trainable=False)
 
-        grads = optimizer.compute_gradients(neg_log_likelihood)
+        grads = optimizer.compute_gradients(
+            neg_log_likelihood,
+            list(params.values()),
+        )
         train_op = optimizer.apply_gradients(grads, global_step)
 
-        # TODO summary ops?
         if tb_summary_dir:
             # Visualize the gradients
             for g in grads:
                 tf.summary.histogram(f'{g[1].name}-grad', g[0])
+
+            # TODO Visualize the values of params
 
             summary_op = tf.summary.merge_all()
 
@@ -203,23 +207,29 @@ def mle_adam(
     return top_likelihoods
 
 
-def get_param_vars(
-    distribution,
+def get_distrib_param_vars(
+    distrib,
     init_params=None,
     num_class=None,
     random_seed=None,
 ):
-    """Creates tf.Variables for the distribution's parameters
+    """Creates tfp.distribution and tf.Variables for the distribution's
+    parameters.
 
     Parameters
     ----------
     num_class : int, optional
         only used when discrete random variable and number of classes is known.
+
+    Returns
+    -------
+    (tfp.distribution.Distribution, dict('param': tf.Variables))
+        the distribution and tf.Variables as its parameters.
     """
     if init_params is None:
         init_params = {}
 
-    if distribution == 'dirichlet_multinomial':
+    if distrib == 'dirichlet_multinomial':
         params = get_dirichlet_multinomial_param_vars(
             random_seed=random_seed,
             **init_params,
@@ -228,7 +238,7 @@ def get_param_vars(
             tfp.distributions.DirichletMultinomial(**params),
             params,
         )
-    elif distribution == 'normal':
+    elif distrib == 'normal':
         params = get_normal_param_vars(random_seed=random_seed, **init_params)
         return (
             tfp.distributions.Normal(**params),
@@ -236,7 +246,7 @@ def get_param_vars(
         )
     else:
         raise NotImplementedError(
-            f'{distribution} is not a supported '
+            f'{distrib} is not a supported '
             + 'distribution for `get_param_vars()`.'
         )
 
