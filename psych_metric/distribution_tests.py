@@ -112,15 +112,15 @@ def mle_adam(
         optimizer = tf.train.AdamOptimizer(**optimizer_args)
         global_step = tf.Variable(0, name='global_step', trainable=False)
 
-        grads = optimizer.compute_gradients(
+        grad = optimizer.compute_gradients(
             neg_log_likelihood,
             list(params.values()),
         )
-        train_op = optimizer.apply_gradients(grads, global_step)
+        train_op = optimizer.apply_gradients(grad, global_step)
 
         if tb_summary_dir:
             # Visualize the gradients
-            for g in grads:
+            for g in grad:
                 tf.summary.histogram(f'{g[1].name}-grad', g[0])
 
             # TODO Visualize the values of params
@@ -145,7 +145,11 @@ def mle_adam(
 
         # MLE loop
         top_likelihoods = []
-        prior_params = None
+
+        params_history = []
+        loss_histoy = []
+        grad_history = []
+
         i = 0
         while True:
             # get likelihood and params
@@ -173,6 +177,11 @@ def mle_adam(
                     if len(top_likelihoods) > num_top_likelihoods:
                         del top_likelihoods[-1]
 
+            # Save observed vars of interest
+            params_history.append(iter_results['params'])
+            loss_histoy.append(iter_results['neg_log_likelihood'])
+            grad_history.append(iter_results['grad'])
+
             if tb_summary_dir:
                 # Write summary update
                 summary_writer.add_summary(iter_results['summary_op'], i)
@@ -180,24 +189,20 @@ def mle_adam(
 
             # Calculate Termination Conditions
             if prior_params and np.linalg.norm(prior_params, iter_results['params']) < tol_param:
-                # logging()
+                logging.info(f'Parameter convergence in {i} iterations.')
                 break
 
-            if prior_params and np.abs(iter_results['params'] - prior_loss) < tol_param:
-                # logging()
+            if prior_loss and np.abs(iter_results['loss'] - prior_loss) < tol_param:
+                logging.info(f'Loss convergence in {i} iterations.')
                 break
 
-            if prior_params and np.linalg.norm(iter_results['grads']) < tol_param:
-                # logging()
+            if prior_params and np.linalg.norm(iter_results['grad']) < tol_param:
+                logging.info(f'Gradient convergence in {i} iterations.')
                 break
 
             if i > max_iter:
-                # logging()
+                logging.info(f'Maimum iterations ({max_iter}) reached without convergence.')
                 break
-
-            prior_params = iter_results['params']
-            prior_loss = iter_results['loss']
-            prior_grad = iter_results['grads']
 
             i += 1
 
