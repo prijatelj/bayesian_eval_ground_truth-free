@@ -1,4 +1,8 @@
+"""Functions for performing distribution model selection."""
+import logging
 import math
+import os
+from datetime import datetime
 
 import numpy as np
 import tensorflow as tf
@@ -29,57 +33,50 @@ def DIC(likelihood_function, num_params, num_samples, mle=None, mean_lf=None):
         the Maximum Likelihood Estimate to repreesnt the distribution's
         likelihood function.
     """
-    raise NotImplementedError("Need to implement finding the MLE from Likelihood function, and the expected value of the likelihood function.")
+    raise NotImplementedError('Need to implement finding the MLE from '
+        + 'Likelihood function, and the expected value of the likelihood '
+        + 'function.')
 
     if mean_lf is None:
-        raise NotImplementedError("Need to implement finding the expected value from Likelihood function.")
+        raise NotImplementedError('Need to implement finding the expected '
+            + 'value from Likelihood function.')
     if mle is None:
-        raise NotImplementedError("Need to implement finding the MLE from Likelihood function.")
+        raise NotImplementedError('Need to implement finding the MLE from '
+            + 'Likelihood function.')
 
     # DIC = 2 * (pd - D(theta)), where pd is spiegelhalters: pd= E(D(theta)) - D(E(theta))
-    return 2 * (expected_value_likelihood_func - math.log(mle) - math.log(likelihood_funciton))
+    # return 2 * (expected_value_likelihood_func - math.log(mle) - math.log(likelihood_funciton))
 
-# TODO exhaustive likelihood calculation for distrib and parameter set and data.
-def exhaustive_likelihood(distribution, data, optimizer_args={}):
-    """Computes the likelihood using every data sample.
 
-    Parameters
-    ----------
-    distribtion : tfp.distribution
-        An initialized tfp distribution with preset
-    data : np.ndarray
-        The data whose source distribution is in quesiton.
-
-    Returns
-    -------
-    float
-        The likelihood of the distribution with that set of parameters being
-        the source from which the data was drawn from.
-    """
-
-    return likelihood
-
-# TODO MLE search over params (this could be done in SHADHO instead)
+# NOTE MLE search over params  could be done in SHADHO instead
 def mle_adam(
     distribution,
     data,
+    init_params=None,
     optimizer_args=None,
     num_top_likelihoods=1,
-    params=None,
-    name='MLE_adam'
-)
+    max_iter=10000,
+    tol_param=1e-8,
+    tol_loss=1e-8,
+    tol_grad=1e-8,
+    tb_summary_dir=None,
+    random_seed=None,
+    name='MLE_adam',
+    sess_config=None,
+):
     """Uses tensorflow's ADAM optimizer to search the parameter space for MLE.
 
     Parameters
     ----------
-    distribution : tfp.distribution
+    distribution : str
+        Name of the distribution whoe MLE is being found.
     data : np.ndarray
+    init_params : dict, optional
+        The initial parameters of the distribution. Otherwise, selected randomly.
     optimizer_args : dict, optional
     num_top_likelihoods : int, optional
         The number of top best likelihoods and their respective parameters.
-    params : dict, optional
-        The initial parameters of the distribution. Otherwise, selected randomly.
-    tb_summary_dir : str
+    tb_summary_dir : str, optional
         directory path to save TensorBoard summaries.
     name : str
         Name prefixed to Ops created by this class.
@@ -91,16 +88,18 @@ def mle_adam(
         in decending order.
     """
     if optimizer_args is None:
-        optimier_args = {}
+        optimizer_args = {}
+    if random_seed:
+        np.random.seed(random_seed)
+        tf.set_random_seed(random_seed)
 
     # tensor to hold the data
     with tf.name_scope(name) as scope:
         if isinstance(data, np.ndarray):
             data = tf.placeholder(dtype=tf.float32, name='data')
 
-        if params is None:
-            # create dict of the distribution's parameters
-            params = get_param_vars(distribution)
+        # create dict of the distribution's parameters
+        params = get_param_vars(distribution, init_params)
 
         # TODO why negative? is this necessary? should it be a user passed flag?
         # because ths is the minimized loss, and we want the Maximumg Likelihood
@@ -113,13 +112,13 @@ def mle_adam(
         optimizer = tf.train.AdamOptimizer(**optimizer_args)
         global_step = tf.Variable(0, name='global_step', trainable=False)
 
-        gradients = optimizer.compute_gradients(neg_log_likelihood)
-        train_op = optimizer.apply_gradients(gradients, global_step)
+        grads = optimizer.compute_gradients(neg_log_likelihood)
+        train_op = optimizer.apply_gradients(grads, global_step)
 
         # TODO summary ops?
         if tb_summary_dir:
             # Visualize the gradients
-            for i, g in enumerate(gradients):
+            for g in grads:
                 tf.summary.histogram(f'{g[1].name}-grad', g[0])
 
             summary_op = tf.summary.merge_all()
@@ -129,9 +128,7 @@ def mle_adam(
         if tb_summary_dir:
             summary_writer = tf.summary.FileWriter(
                 os.path.join(
-                    output_dir,
-                    'summaries',
-                    summary_path,
+                    tb_summary_dir,
                     str(datetime.now()).replace(':', '-').replace(' ', '_'),
                 ),
                 sess.graph
@@ -144,7 +141,9 @@ def mle_adam(
 
         # MLE loop
         top_likelihoods = []
-        while finding_mle:
+        prior_params = None
+        i = 0
+        while True:
             # get likelihood and params
             iter_results = sess.run({
                 'train_op': train_op,
@@ -172,8 +171,31 @@ def mle_adam(
 
             if tb_summary_dir:
                 # Write summary update
-                summary_writer.add_summary(train_results['summary_op'], count)
+                summary_writer.add_summary(iter_results['summary_op'], i)
                 summary_writer.flush()
+
+            # Calculate Termination Conditions
+            if prior_params and np.linalg.norm(prior_params, iter_results['params']) < tol_param:
+                # logging()
+                break
+
+            if prior_params and np.abs(iter_results['params'] - prior_loss) < tol_param:
+                # logging()
+                break
+
+            if prior_params and np.linalg.norm(iter_results['grads']) < tol_param:
+                # logging()
+                break
+
+            if i > max_iter:
+                # logging()
+                break
+
+            prior_params = iter_results['params']
+            prior_loss = iter_results['loss']
+            prior_grad = iter_results['grads']
+
+            i += 1
 
     if tb_summary_dir:
         summary_writer.close()
@@ -184,9 +206,8 @@ def mle_adam(
 def get_param_vars(
     distribution,
     init_params=None,
-    random_seed=None,
-    name=None,
     num_class=None,
+    random_seed=None,
 ):
     """Creates tf.Variables for the distribution's parameters
 
@@ -199,11 +220,23 @@ def get_param_vars(
         init_params = {}
 
     if distribution == 'dirichlet_multinomial':
-        return get_dirichlet_multinomial_param_vars(**init_params)
+        params = get_dirichlet_multinomial_param_vars(
+            random_seed=random_seed,
+            **init_params,
+        )
+        return (
+            tfp.distributions.DirichletMultinomial(**params),
+            params,
+        )
     elif distribution == 'normal':
-        return get_normal_param_vars(**init_params)
+        params = get_normal_param_vars(random_seed=random_seed, **init_params)
+        return (
+            tfp.distributions.Normal(**params),
+            params,
+        )
     else:
-        raise NotImplementedError(f'{distribution} is not a supported '
+        raise NotImplementedError(
+            f'{distribution} is not a supported '
             + 'distribution for `get_param_vars()`.'
         )
 
@@ -211,49 +244,61 @@ def get_param_vars(
 def get_dirichlet_multinomial_param_vars(
     num_classes=None,
     max_concentration=None,
-    max_total_counts=None,
-    total_counts=None,
+    max_total_count=None,
+    total_count=None,
     concentration=None,
-)
+    random_seed=None,
+    name='dirichlet_multinomial',
+):
     """Create tf.Variable parameters for the Dirichlet distribution."""
-    if num_classes and max_concentration and max_total_counts:
-        return {
-            'total_counts': tf.Variable(
-                initial_value=np.random.uniform(
-                    1,
-                    max_total_counts,
-                    num_classes,
+    with tf.name_scope(name):
+        if num_classes and max_concentration and max_total_count:
+            return {
+                'total_count': tf.Variable(
+                    initial_value=np.random.uniform(
+                        1,
+                        max_total_count,
+                        num_classes,
+                    ),
+                    dtype=tf.int32,
+                    name='total_count',
                 ),
-                dtype=tf.float32,
-            ),
-            'concentration': tf.Variable(
-                initial_value=np.random.uniform(
-                    1,
-                    max_concentration,
-                    num_classes,
+                'concentration': tf.Variable(
+                    initial_value=np.random.uniform(
+                        1,
+                        max_concentration,
+                        num_classes,
+                    ),
+                    dtype=tf.float32,
+                    name='concentration',
                 ),
-                dtype=tf.float32,
-            ),
-        }
-    elif total_counts and concentration:
-        return {
-            'total_counts': tf.Variable(
-                initial_value=total_counts,
-                dtype=tf.float32,
-            ),
-            'concentration': tf.Variable(
-                initial_value=concentration,
-                dtype=tf.float32,
-            ),
-        }
-    else:
-        raise ValueError('Must pass either both `total_counts` and '
-            + '`concentration` xor pass `num_classes`, `max_total_counts` and '
-            + '`max_concentration`'
-        )
+            }
+        elif total_count and concentration:
+            return {
+                'total_count': tf.Variable(
+                    initial_value=total_count,
+                    dtype=tf.int32,
+                    name='total_count',
+                ),
+                'concentration': tf.Variable(
+                    initial_value=concentration,
+                    dtype=tf.float32,
+                    name='concentration',
+                ),
+            }
+        else:
+            raise ValueError('Must pass either both `total_count` and '
+                + '`concentration` xor pass `num_classes`, `max_total_count` and '
+                + '`max_concentration`'
+            )
 
 
-def get_normal_param_vars(mean, variance)
+def get_normal_param_vars(
+    mean,
+    standard_deviation,
+    random_seed=None,
+    name='normal',
+):
     """Create tf.Variable parameters for the normal distribution.
 
     Parameters
@@ -262,36 +307,42 @@ def get_normal_param_vars(mean, variance)
         either a float as the initial value of the mean, or a dict containing
         the mean and standard deviation of a normal distribution which this
         mean is drawn from randomly.
-    variance : float | dict
-        either a float as the initial value of the variance, or a dict
+    standard_deviation : float | dict
+        either a float as the initial value of the standard_deviation, or a dict
         containing the mean and standard deviation of a normal distribution
         which this mean is drawn from randomly.
     """
-    if isinstance(mean, dict) and isinstance(variance, dict):
-        return {
-            'mean': tf.Variable(
-                initial_value=np.random.normal(**mean),
-                dtype=tf.float32,
-            ),
-            'variance': tf.Variable(
-                initial_value=np.random.uniform(**variance),
-                dtype=tf.float32,
-            ),
-        }
-    elif isinstance(mean, float) and isinstance(variance, float):
-        return {
-            'total_counts': tf.Variable(
-                initial_value=np.random.uniform(1, max_total_counts, num_classes),
-                dtype=tf.float32,
-            ),
-            'concentration': tf.Variable(
-                initial_value=np.random.uniform(1, max_concentration, num_classes),
-                dtype=tf.float32,
-            ),
-        }
-    else
-        raise TypeError('Both `mean` and `variance` must either be floats xor '
-            + 'dicts containing a mean and variance each for sampling from a '
-            + 'normal distribution to select the initial values. '
-            + f'Not {type(mean)} and {type(variance)}'
-        )
+    with tf.name_scope(name):
+        if isinstance(mean, dict) and isinstance(standard_deviation, dict):
+            return {
+                'loc': tf.Variable(
+                    initial_value=np.random.normal(**mean),
+                    dtype=tf.float32,
+                    name='mean',
+                ),
+                'scale': tf.Variable(
+                    initial_value=np.random.uniform(**standard_deviation),
+                    dtype=tf.float32,
+                    name='standard_deviation',
+                ),
+            }
+        elif isinstance(mean, float) and isinstance(standard_deviation, float):
+            return {
+                'loc': tf.Variable(
+                    initial_value=mean,
+                    dtype=tf.float32,
+                    name='mean',
+                ),
+                'scale': tf.Variable(
+                    initial_value=standard_deviation,
+                    dtype=tf.float32,
+                    name='standard_deviation',
+                ),
+            }
+        else:
+            raise TypeError(
+                'Both `mean` and `standard_deviation` must either be floats '
+                + 'xor dicts containing a mean and standard_deviation each for sampling '
+                + 'from a normal distribution to select the initial values. '
+                + f'Not {type(mean)} and {type(standard_deviation)}'
+            )
