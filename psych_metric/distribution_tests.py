@@ -150,7 +150,7 @@ def mle_adam(
         loss_history = []
         grad_history = []
 
-        i = 0
+        i = 1
         while True:
             # get likelihood and params
             iter_results = sess.run({
@@ -188,7 +188,12 @@ def mle_adam(
                 summary_writer.flush()
 
             # Calculate Termination Conditions
-            if params_history and np.linalg.norm(params_history[-1], iter_results['params']) < tol_param:
+            # TODO Does the values need sorted by keys first?
+            param_diff = np.subtract(
+                iter_results['params'].values,
+                params_history[-1].values,
+            )
+            if params_history and np.linalg.norm(param_diff) < tol_param:
                 logging.info('Parameter convergence in %d iterations.', i)
                 break
 
@@ -200,7 +205,7 @@ def mle_adam(
                 logging.info('Gradient convergence in %d iterations.', i)
                 break
 
-            if i > max_iter:
+            if i >= max_iter:
                 logging.info('Maimum iterations (%d) reached without convergence.', max_iter)
                 break
 
@@ -362,3 +367,4 @@ def get_normal_param_vars(
                 + 'from a normal distribution to select the initial values. '
                 + f'Not {type(mean)} and {type(standard_deviation)}'
             )
+
