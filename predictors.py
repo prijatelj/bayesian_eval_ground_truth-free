@@ -16,9 +16,9 @@ import tensorflow as tf
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import KFold, StratifiedKFold
 
+import experiment.io
 from psych_metric.datasets import data_handler
 
-import experiment.io
 
 class CheckpointValidaitonOutput(keras.callbacks.Callback):
     """Saves the validaiton output and target pairs to a csv file for every
