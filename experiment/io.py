@@ -44,8 +44,23 @@ def save_json(filepath, results, additional_info=None, deep_copy=True):
         json.dump(results, summary_file, indent=4, sort_keys=True)
 
 
-def parse_args():
+def parse_args(arg_set=None):
+    """Creates the args to be parsed and the handling for each.
+
+    Parameters
+    ----------
+    arg_set : iterable, optional
+        contains the argument types to be parsed. Defaults to all.
+
+    Returns
+    -------
+    (argparse.namespace, dict, dict, dict, None|int|list(ints))
+        Args parsed, dicts of data, model, kfold specific args, and list of
+        random seeds.
+    """
     parser = argparse.ArgumentParser(description='Run proof of concept ')
+
+    # TODO consider useing arg_set to specify the types of args to load.
 
     # Model args.
     parser.add_argument(
