@@ -163,15 +163,15 @@ def mle_adam(
             if iter_results['neg_log_likelihood'] < top_likelihoods[-1]:
                 # update top likelihoods and their respective params
                 if num_top_likelihoods <= 1:
-                    top_likelihoods[0] = (
+                    top_likelihoods[0] = [
                         iter_results['neg_log_likelihood'],
                         iter_results['params'],
-                    )
+                    ]
                 else:
-                    top_likelihoods.append((
+                    top_likelihoods.append([
                         iter_results['neg_log_likelihood'],
                         iter_results['params'],
-                    ))
+                    ])
                     top_likelihoods = sorted(top_likelihoods)
 
                     if len(top_likelihoods) > num_top_likelihoods:
