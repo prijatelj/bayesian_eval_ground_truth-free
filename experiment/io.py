@@ -44,13 +44,93 @@ def save_json(filepath, results, additional_info=None, deep_copy=True):
         json.dump(results, summary_file, indent=4, sort_keys=True)
 
 
+def mle_args(parser):
+    parser.add_argument(
+        '--max_iter',
+        default=10000,
+        type=int,
+        help='The maximum number of iterations for finding MLE.'
+    )
+
+    parser.add_argument(
+        '--num_top_likelihoods',
+        default=1,
+        type=int,
+        help='The number of top MLEs to be saved for each distribution.'
+    )
+
+    # Tolerances
+    parser.add_argument(
+        '--tol_param',
+        default=1e-8,
+        type=float,
+        help='The threshold of parameter difference to the prior parameters '
+            + 'set before declaring convergence and terminating the MLE '
+            + 'search.',
+    )
+    parser.add_argument(
+        '--tol_loss',
+        default=1e-8,
+        type=float,
+        help='The threshold of difference to the prior negative log likelihood '
+            + 'set before declaring convergence and terminating the MLE '
+            + 'search.',
+    )
+    parser.add_argument(
+        '--tol_grad',
+        default=1e-8,
+        type=float,
+        help='The threshold of difference to the prior gradient set before '
+            + 'declaring convergence and terminating the MLE search.',
+    )
+
+    # optimizer_args
+    parser.add_argument(
+        '--learning_rate',
+        default=1e-3,
+        type=float,
+        help='A Tensor or a floating point vlaue. The learning rate.',
+    )
+    parser.add_argument(
+        '--beta1',
+        default=0.9,
+        type=float,
+        help='A float value or a constant float tensor. The exponential decay '
+            + 'rate for the 1st moment estimates.',
+    )
+    parser.add_argument(
+        '--beta2',
+        default=0.999,
+        type=float,
+        help='A float value or a constant float tensor. The exponential decay '
+            + 'rate for the 2nd moment estimates',
+    )
+    parser.add_argument(
+        '--epsilon',
+        default=1e-08,
+        type=float,
+        help='A small constant for numerical stability. This epsilon is ' +
+            + '"epsilon hat" in the Kingma and Ba paper (in the formula just '
+            + 'before Section 2.1), not the epsilon in Algorithm 1 of the '
+            + 'paper.',
+    )
+    parser.add_argument(
+        '--use_locking',
+        action='store_true',
+        help='Use locks for update operations.',
+    )
+
+    # tb_summary_dir ?? handled by output dir? or summary dir
+
+
+
 def parse_args(arg_set=None):
     """Creates the args to be parsed and the handling for each.
 
     Parameters
     ----------
     arg_set : iterable, optional
-        contains the argument types to be parsed. Defaults to all.
+        contains the additional argument types to be parsed.
 
     Returns
     -------
@@ -247,6 +327,9 @@ def parse_args(arg_set=None):
         help='The log file to be written to.',
     )
 
+    if arg_set and 'mle' in arg_set:
+        mle_args(parser)
+
     args = parser.parse_args()
 
     # Set logging configuration
@@ -261,7 +344,7 @@ def parse_args(arg_set=None):
         logging.basicConfig(level=numeric_level)
 
     # Set the Hardware
-    config = tf.ConfigProto(
+    keras.backend.set_session(tf.Session(config=tf.ConfigProto(
         intra_op_parallelism_threads=args.cpu_cores,
         inter_op_parallelism_threads=args.cpu_cores,
         allow_soft_placement=True,
@@ -269,14 +352,12 @@ def parse_args(arg_set=None):
             'CPU': args.cpu,
             'GPU': args.gpu,
         } if args.gpu >= 0 else {'CPU': args.cpu},
-    )
-
-    keras.backend.set_session(tf.Session(config=config))
+    )))
 
     # package the arguements:
-    data_config = {'dataset_filepath': args.dataset_filepath}
+    data_args = {'dataset_filepath': args.dataset_filepath}
 
-    model_config = {
+    model_args = {
         'model_id': args.model_id,
         'init': {'crowd_layer': args.crowd_layer, 'kl_div': args.kl_div},
         'train': {'epochs': args.epochs, 'batch_size': args.batch_size},
@@ -301,4 +382,6 @@ def parse_args(arg_set=None):
     else:
         random_seeds = args.random_seeds
 
-    return args, data_config, model_config, kfold_cv_args, random_seeds
+    # TODO combine packaged args into same args namespace
+
+    return args, data_args, model_args, kfold_cv_args, random_seeds
