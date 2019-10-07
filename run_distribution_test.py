@@ -112,7 +112,7 @@ if __name__ == '__main__':
     # TODO 2nd repeat for focus fold of k folds: load model of that split
     # split data based on specified random_seed
 
-    # Create the distributions and their args to be tested (hard coded options)
+    # TODO Create the distributions and their args to be tested (hard coded options)
     if args.dataset_id == 'LabelMe':
         if data_args['label_src'] == 'annotations':
             raise NotImplementedError('`label_src` as "annotations" results in '
