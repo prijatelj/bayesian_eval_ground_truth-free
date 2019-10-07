@@ -74,7 +74,7 @@ def test_human_distribs(
         # calculate the different information criterions (Bayes Factor approxed by BIC)
         # TODO Loop through top_likelihoods, save BIC
         if isinstance(distrib_mle[distrib_id], list):
-            for mle_list for distrib_mle[distrib_id]:
+            for mle_list in distrib_mle[distrib_id]:
                 mle_list.append(calc_info_criterion(
                     mle_list[0],
                     mle_list[1],
@@ -108,13 +108,13 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
     return info_criterion
 
 if __name__ == '__main__':
-    args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args()
+    args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
     # TODO 2nd repeat for focus fold of k folds: load model of that split
     # split data based on specified random_seed
 
     # TODO Create the distributions and their args to be tested (hard coded options)
     if args.dataset_id == 'LabelMe':
-        if data_args['label_src'] == 'annotations':
+        if args.label_src == 'annotations':
             raise NotImplementedError('`label_src` as "annotations" results in '
                 + 'a distribution of distributions of distributions. This '
                 + 'needs addressed.')
@@ -123,7 +123,7 @@ if __name__ == '__main__':
             distrib_args = {
                 'discrete_uniform': {'high': 8, 'low': 0},
                 'continuous_uniform': {'high': 8, 'low': 0},
-                'dirichlet_multinomial':,
+                'dirichlet_multinomial': None,
             }
     elif args.dataset_id == 'FacialBeauty':
         # TODO need to make a distrib of normal distribs, uniforms are fine though.
@@ -131,8 +131,8 @@ if __name__ == '__main__':
             'discrete_uniform': {'high': 5, 'low': 1},
             'continuous_uniform': {'high': 5, 'low': 1},
             'dirichlet_multinomial': {
-                'total_count': ,
-                'concentration': ,
+                'total_count': None,
+                'concentration': None,
             },
             #'normal': {'loc': , 'scale':},
         }
