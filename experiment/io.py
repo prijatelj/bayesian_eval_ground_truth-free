@@ -45,14 +45,16 @@ def save_json(filepath, results, additional_info=None, deep_copy=True):
 
 
 def mle_args(parser):
-    parser.add_argument(
+    mle = parser.add_argument_group('mle', 'Arguments pertaining to the '
+        + 'Maximum Likelihood Estimation.')
+    mle.add_argument(
         '--max_iter',
         default=10000,
         type=int,
         help='The maximum number of iterations for finding MLE.'
     )
 
-    parser.add_argument(
+    mle.add_argument(
         '--num_top_likelihoods',
         default=1,
         type=int,
@@ -60,7 +62,7 @@ def mle_args(parser):
     )
 
     # Tolerances
-    parser.add_argument(
+    mle.add_argument(
         '--tol_param',
         default=1e-8,
         type=float,
@@ -68,7 +70,7 @@ def mle_args(parser):
             + 'set before declaring convergence and terminating the MLE '
             + 'search.',
     )
-    parser.add_argument(
+    mle.add_argument(
         '--tol_loss',
         default=1e-8,
         type=float,
@@ -76,7 +78,7 @@ def mle_args(parser):
             + 'set before declaring convergence and terminating the MLE '
             + 'search.',
     )
-    parser.add_argument(
+    mle.add_argument(
         '--tol_grad',
         default=1e-8,
         type=float,
@@ -85,43 +87,42 @@ def mle_args(parser):
     )
 
     # optimizer_args
-    parser.add_argument(
+    mle.add_argument(
         '--learning_rate',
         default=1e-3,
         type=float,
         help='A Tensor or a floating point vlaue. The learning rate.',
     )
-    parser.add_argument(
+    mle.add_argument(
         '--beta1',
         default=0.9,
         type=float,
         help='A float value or a constant float tensor. The exponential decay '
             + 'rate for the 1st moment estimates.',
     )
-    parser.add_argument(
+    mle.add_argument(
         '--beta2',
         default=0.999,
         type=float,
         help='A float value or a constant float tensor. The exponential decay '
             + 'rate for the 2nd moment estimates',
     )
-    parser.add_argument(
+    mle.add_argument(
         '--epsilon',
         default=1e-08,
         type=float,
-        help='A small constant for numerical stability. This epsilon is ' +
+        help='A small constant for numerical stability. This epsilon is '
             + '"epsilon hat" in the Kingma and Ba paper (in the formula just '
             + 'before Section 2.1), not the epsilon in Algorithm 1 of the '
             + 'paper.',
     )
-    parser.add_argument(
+    mle.add_argument(
         '--use_locking',
         action='store_true',
         help='Use locks for update operations.',
     )
 
     # tb_summary_dir ?? handled by output dir? or summary dir
-
 
 
 def parse_args(arg_set=None):
@@ -376,7 +377,7 @@ def parse_args(arg_set=None):
         'period_save_pred': args.period_save_pred,
     }
 
-    if len(args.random_seeds) == 1:
+    if args.random_seeds and len(args.random_seeds) == 1:
         kfold_cv_args['random_seed'] = args.random_seeds[0]
         random_seeds = None
     else:
