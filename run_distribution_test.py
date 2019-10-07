@@ -17,8 +17,8 @@ from predictors import load_prep_data
 
 def test_human_distribs(
     dataset_id,
-    data_config,
-    distrib_config,
+    data_args,
+    distrib_args,
     mle_args=None,
     info_criterions=['bic'],
     random_seed=None,
@@ -29,9 +29,9 @@ def test_human_distribs(
     ----------
     dataset_id : str
         Identifier of dataset.
-    data_config : dict
+    data_args : dict
         Dict containing information pertaining to the data.
-    distrib_config : dict
+    distrib_args : dict
         Dict of str distrib ids to their initial parameters
     random_seed : int, optional
         Integer to use as the random seeds for MLE.
@@ -41,21 +41,28 @@ def test_human_distribs(
     # Load the src data, reformat as was done in training in `predictors.py`
     images, labels, bin_classes = load_prep_data(
         dataset_id,
-        data_config,
+        data_args,
         label_src,
-        model_config['parts'],
+        model_args['parts'],
     )
 
     # Find MLE of every hypothesis distribution
     distrib_mle : {}
 
-    for i, (distrib_id, init_params) in enumerate(distrib_config.items()):
+    for i, (distrib_id, init_params) in enumerate(distrib_args.items()):
         logging.info(
             'Hypothesis Distribution %d/%d : %s',
             i,
-            len(distrib_config),
+            len(distrib_args),
             distrib_id,
         )
+
+        if distrib_id == 'discrete_uniform':
+            distrib_mle[distrib_id] = 1.0 / (distrib_args['max'] - distrib_args['mim'] + 1)
+            continue
+        elif distrib_id == 'continuous_uniform':
+            distrib_mle[distrib_id] = 1.0 / (distrib_args['max'] - distrib_args['mim'])
+            continue
 
         distrib_mle[distrib_id] = distribution_tests.mle_adam(
             distrib_id,
@@ -101,6 +108,45 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
     return info_criterion
 
 if __name__ == '__main__':
-    args, data_config, model_config, kfold_cv_args, random_seeds = experiment.io.parse_args()
+    args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args()
     # TODO 2nd repeat for focus fold of k folds: load model of that split
     # split data based on specified random_seed
+
+    # Create the distributions and their args to be tested (hard coded options)
+    if args.dataset_id == 'LabelMe':
+        if data_args['label_src'] == 'annotations':
+            raise NotImplementedError('`label_src` as "annotations" results in '
+                + 'a distribution of distributions of distributions. This '
+                + 'needs addressed.')
+        else:
+            # this is a distribution of distributions, all
+            distrib_args = {
+                'discrete_uniform': {'high': 8, 'low': 0},
+                'continuous_uniform': {'high': 8, 'low': 0},
+                'dirichlet_multinomial':,
+            }
+    elif args.dataset_id == 'FacialBeauty':
+        # TODO need to make a distrib of normal distribs, uniforms are fine though.
+        distrib_args = {
+            'discrete_uniform': {'high': 5, 'low': 1},
+            'continuous_uniform': {'high': 5, 'low': 1},
+            'dirichlet_multinomial': {
+                'total_count': ,
+                'concentration': ,
+            },
+            #'normal': {'loc': , 'scale':},
+        }
+    else:
+        raise NotImplementedError('The `dataset_id` {args.dataset_id} is not supported.')
+
+    results = test_human_distrib(
+        args.dataset_id,
+        data_args,
+        distrib_args,
+        mle_args=args.mle_args,
+        info_criterions=['bic'],
+        random_seed=None,
+    )
+
+    # TODO Save the results
+
