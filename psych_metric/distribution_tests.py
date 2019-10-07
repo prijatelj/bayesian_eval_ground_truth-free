@@ -75,7 +75,8 @@ def mle_adam(
         The initial parameters of the distribution. Otherwise, selected randomly.
     optimizer_args : dict, optional
     num_top_likelihoods : int, optional
-        The number of top best likelihoods and their respective parameters.
+        The number of top best likelihoods and their respective parameters. If
+        equal to or less than -1, returns full history of likelihoods.
     tb_summary_dir : str, optional
         directory path to save TensorBoard summaries.
     name : str
@@ -148,10 +149,10 @@ def mle_adam(
 
         params_history = []
         loss_history = []
-        grad_history = []
 
         i = 1
-        while True:
+        continue_loop = True
+        while continue_loop:
             # get likelihood and params
             iter_results = sess.run({
                 'train_op': train_op,
@@ -162,12 +163,13 @@ def mle_adam(
 
             if iter_results['neg_log_likelihood'] < top_likelihoods[-1]:
                 # update top likelihoods and their respective params
-                if num_top_likelihoods <= 1:
-                    top_likelihoods[0] = [
+                if num_top_likelihoods == 1:
+                    top_likelihoods = [
                         iter_results['neg_log_likelihood'],
                         iter_results['params'],
                     ]
-                else:
+                elif num_top_likelihoods > 1:
+                    # TODO Use better data structures for large num_top_likelihoods
                     top_likelihoods.append([
                         iter_results['neg_log_likelihood'],
                         iter_results['params'],
@@ -176,11 +178,6 @@ def mle_adam(
 
                     if len(top_likelihoods) > num_top_likelihoods:
                         del top_likelihoods[-1]
-
-            # Save observed vars of interest
-            params_history.append(iter_results['params'])
-            loss_history.append(iter_results['neg_log_likelihood'])
-            grad_history.append(iter_results['grad'])
 
             if tb_summary_dir:
                 # Write summary update
@@ -195,27 +192,39 @@ def mle_adam(
             )
             if params_history and np.linalg.norm(param_diff) < tol_param:
                 logging.info('Parameter convergence in %d iterations.', i)
-                break
+                continue_loop = False
 
             if loss_history and np.abs(iter_results['loss'] - loss_history[-1]) < tol_param:
                 logging.info('Loss convergence in %d iterations.', i)
-                break
+                continue_loop = False
 
-            if grad_history and np.linalg.norm(iter_results['grad']) < tol_param:
+            if loss_history and np.linalg.norm(iter_results['grad']) < tol_param:
                 logging.info('Gradient convergence in %d iterations.', i)
-                break
+                continue_loop = False
 
             if i >= max_iter:
                 logging.info('Maimum iterations (%d) reached without convergence.', max_iter)
-                break
+                continue_loop = False
+
+            # Save observed vars of interest
+            if num_top_likelihoods <= 0:
+                # return the history of all likelihoods and params.
+                params_history.append(iter_results['params'])
+                loss_history.append(iter_results['neg_log_likelihood'])
+            else:
+                # keep only last mle for calculating tolerance.
+                params_history[0] = iter_results['params']
+                loss_history[0] = iter_results['neg_log_likelihood']
 
             i += 1
 
     if tb_summary_dir:
         summary_writer.close()
 
+    if num_top_likelihoods < 0:
+        return list(zip(loss_history, params_history))
+
     return top_likelihoods
-    # return top_likelihoods, {'params': params_history, 'loss': loss_history, 'grad': grad_history}
 
 
 def get_distrib_param_vars(
@@ -367,4 +376,3 @@ def get_normal_param_vars(
                 + 'from a normal distribution to select the initial values. '
                 + f'Not {type(mean)} and {type(standard_deviation)}'
             )
-
