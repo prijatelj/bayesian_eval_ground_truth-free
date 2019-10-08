@@ -15,10 +15,12 @@ from psych_metric import distribution_tests
 from predictors import load_prep_data
 
 
-def test_human_distribs(
+def test_human_distrib(
     dataset_id,
     data_args,
     distrib_args,
+    label_src,
+    parts,
     mle_args=None,
     info_criterions=['bic'],
     random_seed=None,
@@ -43,11 +45,12 @@ def test_human_distribs(
         dataset_id,
         data_args,
         label_src,
-        model_args['parts'],
+        parts,
     )
+    del images, bin_classes
 
     # Find MLE of every hypothesis distribution
-    distrib_mle : {}
+    distrib_mle = {}
 
     for i, (distrib_id, init_params) in enumerate(distrib_args.items()):
         logging.info(
@@ -108,7 +111,8 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
     return info_criterion
 
 if __name__ == '__main__':
-    args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
+    #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
+    args, random_seeds = experiment.io.parse_args('mle')
     # TODO 2nd repeat for focus fold of k folds: load model of that split
     # split data based on specified random_seed
 
@@ -141,9 +145,11 @@ if __name__ == '__main__':
 
     results = test_human_distrib(
         args.dataset_id,
-        data_args,
+        vars(args.data),
         distrib_args,
-        mle_args=args.mle_args,
+        args.label_src,
+        args.model.parts,
+        mle_args=vars(args.mle),
         info_criterions=['bic'],
         random_seed=None,
     )
