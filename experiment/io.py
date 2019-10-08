@@ -41,8 +41,7 @@ class NestedNamespace(argparse.Namespace):
 
             return getattr(ns, name)
         else:
-            print(super(NestedNamespace, self))
-            super(NestedNamespace, self).getattr(name)
+            getattr(super(NestedNamespace, self), name)
 
 
 def save_json(filepath, results, additional_info=None, deep_copy=True):
@@ -132,7 +131,7 @@ def add_mle_args(parser):
         default=1e-3,
         type=float,
         help='A Tensor or a floating point vlaue. The learning rate.',
-        dest='mle.optimizer_args.optimizer_args.learning_rate',
+        dest='mle.optimizer_args.learning_rate',
     )
     mle.add_argument(
         '--beta1',
@@ -170,23 +169,12 @@ def add_mle_args(parser):
     # tb_summary_dir ?? handled by output dir? or summary dir
 
 
-def package_mle_args(args):
+def expand_mle_optimizer_args(args):
     """Put all mle-related args in a single dictionary."""
-    # TODO have this be done by argparse itself.
-    args.mle = {
-        'max_iter': args.max_iter,
-        'num_top_likelihoods': args.num_top_likelihoods,
-        'tol_param': args.tol_param,
-        'tol_loss': args.tol_loss,
-        'tol_grad': args.tol_grad,
-        'learning_rate': args.learning_rate,
-        'beta1': args.beta1,
-        'beta2': args.beta2,
-        'epsilon': args.epsilon,
-        'use_locking': args.use_locking,
-    }
-
-    # TODO remove the mle args from args namespace
+    if args.mle.optimizer_args and isinstance(args.mle.optimizer_args, NestedNamespace):
+        args.mle.optimizer_args = vars(args.mle.optimizer_args)
+    elif args.mle.optimizer_args:
+        raise TypeError(f'`args.mle.optimizer` has expected type NestedNamespace, but instead was of type {type(args.mle.optimizer)} with value: {args.mle.optimizer}')
 
 
 def parse_args(arg_set=None):
@@ -420,6 +408,7 @@ def parse_args(arg_set=None):
     )))
 
     # package the arguements:
+    # TODO handle all packaging via NestedNamespaces in argparse, vars() later
     data_args = {'dataset_filepath': args.dataset_filepath}
 
     model_args = {
@@ -449,7 +438,7 @@ def parse_args(arg_set=None):
 
 
     if arg_set and 'mle' in arg_set:
-        package_mle_args(args)
+        expand_mle_optimizer_args(args)
 
     # TODO combine packaged args into same args namespace
 
