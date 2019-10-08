@@ -233,6 +233,8 @@ def run_experiment(
         if focus_fold:
             # TODO run single train, test, maybe put in kfold_cv? idk.
             pass
+            # TODO add focus fold implementation
+            raise NotImplementedError('`focus_fold` for loading and testing a specific fold given `k` folds and data is not yet implemented.')
         else:
             kfold_cv(
                 model_config,
@@ -255,11 +257,12 @@ def kfold_cv(
     save_pred=True,
     save_model=True,
     stratified=None,
-    test_focus_fold=True,
+    train_focus_fold=False,
     shuffle=True,
     repeat=None,
     period=0,
     period_save_pred=False,
+    #focus_fold=None,
 ):
     """Performs kfold cross validation on the model and saves the results.
 
@@ -282,8 +285,8 @@ def kfold_cv(
         True, the data is stratified when split to preserve class balance of
         original dataset. If a 1-D array-like object of same length as data,
         then it is treated as the strata of the data for splitting.
-    test_focus_fold : bool, optional
-        If True (default), the single focus fold will be the current
+    train_focus_fold : bool, optional
+        If False (default), the single focus fold will be the current
         iteration's test set while the rest are used for training the model,
         otherwise the focus fold is the only fold used for training and the
         rest are used for testing.
@@ -330,12 +333,12 @@ def kfold_cv(
         os.makedirs(output_dir_eval_fold, exist_ok=True)
 
         # Set the correct train and test indices
-        if test_focus_fold:
-            train_idx = other_folds
-            test_idx = focus_fold
-        else:
+        if train_focus_fold:
             train_idx = focus_fold
             test_idx = other_folds
+        else:
+            train_idx = other_folds
+            test_idx = focus_fold
 
         # Create callbacks for the model.
         if period > 0:
@@ -665,7 +668,9 @@ def resnext50_model(
 
 
 if __name__ == '__main__':
-    args, data_config, model_config, kfold_cv_args, random_seeds = experiment.io.parse_args()
+    #args, data_config, model_config, kfold_cv_args, random_seeds = experiment.io.parse_args()
+    args, random_seeds = experiment.io.parse_args()
+
 
     # TODO implement testing of a specific model and data partition from summary.json
     # TODO then implement that on wide scale for all 'checkpoints' missing predictions.
@@ -678,9 +683,9 @@ if __name__ == '__main__':
             args.output_dir,
             args.label_src,
             args.dataset_id,
-            data_config,
-            model_config,
-            kfold_cv_args,
+            vars(args.data),
+            vars(args.model),
+            vars(kfold_cv),
             focus_fold=args.focus_fold,
             random_seeds=random_seeds,
         )
