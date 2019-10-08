@@ -10,6 +10,41 @@ import keras
 import tensorflow as tf
 
 
+class NestedNamespace(argparse.Namespace):
+    """An extension of the Namespace allowing for nesting of namespaces.
+
+    Notes
+    -----
+    Modified version of hpaulj's answer at
+        https://stackoverflow.com/a/18709860/6557057
+
+    Use by specifying the full `dest` parameter when adding the arg. then pass
+    the NestedNamespace as the `namespace` to be used by `parser.parse_args()`.
+    """
+    def __setattr__(self, name, value):
+        if '.' in name:
+            group, _, name = name.partition('.')
+            ns = getattr(self, group, NestedNamespace())
+            setattr(ns, name, value)
+            self.__dict__[group] = ns
+        else:
+            self.__dict__[name] = value
+
+    def __getattr__(self, name):
+        if '.' in name:
+            group, _, name = name.partition('.')
+
+            try:
+                ns = self.__dict__[group]
+            except KeyError:
+                raise AttributeError
+
+            return getattr(ns, name)
+        else:
+            print(super(NestedNamespace, self))
+            super(NestedNamespace, self).getattr(name)
+
+
 def save_json(filepath, results, additional_info=None, deep_copy=True):
     """Saves the content in results and additional info to a JSON.
 
@@ -44,21 +79,23 @@ def save_json(filepath, results, additional_info=None, deep_copy=True):
         json.dump(results, summary_file, indent=4, sort_keys=True)
 
 
-def mle_args(parser):
+def add_mle_args(parser):
     mle = parser.add_argument_group('mle', 'Arguments pertaining to the '
         + 'Maximum Likelihood Estimation.')
     mle.add_argument(
         '--max_iter',
         default=10000,
         type=int,
-        help='The maximum number of iterations for finding MLE.'
+        help='The maximum number of iterations for finding MLE.',
+        dest='mle.max_iter',
     )
 
     mle.add_argument(
         '--num_top_likelihoods',
         default=1,
         type=int,
-        help='The number of top MLEs to be saved for each distribution.'
+        help='The number of top MLEs to be saved for each distribution.',
+        dest='mle.num_top_likelihoods',
     )
 
     # Tolerances
@@ -69,6 +106,7 @@ def mle_args(parser):
         help='The threshold of parameter difference to the prior parameters '
             + 'set before declaring convergence and terminating the MLE '
             + 'search.',
+        dest='mle.tol_param',
     )
     mle.add_argument(
         '--tol_loss',
@@ -77,6 +115,7 @@ def mle_args(parser):
         help='The threshold of difference to the prior negative log likelihood '
             + 'set before declaring convergence and terminating the MLE '
             + 'search.',
+        dest='mle.tol_loss',
     )
     mle.add_argument(
         '--tol_grad',
@@ -84,6 +123,7 @@ def mle_args(parser):
         type=float,
         help='The threshold of difference to the prior gradient set before '
             + 'declaring convergence and terminating the MLE search.',
+        dest='mle.tol_grad',
     )
 
     # optimizer_args
@@ -92,6 +132,7 @@ def mle_args(parser):
         default=1e-3,
         type=float,
         help='A Tensor or a floating point vlaue. The learning rate.',
+        dest='mle.optimizer_args.optimizer_args.learning_rate',
     )
     mle.add_argument(
         '--beta1',
@@ -99,6 +140,7 @@ def mle_args(parser):
         type=float,
         help='A float value or a constant float tensor. The exponential decay '
             + 'rate for the 1st moment estimates.',
+        dest='mle.optimizer_args.beta1',
     )
     mle.add_argument(
         '--beta2',
@@ -106,6 +148,7 @@ def mle_args(parser):
         type=float,
         help='A float value or a constant float tensor. The exponential decay '
             + 'rate for the 2nd moment estimates',
+        dest='mle.optimizer_args.beta2',
     )
     mle.add_argument(
         '--epsilon',
@@ -115,14 +158,35 @@ def mle_args(parser):
             + '"epsilon hat" in the Kingma and Ba paper (in the formula just '
             + 'before Section 2.1), not the epsilon in Algorithm 1 of the '
             + 'paper.',
+        dest='mle.optimizer_args.epsilon',
     )
     mle.add_argument(
         '--use_locking',
         action='store_true',
         help='Use locks for update operations.',
+        dest='mle.optimizer_args.use_locking',
     )
 
     # tb_summary_dir ?? handled by output dir? or summary dir
+
+
+def package_mle_args(args):
+    """Put all mle-related args in a single dictionary."""
+    # TODO have this be done by argparse itself.
+    args.mle = {
+        'max_iter': args.max_iter,
+        'num_top_likelihoods': args.num_top_likelihoods,
+        'tol_param': args.tol_param,
+        'tol_loss': args.tol_loss,
+        'tol_grad': args.tol_grad,
+        'learning_rate': args.learning_rate,
+        'beta1': args.beta1,
+        'beta2': args.beta2,
+        'epsilon': args.epsilon,
+        'use_locking': args.use_locking,
+    }
+
+    # TODO remove the mle args from args namespace
 
 
 def parse_args(arg_set=None):
@@ -329,9 +393,9 @@ def parse_args(arg_set=None):
     )
 
     if arg_set and 'mle' in arg_set:
-        mle_args(parser)
+        add_mle_args(parser)
 
-    args = parser.parse_args()
+    args = parser.parse_args(namespace=NestedNamespace())
 
     # Set logging configuration
     numeric_level = getattr(logging, args.log_level.upper(), None)
@@ -382,6 +446,10 @@ def parse_args(arg_set=None):
         random_seeds = None
     else:
         random_seeds = args.random_seeds
+
+
+    if arg_set and 'mle' in arg_set:
+        package_mle_args(args)
 
     # TODO combine packaged args into same args namespace
 
