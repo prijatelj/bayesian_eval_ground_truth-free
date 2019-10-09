@@ -61,10 +61,10 @@ def test_human_distrib(
         )
 
         if distrib_id == 'discrete_uniform':
-            distrib_mle[distrib_id] = 1.0 / (distrib_args['max'] - distrib_args['mim'] + 1)
+            distrib_mle[distrib_id] = 1.0 / (init_params['high'] - init_params['low'] + 1)
             continue
         elif distrib_id == 'continuous_uniform':
-            distrib_mle[distrib_id] = 1.0 / (distrib_args['max'] - distrib_args['mim'])
+            distrib_mle[distrib_id] = 1.0 / (init_params['high'] - init_params['low'])
             continue
 
         distrib_mle[distrib_id] = distribution_tests.mle_adam(
@@ -110,6 +110,7 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
 
     return info_criterion
 
+
 if __name__ == '__main__':
     #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
     args, random_seeds = experiment.io.parse_args('mle')
@@ -127,7 +128,12 @@ if __name__ == '__main__':
             distrib_args = {
                 'discrete_uniform': {'high': 8, 'low': 0},
                 'continuous_uniform': {'high': 8, 'low': 0},
-                'dirichlet_multinomial': None,
+                'dirichlet_multinomial': {
+                    # 3 is max labels per sample, 9 classes
+                    'total_count': [3] * 9,
+                    # w/o prior knowledge, must assume max is total samples
+                    'concentration': [1000] * 9,
+                },
             }
     elif args.dataset_id == 'FacialBeauty':
         # TODO need to make a distrib of normal distribs, uniforms are fine though.
@@ -135,8 +141,10 @@ if __name__ == '__main__':
             'discrete_uniform': {'high': 5, 'low': 1},
             'continuous_uniform': {'high': 5, 'low': 1},
             'dirichlet_multinomial': {
-                'total_count': None,
-                'concentration': None,
+                # 3 is max labels per sample, 9 classes
+                'total_count': [60] * 5,
+                # w/o prior knowledge, must assume max is total samples
+                'concentration': [5500] * 5,
             },
             #'normal': {'loc': , 'scale':},
         }
@@ -155,4 +163,3 @@ if __name__ == '__main__':
     )
 
     # TODO Save the results
-
