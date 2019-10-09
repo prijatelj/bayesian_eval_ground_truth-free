@@ -154,12 +154,16 @@ def mle_adam(
         continue_loop = True
         while continue_loop:
             # get likelihood and params
-            iter_results = sess.run({
+            results_dict = {
                 'train_op': train_op,
                 'neg_log_likelihood': neg_log_likelihood,
                 'params': params,
-                'summary_op': summary_op,
-            })
+            }
+
+            if tb_summary_dir:
+                results_dict['summary_op'] = summary_op
+
+            iter_results = sess.run(results_dict)
 
             if iter_results['neg_log_likelihood'] < top_likelihoods[-1]:
                 # update top likelihoods and their respective params
@@ -229,7 +233,7 @@ def mle_adam(
 
 def get_distrib_param_vars(
     distrib,
-    init_params=None,
+    init_params,
     num_class=None,
     random_seed=None,
 ):
@@ -246,9 +250,6 @@ def get_distrib_param_vars(
     (tfp.distribution.Distribution, dict('param': tf.Variables))
         the distribution and tf.Variables as its parameters.
     """
-    if init_params is None:
-        init_params = {}
-
     if distrib == 'dirichlet_multinomial':
         params = get_dirichlet_multinomial_param_vars(
             random_seed=random_seed,
@@ -290,7 +291,7 @@ def get_dirichlet_multinomial_param_vars(
                         max_total_count,
                         num_classes,
                     ),
-                    dtype=tf.int32,
+                    dtype=tf.float32,
                     name='total_count',
                 ),
                 'concentration': tf.Variable(
@@ -307,7 +308,7 @@ def get_dirichlet_multinomial_param_vars(
             return {
                 'total_count': tf.Variable(
                     initial_value=total_count,
-                    dtype=tf.int32,
+                    dtype=tf.float32,
                     name='total_count',
                 ),
                 'concentration': tf.Variable(
@@ -318,8 +319,8 @@ def get_dirichlet_multinomial_param_vars(
             }
         else:
             raise ValueError('Must pass either both `total_count` and '
-                + '`concentration` xor pass `num_classes`, `max_total_count` and '
-                + '`max_concentration`'
+                + '`concentration` xor pass `num_classes`, `max_total_count` '
+                + 'and `max_concentration`'
             )
 
 
