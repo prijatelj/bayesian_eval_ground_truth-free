@@ -9,19 +9,77 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 
-def aic(mle, num_params):
-    """Akaike information criterion."""
+def aic(mle, num_params, log_mle=True):
+    """Akaike information criterion (unadjusted).
+
+    Parameters
+    ----------
+    mle : float
+        Maximum Likelihood Estimate (MLE).
+    num_params : int
+        The number of parameters of the model whose MLE is given.
+    log_mle : bool, optional
+        True if the given `mle` is already the Log MLE, otherwise the log of
+        the `mle` is taken in the equation.
+
+    Returns
+    -------
+    float
+        The Akaike information criterion of the given MLE for the model.
+    """
+    if log_mle:
+        return 2 * (num_params - mle)
     return 2 * (num_params - math.log(mle))
 
 
-def bic(mle, num_params, num_samples):
-    """Bayesian information criterion. Approx. Bayes Factor"""
+def bic(mle, num_params, num_samples, log_mle=True):
+    """Bayesian information criterion. Approx. Bayes Factor.
+
+    Parameters
+    ----------
+    mle : float
+        Maximum Likelihood Estimate (MLE).
+    num_params : int
+        The number of parameters of the model whose MLE is given.
+    num_samples : int
+        The number of samples used to fit the model whose MLE is given.
+    log_mle : bool, optional
+        True if the given `mle` is already the Log MLE, otherwise the log of
+        the `mle` is taken in the equation.
+
+    Returns
+    -------
+    float
+        The Bayesian information criterion of the given MLE for the model.
+    """
+    if log_mle:
+        return num_params * math.log(num_samples) - 2 * mle
     return num_params * math.log(num_samples) - 2 * math.log(mle)
 
 
-def hqc(mle, num_params, num_samples):
-    """Hannan-Quinn information criterion."""
-    return 2 * (num_params * math.log(math.log(num_samples)) - mle)
+def hqc(mle, num_params, num_samples, log_mle=True):
+    """Hannan-Quinn information criterion.
+
+    Parameters
+    ----------
+    mle : float
+        Maximum Likelihood Estimate (MLE).
+    num_params : int
+        The number of parameters of the model whose MLE is given.
+    num_samples : int
+        The number of samples used to fit the model whose MLE is given.
+    log_mle : bool, optional
+        True if the given `mle` is already the Log MLE, otherwise the log of
+        the `mle` is taken in the equation.
+
+    Returns
+    -------
+    float
+        The HWC of the given MLE for the model.
+    """
+    if log_mle:
+        return 2 * (num_params * math.log(math.log(num_samples)) - mle)
+    return 2 * (num_params * math.log(math.log(num_samples)) - math.log(mle))
 
 
 def dic(likelihood_function, num_params, num_samples, mle=None, mean_lf=None):
@@ -166,6 +224,7 @@ def mle_adam(
                 'train_op': train_op,
                 'neg_log_likelihood': neg_log_likelihood,
                 'params': params,
+                'grad': grad,
             }
 
             if tb_summary_dir:
@@ -173,13 +232,13 @@ def mle_adam(
 
             iter_results = sess.run(results_dict, {tf_data: data})
 
-            if iter_results['neg_log_likelihood'] < top_likelihoods[-1]:
+            if not top_likelihoods or iter_results['neg_log_likelihood'] < top_likelihoods[-1][0]:
                 # update top likelihoods and their respective params
                 if num_top_likelihoods == 1:
-                    top_likelihoods = [
+                    top_likelihoods = [[
                         iter_results['neg_log_likelihood'],
                         iter_results['params'],
-                    ]
+                    ]]
                 elif num_top_likelihoods > 1:
                     # TODO Use better data structures for large num_top_likelihoods
                     top_likelihoods.append([
@@ -198,19 +257,21 @@ def mle_adam(
 
             # Calculate Termination Conditions
             # TODO Does the values need sorted by keys first?
-            param_diff = np.subtract(
-                iter_results['params'].values,
-                params_history[-1].values,
-            )
-            if params_history and np.linalg.norm(param_diff) < tol_param:
-                logging.info('Parameter convergence in %d iterations.', i)
-                continue_loop = False
+            if params_history:
+                # NOTE beware possibility: hstack not generalizing, & may need squeeze()
+                new_params = np.hstack(list(iter_results['params'].values()))
+                prior_params = np.hstack(list(params_history[-1].values()))
+                param_diff = np.subtract(new_params, prior_params)
 
-            if loss_history and np.abs(iter_results['loss'] - loss_history[-1]) < tol_param:
+                if np.linalg.norm(param_diff) < tol_param:
+                    logging.info('Parameter convergence in %d iterations.', i)
+                    continue_loop = False
+
+            if loss_history and np.abs(iter_results['neg_log_likelihood'] - loss_history[-1]) < tol_param:
                 logging.info('Loss convergence in %d iterations.', i)
                 continue_loop = False
 
-            if loss_history and np.linalg.norm(iter_results['grad']) < tol_param:
+            if loss_history and (np.linalg.norm(iter_results['grad']) < tol_param).all():
                 logging.info('Gradient convergence in %d iterations.', i)
                 continue_loop = False
 
@@ -219,7 +280,7 @@ def mle_adam(
                 continue_loop = False
 
             # Save observed vars of interest
-            if num_top_likelihoods <= 0:
+            if num_top_likelihoods <= 0 or not params_history and not loss_history:
                 # return the history of all likelihoods and params.
                 params_history.append(iter_results['params'])
                 loss_history.append(iter_results['neg_log_likelihood'])
@@ -312,7 +373,7 @@ def get_dirichlet_multinomial_param_vars(
                     name='concentration',
                 ),
             }
-        elif total_count and concentration:
+        elif total_count is not None and concentration is not None:
             return {
                 'total_count': tf.Variable(
                     initial_value=total_count,
