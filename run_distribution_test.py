@@ -61,33 +61,37 @@ def test_human_distrib(
         )
 
         if distrib_id == 'discrete_uniform':
-            distrib_mle[distrib_id] = 1.0 / (init_params['high'] - init_params['low'] + 1)
-            continue
+            distrib_mle[distrib_id] = [
+                1.0 / (init_params['high'] - init_params['low'] + 1),
+                init_params,
+            ]
         elif distrib_id == 'continuous_uniform':
-            distrib_mle[distrib_id] = 1.0 / (init_params['high'] - init_params['low'])
-            continue
+            distrib_mle[distrib_id] = [
+                1.0 / (init_params['high'] - init_params['low']),
+                init_params,
+            ]
+        else:
+            distrib_mle[distrib_id] = distribution_tests.mle_adam(
+                distrib_id,
+                labels,
+                init_params,
+                **mle_args,
+            )
 
-        distrib_mle[distrib_id] = distribution_tests.mle_adam(
-            distrib_id,
-            labels,
-            init_params,
-            **mle_args,
-        )
-
-        # calculate the different information criterions (Bayes Factor approxed by BIC)
+        # calculate the different information criterions
         # TODO Loop through top_likelihoods, save BIC
         if isinstance(distrib_mle[distrib_id], list):
             for mle_list in distrib_mle[distrib_id]:
                 mle_list.append(calc_info_criterion(
                     mle_list[0],
-                    mle_list[1],
+                    np.hstack(mle_list[1].values()),
                     info_criterions,
                     len(labels)
                 ))
         else:
             distrib_mle.append(calc_info_criterion(
                     distrib_mle[0],
-                    distrib_mle[1],
+                    np.hstack(mle_list[1].values()),
                     info_criterions,
                     len(labels)
             ))
@@ -130,9 +134,10 @@ if __name__ == '__main__':
                 'continuous_uniform': {'high': 8, 'low': 0},
                 'dirichlet_multinomial': {
                     # 3 is max labels per sample, 8 classes
-                    'total_count': [3] * 8, # This 8, needs to match 1000 images!?!
+                    'total_count': 3,
                     # w/o prior knowledge, must assume max is total samples
-                    'concentration': [1000 / 8] * 8,
+                    'concentration': np.ones(8),
+                    #'concentration': ([1000 / 8] * 4), np.empty([])
                 },
             }
     elif args.dataset_id == 'FacialBeauty':
