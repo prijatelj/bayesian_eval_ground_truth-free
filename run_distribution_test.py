@@ -129,10 +129,10 @@ if __name__ == '__main__':
                 'discrete_uniform': {'high': 8, 'low': 0},
                 'continuous_uniform': {'high': 8, 'low': 0},
                 'dirichlet_multinomial': {
-                    # 3 is max labels per sample, 9 classes
-                    'total_count': [3] * 9,
+                    # 3 is max labels per sample, 8 classes
+                    'total_count': [3] * 8, # This 8, needs to match 1000 images!?!
                     # w/o prior knowledge, must assume max is total samples
-                    'concentration': [1000] * 9,
+                    'concentration': [1000 / 8] * 8,
                 },
             }
     elif args.dataset_id == 'FacialBeauty':
@@ -141,10 +141,10 @@ if __name__ == '__main__':
             'discrete_uniform': {'high': 5, 'low': 1},
             'continuous_uniform': {'high': 5, 'low': 1},
             'dirichlet_multinomial': {
-                # 3 is max labels per sample, 9 classes
+                # 60 is max labels per sample, 5 classes
                 'total_count': [60] * 5,
                 # w/o prior knowledge, must assume max is total samples
-                'concentration': [5500] * 5,
+                'concentration': [5500 / 5] * 5,
             },
             #'normal': {'loc': , 'scale':},
         }
