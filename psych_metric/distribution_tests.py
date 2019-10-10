@@ -61,6 +61,8 @@ def mle_adam(
     tol_grad=1e-8,
     tb_summary_dir=None,
     random_seed=None,
+    shuffle_data=True,
+    batch_size=1,
     name='MLE_adam',
     sess_config=None,
 ):
@@ -96,8 +98,14 @@ def mle_adam(
 
     # tensor to hold the data
     with tf.name_scope(name) as scope:
-        if isinstance(data, np.ndarray):
-            data = tf.placeholder(dtype=tf.float32, name='data')
+        # tensorflow prep data
+        dataset = tf.data.Dataset.from_tensor_slices(data)
+        if shuffle_data:
+            dataset = dataset.shuffle(batch_size, seed=random_seed)
+        dataset = dataset.repeat(max_iter)
+        dataset = dataset.batch(batch_size)
+        iterator = dataset.make_one_shot_iterator()
+        tf_data = iterator.get_next()
 
         # create distribution and dict of the distribution's parameters
         distrib, params = get_distrib_param_vars(distrib_id, init_params)
@@ -163,7 +171,7 @@ def mle_adam(
             if tb_summary_dir:
                 results_dict['summary_op'] = summary_op
 
-            iter_results = sess.run(results_dict)
+            iter_results = sess.run(results_dict, {tf_data: data})
 
             if iter_results['neg_log_likelihood'] < top_likelihoods[-1]:
                 # update top likelihoods and their respective params
