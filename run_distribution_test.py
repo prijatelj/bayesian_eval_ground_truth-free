@@ -82,8 +82,10 @@ def test_human_distrib(
         # calculate the different information criterions
         # TODO Loop through top_likelihoods, save BIC
         if isinstance(distrib_mle[distrib_id], list):
-            for mle_list in distrib_mle[distrib_id]:
-                mle_list.append(calc_info_criterion(
+            for i, mle_list in enumerate(distrib_mle[distrib_id]):
+                #mle_list.append(calc_info_criterion(
+                distrib_mle[distrib_id][i] = list(mle_list)
+                distrib_mle[distrib_id][i].append(calc_info_criterion(
                     -mle_list[0],
                     np.hstack(mle_list[1].values()),
                     info_criterions,
@@ -137,7 +139,8 @@ if __name__ == '__main__':
                     # 3 is max labels per sample, 8 classes
                     'total_count': 3,
                     # w/o prior knowledge, must use all ones
-                    'concentration': np.ones(8) * (1000 / 8),
+                    'concentration': np.ones(8),
+                    #'concentration': np.ones(8) * (1000 / 8),
                 },
             }
     elif args.dataset_id == 'FacialBeauty':
