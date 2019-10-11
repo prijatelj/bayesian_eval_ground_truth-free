@@ -190,6 +190,16 @@ def add_mle_args(parser):
         dest='mle.num_top_likelihoods',
     )
 
+    mle.add_argument(
+        '--const_params',
+        default=None,
+        nargs='+',
+        type=str,
+        help='The model\'s parameters to be kept constant throughout the '
+            + 'estimate of the MLE.',
+        dest='mle.const_params'
+    )
+
     # Tolerances
     mle.add_argument(
         '--tol_param',
