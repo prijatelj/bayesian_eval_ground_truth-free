@@ -61,15 +61,15 @@ def test_human_distrib(
         )
 
         if distrib_id == 'discrete_uniform':
-            distrib_mle[distrib_id] = [
+            distrib_mle[distrib_id] = [[
                 1.0 / (init_params['high'] - init_params['low'] + 1),
                 init_params,
-            ]
+            ]]
         elif distrib_id == 'continuous_uniform':
-            distrib_mle[distrib_id] = [
+            distrib_mle[distrib_id] = [[
                 1.0 / (init_params['high'] - init_params['low']),
                 init_params,
-            ]
+            ]]
         else:
             distrib_mle[distrib_id] = distribution_tests.mle_adam(
                 distrib_id,
@@ -135,9 +135,8 @@ if __name__ == '__main__':
                 'dirichlet_multinomial': {
                     # 3 is max labels per sample, 8 classes
                     'total_count': 3,
-                    # w/o prior knowledge, must assume max is total samples
+                    # w/o prior knowledge, must use all ones
                     'concentration': np.ones(8),
-                    #'concentration': ([1000 / 8] * 4), np.empty([])
                 },
             }
     elif args.dataset_id == 'FacialBeauty':
@@ -147,9 +146,9 @@ if __name__ == '__main__':
             'continuous_uniform': {'high': 5, 'low': 1},
             'dirichlet_multinomial': {
                 # 60 is max labels per sample, 5 classes
-                'total_count': [60] * 5,
-                # w/o prior knowledge, must assume max is total samples
-                'concentration': [5500 / 5] * 5,
+                'total_count': 60,
+                # w/o prior knowledge, must use all ones
+                'concentration': np.ones(5),
             },
             #'normal': {'loc': , 'scale':},
         }
