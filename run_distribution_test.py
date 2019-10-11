@@ -171,3 +171,5 @@ if __name__ == '__main__':
     )
 
     # TODO Save the results
+
+    # TODO if want to see how well the model fits the data, do K Fold Cross validation.

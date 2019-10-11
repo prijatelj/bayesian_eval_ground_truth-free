@@ -8,6 +8,35 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+@functools.total_ordering
+class DistribTestResults(object):
+    def _is_valid_operand(self, other):
+        return (
+            hasattr(other, "neg_log_likelihood")
+            and hasattr(other, "params")
+            and hasattr(other, "info_criterion")
+        )
+
+    def __eq__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        return self.neg_log_likelihood == other.neg_log_likelihood
+
+    def __lt__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        return self.neg_log_likelihood < other.neg_log_likelihood
+
+    def __init__(
+        self,
+        neg_log_likelihood: float,
+        params=None,
+        info_criterion=None,
+    ):
+        self.neg_log_likelihood = neg_log_likelihood
+        self.params = params
+        self.info_criterion = info_criterion
+
 
 def aic(mle, num_params, log_mle=True):
     """Akaike information criterion (unadjusted).
