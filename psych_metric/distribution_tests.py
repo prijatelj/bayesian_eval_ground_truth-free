@@ -111,6 +111,7 @@ def mle_adam(
     distrib_id,
     data,
     init_params=None,
+    const_params=None,
     optimizer_args=None,
     num_top_likelihoods=1,
     max_iter=10000,
@@ -133,6 +134,9 @@ def mle_adam(
     data : np.ndarray
     init_params : dict, optional
         The initial parameters of the distribution. Otherwise, selected randomly.
+    const_params : list(str), optional
+        The names of the parameters to be kept constant, all others are assumed
+        to be variables.
     optimizer_args : dict, optional
     num_top_likelihoods : int, optional
         The number of top best likelihoods and their respective parameters. If
@@ -166,7 +170,11 @@ def mle_adam(
         tf_data = iterator.get_next()
 
         # create distribution and dict of the distribution's parameters
-        distrib, params = get_distrib_param_vars(distrib_id, init_params)
+        distrib, params = get_distrib_param_vars(
+            distrib_id,
+            init_params,
+            const_params,
+        )
 
         # TODO why negative? is this necessary? should it be a user passed flag?
         # because ths is the minimized loss, and we want the Maximumg Likelihood
@@ -301,8 +309,9 @@ def mle_adam(
 
 
 def get_distrib_param_vars(
-    distrib,
+    distrib_id,
     init_params,
+    const_params=None,
     num_class=None,
     random_seed=None,
 ):
@@ -311,32 +320,46 @@ def get_distrib_param_vars(
 
     Parameters
     ----------
+    distrib_id : str
+        Name of the distribution being created.
+    init_params : dict
+        Initial parameters of the distribution.
+    const_params : list(str), optional
+        The names of the parameters to be kept constant, all others are assumed
+        to be variables.
     num_class : int, optional
         only used when discrete random variable and number of classes is known.
+    random_seed : int
+        The random seed to use for initializing the distribution.
 
     Returns
     -------
     (tfp.distribution.Distribution, dict('param': tf.Variables))
         the distribution and tf.Variables as its parameters.
     """
-    if distrib == 'dirichlet_multinomial':
+    if distrib_id == 'dirichlet_multinomial':
         params = get_dirichlet_multinomial_param_vars(
             random_seed=random_seed,
+            const_params=const_params,
             **init_params,
         )
         return (
             tfp.distributions.DirichletMultinomial(**params),
             params,
         )
-    elif distrib == 'normal':
-        params = get_normal_param_vars(random_seed=random_seed, **init_params)
+    elif distrib_id == 'normal':
+        params = get_normal_param_vars(
+            random_seed=random_seed,
+            const_params=const_params,
+            **init_params,
+        )
         return (
             tfp.distributions.Normal(**params),
             params,
         )
     else:
         raise NotImplementedError(
-            f'{distrib} is not a supported '
+            f'{distrib_id} is not a supported '
             + 'distribution for `get_param_vars()`.'
         )
 
@@ -347,6 +370,7 @@ def get_dirichlet_multinomial_param_vars(
     max_total_count=None,
     total_count=None,
     concentration=None,
+    const_params=None,
     random_seed=None,
     name='dirichlet_multinomial',
 ):
@@ -375,12 +399,20 @@ def get_dirichlet_multinomial_param_vars(
             }
         elif total_count is not None and concentration is not None:
             return {
-                'total_count': tf.Variable(
+                'total_count': tf.constant(
+                    initial_value=total_count,
+                    dtype=tf.float32,
+                    name='total_count',
+                ) if const_params and 'total_count' in const_params else tf.Variable(
                     initial_value=total_count,
                     dtype=tf.float32,
                     name='total_count',
                 ),
-                'concentration': tf.Variable(
+                'concentration': tf.constant(
+                    initial_value=concentration,
+                    dtype=tf.float32,
+                    name='concentration',
+                ) if const_params and 'concentration' in const_params else tf.Variable(
                     initial_value=concentration,
                     dtype=tf.float32,
                     name='concentration',
