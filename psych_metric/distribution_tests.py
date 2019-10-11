@@ -1,4 +1,5 @@
 """Functions for performing distribution model selection."""
+import functools
 import logging
 import math
 import os
@@ -9,7 +10,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 @functools.total_ordering
-class DistribTestResults(object):
+class MLEResults(object):
     def _is_valid_operand(self, other):
         return (
             hasattr(other, "neg_log_likelihood")
@@ -276,19 +277,19 @@ def mle_adam(
 
             iter_results = sess.run(results_dict, {tf_data: data})
 
-            if not top_likelihoods or iter_results['neg_log_likelihood'] < top_likelihoods[-1][0]:
+            if not top_likelihoods or iter_results['neg_log_likelihood'] < top_likelihoods[-1].neg_log_likelihood:
                 # update top likelihoods and their respective params
                 if num_top_likelihoods == 1:
-                    top_likelihoods = [[
+                    top_likelihoods = [MLEResults(
                         iter_results['neg_log_likelihood'],
                         iter_results['params'],
-                    ]]
+                    )]
                 elif num_top_likelihoods > 1:
                     # TODO Use better data structures for large num_top_likelihoods
-                    top_likelihoods.append([
+                    top_likelihoods.append(MLEResults(
                         iter_results['neg_log_likelihood'],
                         iter_results['params'],
-                    ])
+                    ))
                     top_likelihoods = sorted(top_likelihoods)
 
                     if len(top_likelihoods) > num_top_likelihoods:
@@ -339,7 +340,12 @@ def mle_adam(
         summary_writer.close()
 
     if num_top_likelihoods < 0:
-        return list(zip(loss_history, params_history))
+        #return list(zip(loss_history, params_history))
+        # NOTE beware that this will copy all of this history into memory before leaving scope.
+        return [
+            MLEResults(loss_history[i], params_history[i]) for i in
+            range(len(loss_history))
+        ]
 
     return top_likelihoods
 
