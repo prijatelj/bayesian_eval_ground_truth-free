@@ -234,6 +234,7 @@ def mle_adam(
         continue_loop = True
         while continue_loop:
             # get likelihood and params
+            # TODO could remove const params from this for calc efficiency. Need to recognize those constants will be missing in returned params though.
             results_dict = {
                 'train_op': train_op,
                 'neg_log_likelihood': neg_log_likelihood,
