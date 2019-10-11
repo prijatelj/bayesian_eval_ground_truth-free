@@ -63,12 +63,12 @@ def test_human_distrib(
         if distrib_id == 'discrete_uniform':
             # NOTE assumes that mle_adam is used and is returning the negative mle
             distrib_mle[distrib_id] = [[
-                -np.log(1.0 / (init_params['high'] - init_params['low'] + 1)),
+                -(np.log(1.0 / (init_params['high'] - init_params['low'] + 1)) * len(labels)),
                 init_params,
             ]]
         elif distrib_id == 'continuous_uniform':
             distrib_mle[distrib_id] = [[
-                -np.log(1.0 / (init_params['high'] - init_params['low'])),
+                -(np.log(1.0 / (init_params['high'] - init_params['low'])) * len(labels)),
                 init_params,
             ]]
         else:
@@ -131,13 +131,13 @@ if __name__ == '__main__':
         else:
             # this is a distribution of distributions, all
             distrib_args = {
-                'discrete_uniform': {'high': 8, 'low': 0},
-                'continuous_uniform': {'high': 8, 'low': 0},
+                'discrete_uniform': {'high': 7, 'low': 0},
+                'continuous_uniform': {'high': 7, 'low': 0},
                 'dirichlet_multinomial': {
                     # 3 is max labels per sample, 8 classes
                     'total_count': 3,
                     # w/o prior knowledge, must use all ones
-                    'concentration': np.ones(8),
+                    'concentration': np.ones(8) * (1000 / 8),
                 },
             }
     elif args.dataset_id == 'FacialBeauty':
