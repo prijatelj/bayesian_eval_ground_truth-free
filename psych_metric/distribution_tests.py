@@ -187,10 +187,16 @@ def mle_adam(
         optimizer = tf.train.AdamOptimizer(**optimizer_args)
         global_step = tf.Variable(0, name='global_step', trainable=False)
 
-        grad = optimizer.compute_gradients(
-            neg_log_likelihood,
-            list(params.values()),
-        )
+        if const_params:
+            grad = optimizer.compute_gradients(
+                neg_log_likelihood,
+                [v for k, v in params.items() if k not in const_params],
+            )
+        else:
+            grad = optimizer.compute_gradients(
+                neg_log_likelihood,
+                list(params.values()),
+            )
         train_op = optimizer.apply_gradients(grad, global_step)
 
         if tb_summary_dir:
@@ -400,7 +406,7 @@ def get_dirichlet_multinomial_param_vars(
         elif total_count is not None and concentration is not None:
             return {
                 'total_count': tf.constant(
-                    initial_value=total_count,
+                    value=total_count,
                     dtype=tf.float32,
                     name='total_count',
                 ) if const_params and 'total_count' in const_params else tf.Variable(
@@ -409,7 +415,7 @@ def get_dirichlet_multinomial_param_vars(
                     name='total_count',
                 ),
                 'concentration': tf.constant(
-                    initial_value=concentration,
+                    value=concentration,
                     dtype=tf.float32,
                     name='concentration',
                 ) if const_params and 'concentration' in const_params else tf.Variable(
