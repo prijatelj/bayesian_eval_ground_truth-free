@@ -62,15 +62,15 @@ def test_human_distrib(
 
         if distrib_id == 'discrete_uniform':
             # NOTE assumes that mle_adam is used and is returning the negative mle
-            distrib_mle[distrib_id] = [[
+            distrib_mle[distrib_id] = [distribution_tests.MLEResults(
                 -(np.log(1.0 / (init_params['high'] - init_params['low'] + 1)) * len(labels)),
                 init_params,
-            ]]
+            )]
         elif distrib_id == 'continuous_uniform':
-            distrib_mle[distrib_id] = [[
+            distrib_mle[distrib_id] = [distribution_tests.MLEResults(
                 -(np.log(1.0 / (init_params['high'] - init_params['low'])) * len(labels)),
                 init_params,
-            ]]
+            )]
         else:
             distrib_mle[distrib_id] = distribution_tests.mle_adam(
                 distrib_id,
@@ -82,22 +82,26 @@ def test_human_distrib(
         # calculate the different information criterions
         # TODO Loop through top_likelihoods, save BIC
         if isinstance(distrib_mle[distrib_id], list):
-            for i, mle_list in enumerate(distrib_mle[distrib_id]):
-                #mle_list.append(calc_info_criterion(
-                distrib_mle[distrib_id][i] = list(mle_list)
-                distrib_mle[distrib_id][i].append(calc_info_criterion(
-                    -mle_list[0],
-                    np.hstack(mle_list[1].values()),
+            for mle_results in distrib_mle[distrib_id]:
+                mle_results.info_criterion = calc_info_criterion(
+                    -mle_results.neg_log_likelihood,
+                    np.hstack(mle_results.params.values()),
                     info_criterions,
                     len(labels)
-                ))
+                )
+        elif isinstance(distrib_mle[distrib_id], distribution_tests.MLEResult):
+            # TODO, distribution_tests.mle_adam() returns list always.
+            distrib_mle[distrib_id].info_criterion = calc_info_criterion(
+                    -distrib_mle[distrib_id].neg_log_likelihood,
+                    np.hstack(distrib_mle[distrib_id].params.values()),
+                    info_criterions,
+                    len(labels)
+            )
         else:
-            distrib_mle.append(calc_info_criterion(
-                    -distrib_mle[0],
-                    np.hstack(mle_list[1].values()),
-                    info_criterions,
-                    len(labels)
-            ))
+            raise TypeError(
+                '`distrib_mle` is expected to be either of type list or '
+                + 'distribution_tests.MLEResult, instead was {type(distrib_mle)}'
+            )
 
     return distrib_mle
 
@@ -171,5 +175,12 @@ if __name__ == '__main__':
     )
 
     # TODO Save the results
+    results = {k: [vars(mle_r) for mle_r in v] for k, v in results.items()}
+
+    experiment.io.save_json(
+        os.path.join(args.output_dir, 'mle_results.json'),
+        results,
+        overwrite=True,
+    )
 
     # TODO if want to see how well the model fits the data, do K Fold Cross validation.
