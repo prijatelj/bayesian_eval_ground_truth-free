@@ -174,9 +174,7 @@ if __name__ == '__main__':
         random_seed=None,
     )
 
-    # TODO Save the results
-    results = {k: [vars(mle_r) for mle_r in v] for k, v in results.items()}
-
+    # Save the results
     experiment.io.save_json(
         os.path.join(args.output_dir, 'mle_results.json'),
         results,
