@@ -61,13 +61,14 @@ def test_human_distrib(
         )
 
         if distrib_id == 'discrete_uniform':
+            # NOTE assumes that mle_adam is used and is returning the negative mle
             distrib_mle[distrib_id] = [[
-                1.0 / (init_params['high'] - init_params['low'] + 1),
+                -np.log(1.0 / (init_params['high'] - init_params['low'] + 1)),
                 init_params,
             ]]
         elif distrib_id == 'continuous_uniform':
             distrib_mle[distrib_id] = [[
-                1.0 / (init_params['high'] - init_params['low']),
+                -np.log(1.0 / (init_params['high'] - init_params['low'])),
                 init_params,
             ]]
         else:
@@ -83,14 +84,14 @@ def test_human_distrib(
         if isinstance(distrib_mle[distrib_id], list):
             for mle_list in distrib_mle[distrib_id]:
                 mle_list.append(calc_info_criterion(
-                    mle_list[0],
+                    -mle_list[0],
                     np.hstack(mle_list[1].values()),
                     info_criterions,
                     len(labels)
                 ))
         else:
             distrib_mle.append(calc_info_criterion(
-                    distrib_mle[0],
+                    -distrib_mle[0],
                     np.hstack(mle_list[1].values()),
                     info_criterions,
                     len(labels)
