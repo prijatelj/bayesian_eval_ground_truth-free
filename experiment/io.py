@@ -44,7 +44,27 @@ class NestedNamespace(argparse.Namespace):
             getattr(super(NestedNamespace, self), name)
 
 
-def save_json(filepath, results, additional_info=None, deep_copy=True):
+class NumpyJSONEncoder(json.JSONEncoder):
+    """Encoder that handles common Numpy values, and general objects."""
+    def default(self, o):
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        elif isinstance(o, np.integer):
+            return int(o)
+        elif isinstance(o, np.floating):
+            return float(o)
+        else:
+            # TODO either remove or make some form of check if valid.
+            return o.__dict__
+
+
+def save_json(
+    filepath,
+    results,
+    additional_info=None,
+    deep_copy=True,
+    overwrite=False,
+):
     """Saves the content in results and additional info to a JSON.
 
     Parameters
@@ -54,10 +74,13 @@ def save_json(filepath, results, additional_info=None, deep_copy=True):
     results : dict
         The dictionary to be saved to file as a JSON.
     additional_info : dict
-        Additional information to be added to results (to be removed).
+        Additional information to be added to results (depracted: to be removed)
     deep_copy : bool
         Deep copies the dictionary prior to saving due to making the contents
         JSON serializable.
+    overwrite :
+        If file already exists and False, throws an error, otherwise that file
+        is overwritten.
     """
     if deep_copy:
         results = deepcopy(results)
@@ -65,17 +88,26 @@ def save_json(filepath, results, additional_info=None, deep_copy=True):
         # TODO remove this if deemed superfulous
         results.update(additional_info)
 
-    with open(filepath, 'w') as summary_file:
-        for key in results:
-            if isinstance(results[key], np.ndarray):
-                # save to numpy specifc dir and save as csv.
-                results[key] = results[key].tolist()
-            elif isinstance(results[key], np.integer):
-                results[key] = int(results[key])
-            elif isinstance(results[key], np.floating):
-                results[key] = float(results[key])
+    # Check if file already exists
+    if not overwrite and os.path.isfile(filepath):
+        raise FileExistsError(
+            '`overwrite` is False to prevent overwriting existing files and '
+            + f'there is an existing file at the given filepath: `{filepath}`',
+        )
 
-        json.dump(results, summary_file, indent=4, sort_keys=True)
+    # ensure the directory exists
+    dir_path = filepath.rpartition(os.path.sep)
+    if dir_path[0]:
+        os.makedirs(dir_path[0], exist_ok=True)
+
+    with open(filepath, 'w') as summary_file:
+        json.dump(
+            results,
+            summary_file,
+            indent=4,
+            sort_keys=True,
+            cls=NumpyJSONEncoder,
+        )
 
 
 def add_hardware_args(parser):
