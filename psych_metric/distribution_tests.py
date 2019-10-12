@@ -468,55 +468,56 @@ def get_dirichlet_multinomial_param_vars(
 
 
 def get_normal_param_vars(
-    mean,
-    standard_deviation,
+    loc,
+    scale,
     random_seed=None,
+    const_params=None,
     name='normal',
 ):
     """Create tf.Variable parameters for the normal distribution.
 
     Parameters
     ----------
-    mean : float | dict
-        either a float as the initial value of the mean, or a dict containing
-        the mean and standard deviation of a normal distribution which this
-        mean is drawn from randomly.
-    standard_deviation : float | dict
-        either a float as the initial value of the standard_deviation, or a dict
-        containing the mean and standard deviation of a normal distribution
-        which this mean is drawn from randomly.
+    loc : float | dict
+        either a float as the initial value of the loc, or a dict containing
+        the loc and standard deviation of a normal distribution which this
+        loc is drawn from randomly.
+    scale : float | dict
+        either a float as the initial value of the scale, or a dict
+        containing the loc and standard deviation of a normal distribution
+        which this loc is drawn from randomly.
     """
     with tf.name_scope(name):
-        if isinstance(mean, dict) and isinstance(standard_deviation, dict):
+        if isinstance(loc, dict) and isinstance(scale, dict):
             return {
                 'loc': tf.Variable(
-                    initial_value=np.random.normal(**mean),
+                    initial_value=np.random.normal(**loc),
                     dtype=tf.float32,
-                    name='mean',
+                    name='loc',
                 ),
                 'scale': tf.Variable(
-                    initial_value=np.random.uniform(**standard_deviation),
+                    initial_value=np.random.normal(**scale),
                     dtype=tf.float32,
-                    name='standard_deviation',
+                    name='scale',
                 ),
             }
-        elif isinstance(mean, float) and isinstance(standard_deviation, float):
+        elif isinstance(loc, float) and isinstance(scale, float):
             return {
                 'loc': tf.Variable(
-                    initial_value=mean,
+                    initial_value=loc,
                     dtype=tf.float32,
-                    name='mean',
+                    name='loc',
                 ),
                 'scale': tf.Variable(
-                    initial_value=standard_deviation,
+                    initial_value=scale,
                     dtype=tf.float32,
-                    name='standard_deviation',
+                    name='scale',
                 ),
             }
         else:
             raise TypeError(
-                'Both `mean` and `standard_deviation` must either be floats '
-                + 'xor dicts containing a mean and standard_deviation each for sampling '
+                'Both `loc` and `scale` must either be floats '
+                + 'xor dicts containing a loc and scale each for sampling '
                 + 'from a normal distribution to select the initial values. '
-                + f'Not {type(mean)} and {type(standard_deviation)}'
+                + f'Not {type(loc)} and {type(scale)}'
             )
