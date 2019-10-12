@@ -122,7 +122,7 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
     return info_criterion
 
 
-def test_human_data(args, random_seeds):
+def test_human_data(args, random_seeds, info_criterions=['bic']):
     """Test the hypothesis distributions for the human data."""
     # TODO Create the distributions and their args to be tested (hard coded options)
     if args.dataset_id == 'LabelMe':
@@ -227,11 +227,11 @@ def add_test_distrib_args(parser):
     )
 
     hypothesis_distrib.add_argument(
-        '--info_criterion',
+        '--info_criterions',
         default='bic',
         nargs='+',
         help='The list of information criterion identifiers to use.',
-        dest='hypothesis_distrib.info_criterion',
+        dest='hypothesis_distrib.info_criterions',
     )
 
 
@@ -245,7 +245,11 @@ if __name__ == '__main__':
     )
 
     if args.hypothesis_distrib.hypothesis_test == 'human':
-        test_human_data(args, random_seeds)
+        test_human_data(
+            args,
+            random_seeds,
+            info_criterions=args.hypothesis_distrib.info_criterions,
+        )
     elif args.hypothesis_distrib.hypothesis_test == 'model':
         pass
     elif args.hypothesis_distrib.hypothesis_test == 'test_gaussian':
