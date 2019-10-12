@@ -15,12 +15,9 @@ from psych_metric import distribution_tests
 from predictors import load_prep_data
 
 
-def test_human_distrib(
-    dataset_id,
-    data_args,
+def mle_adam_distribs(
+    labels,
     distrib_args,
-    label_src,
-    parts,
     mle_args=None,
     info_criterions=['bic'],
     random_seed=None,
@@ -29,25 +26,17 @@ def test_human_distrib(
 
     Parameters
     ----------
-    dataset_id : str
-        Identifier of dataset.
-    data_args : dict
-        Dict containing information pertaining to the data.
+    labels : np.ndarray
+        Data to use for fitting the MLE.
     distrib_args : dict
         Dict of str distrib ids to their initial parameters
+    mle_args : dict
+        Arguments for MLE Adam.
+    info_criterions : list(str)
+        List of information criterion ids to be computed after finding the MLE.
     random_seed : int, optional
         Integer to use as the random seeds for MLE.
     """
-
-    # TODO First, handle distrib test of src annotations
-    # Load the src data, reformat as was done in training in `predictors.py`
-    images, labels, bin_classes = load_prep_data(
-        dataset_id,
-        data_args,
-        label_src,
-        parts,
-    )
-    del images, bin_classes
 
     # Find MLE of every hypothesis distribution
     distrib_mle = {}
@@ -159,14 +148,21 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
     else:
         raise NotImplementedError('The `dataset_id` {args.dataset_id} is not supported.')
 
-    results = test_human_distrib(
+    #First, handle distrib test of src annotations
+    # Load the src data, reformat as was done in training in `predictors.py`
+    images, labels, bin_classes = load_prep_data(
         args.dataset_id,
         vars(args.data),
-        distrib_args,
         args.label_src,
         args.model.parts,
+    )
+    del images, bin_classes
+
+    results = mle_adam_distribs(
+        labels,
+        distrib_args,
         mle_args=vars(args.mle),
-        info_criterions=['bic'],
+        info_criterions=info_criterions,
         random_seed=None,
     )
 
@@ -174,7 +170,78 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
     experiment.io.save_json(
         os.path.join(args.output_dir, 'mle_results.json'),
         results,
-        overwrite=True,
+    )
+
+
+def test_normal(
+    mle_args,
+    output_dir,
+    loc=None,
+    scale=None,
+    mle_method='adam',
+    sample_size=10000,
+    info_criterions=['bic'],
+    random_seed=None,
+    standardize=None,
+    initial='random',
+):
+    """Creates a Normal distribution and fits it using the given MLE method."""
+    # Create the original distribution to be estimated and its data sample
+    normal_params = {
+        'loc': loc if loc else (np.random.ranf(1) * np.random.randint(-100, 100))[0],
+        'scale': scale if scale else np.abs(np.random.ranf(1) * np.random.randint(1, 5))[0],
+    }
+
+    data = np.random.normal(size=sample_size, **normal_params)
+
+    # Set the initial distribution args
+    distrib_args = {'continuous_uniform': {'high': 1000, 'low': -1000}}
+
+    if initial == 'random':
+        distrib_args['normal'] = {
+            'loc': (np.random.ranf(1) * np.random.randint(-100, 100))[0],
+            'scale': np.abs(np.random.ranf(1) * np.random.randint(1, 5))[0],
+            #'loc': {'loc': 0.0, 'scale': 0.1},
+            #'scale': {'loc': 1.0, 'scale': 0.1},
+        }
+    elif initial == 'extreme':
+        # Extremes of data
+        distrib_args['normal'] = {
+            'loc': data.min(),
+            'scale': data.max() - data.min(),
+        }
+    else:
+        # logical inital values given data
+        distrib_args['normal'] = {
+            'loc': data.mean(),
+            'scale': np.sqrt(data.var()),
+        }
+
+    if standardize == 'extreme':
+        # Standardize the data given loc and scale.
+        #data = (data - distrib_args['normal']['loc']) / distrib_args['normal']['scale']
+        data = (data - data.min()) / (data.max() - data.min())
+    elif standardize == 'logical':
+        # standardizes the data as typical
+        data = (data - data.mean()) / np.sqrt(data.var())
+
+    # Find MLE of models
+    if mle_method == 'adam':
+        results = mle_adam_distribs(
+            data,
+            distrib_args,
+            mle_args=mle_args,
+            info_criterions=info_criterions,
+            random_seed=None,
+        )
+
+    # Save the results and original values
+    results['actual_params'] = normal_params
+    results['intial_params'] = distrib_args
+
+    experiment.io.save_json(
+        os.path.join(args.output_dir, 'test_normal.json'),
+        results,
     )
 
 
@@ -195,7 +262,7 @@ def add_test_distrib_args(parser):
         choices=[
             'human',
             'model',
-            'test_gaussian',
+            'test_normal',
             'test_multinomial',
             'test_dirichlet',
             'test_dirichlet_multinomial',
@@ -218,7 +285,7 @@ def add_test_distrib_args(parser):
         choices=[
             'human',
             'model',
-            'test_gaussian',
+            'test_normal',
             'test_multinomial',
             'test_dirichlet',
             'test_dirichlet_multinomial',
@@ -252,8 +319,14 @@ if __name__ == '__main__':
         )
     elif args.hypothesis_distrib.hypothesis_test == 'model':
         pass
-    elif args.hypothesis_distrib.hypothesis_test == 'test_gaussian':
-        pass
+    elif args.hypothesis_distrib.hypothesis_test == 'test_normal':
+        test_normal(
+            vars(args.mle),
+            args.output_dir,
+            loc=10.0,
+            scale=5.0,
+            sample_size=100,
+        )
     elif args.hypothesis_distrib.hypothesis_test == 'test_multinomial':
         pass
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet':
