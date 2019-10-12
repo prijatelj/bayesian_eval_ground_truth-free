@@ -1,6 +1,7 @@
 """The general Input / Output of experiments."""
 import argparse
 from copy import deepcopy
+from datetime import datetime
 import json
 import logging
 import os
@@ -79,8 +80,8 @@ def save_json(
         Deep copies the dictionary prior to saving due to making the contents
         JSON serializable.
     overwrite :
-        If file already exists and False, throws an error, otherwise that file
-        is overwritten.
+        If file already exists and False, appends datetime to filename,
+        otherwise that file is overwritten.
     """
     if deep_copy:
         results = deepcopy(results)
@@ -90,10 +91,17 @@ def save_json(
 
     # Check if file already exists
     if not overwrite and os.path.isfile(filepath):
-        raise FileExistsError(
+        logging.warning(
             '`overwrite` is False to prevent overwriting existing files and '
-            + f'there is an existing file at the given filepath: `{filepath}`',
+            + f'there is an existing file at the given filepath: `{filepath}`'
         )
+
+        # NOTE beware possibility of a program writing the same file in parallel
+        parts = filepath.rpartition('.')
+        filepath = parts[0] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') \
+            + parts[1] + parts[2]
+
+        logging.warning(f'The filepath has been changed to: {filepath}')
 
     # ensure the directory exists
     dir_path = filepath.rpartition(os.path.sep)
