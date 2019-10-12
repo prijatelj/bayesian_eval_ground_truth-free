@@ -490,12 +490,20 @@ def get_normal_param_vars(
     with tf.name_scope(name):
         if isinstance(loc, dict) and isinstance(scale, dict):
             return {
-                'loc': tf.Variable(
+                'loc': tf.constant(
+                    value=np.random.normal(**loc),
+                    dtype=tf.float32,
+                    name='loc',
+                ) if const_params and 'loc' in const_params else tf.Variable(
                     initial_value=np.random.normal(**loc),
                     dtype=tf.float32,
                     name='loc',
                 ),
-                'scale': tf.Variable(
+                'scale': tf.constant(
+                    value=np.random.normal(**scale),
+                    dtype=tf.float32,
+                    name='scale',
+                ) if const_params and 'scale' in const_params else tf.Variable(
                     initial_value=np.random.normal(**scale),
                     dtype=tf.float32,
                     name='scale',
@@ -503,12 +511,20 @@ def get_normal_param_vars(
             }
         elif isinstance(loc, float) and isinstance(scale, float):
             return {
-                'loc': tf.Variable(
+                'loc': tf.constant(
+                    value=loc,
+                    dtype=tf.float32,
+                    name='loc',
+                ) if const_params and 'loc' in const_params else tf.Variable(
                     initial_value=loc,
                     dtype=tf.float32,
                     name='loc',
                 ),
-                'scale': tf.Variable(
+                'scale': tf.constant(
+                    value=scale,
+                    dtype=tf.float32,
+                    name='scale',
+                ) if const_params and 'scale' in const_params else tf.Variable(
                     initial_value=scale,
                     dtype=tf.float32,
                     name='scale',
