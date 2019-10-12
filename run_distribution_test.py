@@ -181,7 +181,7 @@ def test_human_data(args, random_seeds):
 def add_test_distrib_args(parser):
     """Adds arguments to the given `argparse.ArgumentParser`."""
     hypothesis_distrib = parser.add_argument_group(
-        'hypothesis_distribution_test',
+        'hypothesis_distrib',
         'Arguments pertaining to the K fold Cross Validation for evaluating '
         + ' models.',
     )
@@ -200,7 +200,7 @@ def add_test_distrib_args(parser):
             'test_dirichlet',
             'test_dirichlet_multinomial',
         ],
-        dest='hypothesis_distribution_test.hypothesis_test',
+        dest='hypothesis_distrib.hypothesis_test',
     )
 
     hypothesis_distrib.add_argument(
@@ -208,7 +208,7 @@ def add_test_distrib_args(parser):
         action='store_true',
         help='If True, performs the kfold validation to evaluate the MLE '
             + 'fitting method. The default is ',
-        dest='hypothesis_distribution_test.hypothesis_kfold_val',
+        dest='hypothesis_distrib.hypothesis_kfold_val',
     )
 
     hypothesis_distrib.add_argument(
@@ -223,8 +223,17 @@ def add_test_distrib_args(parser):
             'test_dirichlet',
             'test_dirichlet_multinomial',
         ],
-        dest='hypothesis_distribution_test.hypothesis_data_src',
+        dest='hypothesis_distrib.hypothesis_data_src',
     )
+
+    hypothesis_distrib.add_argument(
+        '--info_criterion',
+        default='bic',
+        nargs='+',
+        help='The list of information criterion identifiers to use.',
+        dest='hypothesis_distrib.info_criterion',
+    )
+
 
 if __name__ == '__main__':
     #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
@@ -235,17 +244,17 @@ if __name__ == '__main__':
             + 'source of the data.',
     )
 
-    if args.hypothesis_distribution_test.hypothesis_test == 'human':
+    if args.hypothesis_distrib.hypothesis_test == 'human':
         test_human_data(args, random_seeds)
-    elif args.hypothesis_distribution_test.hypothesis_test == 'model':
+    elif args.hypothesis_distrib.hypothesis_test == 'model':
         pass
-    elif args.hypothesis_distribution_test.hypothesis_test == 'test_gaussian':
+    elif args.hypothesis_distrib.hypothesis_test == 'test_gaussian':
         pass
-    elif args.hypothesis_distribution_test.hypothesis_test == 'test_multinomial':
+    elif args.hypothesis_distrib.hypothesis_test == 'test_multinomial':
         pass
-    elif args.hypothesis_distribution_test.hypothesis_test == 'test_dirichlet':
+    elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet':
         pass
-    elif args.hypothesis_distribution_test.hypothesis_test == 'test_dirichlet_multinomial':
+    elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet_multinomial':
         pass
     else:
         raise ValueError(f'unrecognized hypothesis_test argument value: {args.hypothesis_test}')
