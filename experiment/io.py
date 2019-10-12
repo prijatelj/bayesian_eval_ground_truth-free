@@ -475,21 +475,26 @@ def expand_model_args(args):
         raise TypeError(f'`args.mle.optimizer` has expected type NestedNamespace, but instead was of type {type(args.mle.optimizer)} with value: {args.mle.optimizer}')
 
 
-def parse_args(arg_set=None):
+def parse_args(arg_set=None, custom_args=None, description=None):
     """Creates the args to be parsed and the handling for each.
 
     Parameters
     ----------
     arg_set : iterable, optional
         contains the additional argument types to be parsed.
+    custom_args : function | callable, optional
+        Given a function that expects a single argument to be
+        `argparse.ArgumentParser`, this function adds arguments to the parser.
 
     Returns
     -------
-    (argparse.namespace, dict, dict, dict, None|int|list(ints))
-        Args parsed, dicts of data, model, kfold specific args, and list of
-        random seeds.
+    (argparse.namespace, None|int|list(ints))
+        Parsed argumentss and random seeds if any.
     """
-    parser = argparse.ArgumentParser(description='Run proof of concept ')
+    if description:
+        parser = argparse.ArgumentParser(description=description)
+    else:
+        parser = argparse.ArgumentParser(description='Run proof of concept.')
 
     add_logging_args(parser)
     add_hardware_args(parser)
@@ -502,6 +507,10 @@ def parse_args(arg_set=None):
 
     if arg_set and 'mle' in arg_set:
         add_mle_args(parser)
+
+    # Add custom
+    if custom_args and callable(custom_args):
+        custom_args(parser)
 
     args = parser.parse_args(namespace=NestedNamespace())
 

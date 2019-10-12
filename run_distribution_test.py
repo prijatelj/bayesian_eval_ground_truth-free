@@ -122,12 +122,8 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
     return info_criterion
 
 
-if __name__ == '__main__':
-    #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
-    args, random_seeds = experiment.io.parse_args('mle')
-    # TODO 2nd repeat for focus fold of k folds: load model of that split
-    # split data based on specified random_seed
-
+def test_human_data(args, random_seeds):
+    """Test the hypothesis distributions for the human data."""
     # TODO Create the distributions and their args to be tested (hard coded options)
     if args.dataset_id == 'LabelMe':
         if args.label_src == 'annotations':
@@ -180,5 +176,81 @@ if __name__ == '__main__':
         results,
         overwrite=True,
     )
+
+
+def add_test_distrib_args(parser):
+    """Adds arguments to the given `argparse.ArgumentParser`."""
+    hypothesis_distrib = parser.add_argument_group(
+        'hypothesis_distribution_test',
+        'Arguments pertaining to the K fold Cross Validation for evaluating '
+        + ' models.',
+    )
+
+    hypothesis_distrib.add_argument(
+        '--hypothesis_test',
+        default='human',
+        help='The hypothesis test to be performed. "test_" prefix is for '
+            + ' running a test of the MLE method of fitting the specified '
+            + 'distribution.',
+        choices=[
+            'human',
+            'model',
+            'test_gaussian',
+            'test_multinomial',
+            'test_dirichlet',
+            'test_dirichlet_multinomial',
+        ],
+        dest='hypothesis_distribution_test.hypothesis_test',
+    )
+
+    hypothesis_distrib.add_argument(
+        '--hypothesis_kfold_val',
+        action='store_true',
+        help='If True, performs the kfold validation to evaluate the MLE '
+            + 'fitting method. The default is ',
+        dest='hypothesis_distribution_test.hypothesis_kfold_val',
+    )
+
+    hypothesis_distrib.add_argument(
+        '--hypothesis_data_src',
+        default=None,
+        help='The data source to be used for the MLE.',
+        choices=[
+            'human',
+            'model',
+            'test_gaussian',
+            'test_multinomial',
+            'test_dirichlet',
+            'test_dirichlet_multinomial',
+        ],
+        dest='hypothesis_distribution_test.hypothesis_data_src',
+    )
+
+if __name__ == '__main__':
+    #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
+    args, random_seeds = experiment.io.parse_args(
+        'mle',
+        add_test_distrib_args,
+        description='Perform hypothesis tests on which distribution is the '
+            + 'source of the data.',
+    )
+
+    if args.hypothesis_distribution_test.hypothesis_test == 'human':
+        test_human_data(args, random_seeds)
+    elif args.hypothesis_distribution_test.hypothesis_test == 'model':
+        pass
+    elif args.hypothesis_distribution_test.hypothesis_test == 'test_gaussian':
+        pass
+    elif args.hypothesis_distribution_test.hypothesis_test == 'test_multinomial':
+        pass
+    elif args.hypothesis_distribution_test.hypothesis_test == 'test_dirichlet':
+        pass
+    elif args.hypothesis_distribution_test.hypothesis_test == 'test_dirichlet_multinomial':
+        pass
+    else:
+        raise ValueError(f'unrecognized hypothesis_test argument value: {args.hypothesis_test}')
+
+    # TODO 2nd repeat for focus fold of k folds: load model of that split
+    # split data based on specified random_seed
 
     # TODO if want to see how well the model fits the data, do K Fold Cross validation.
