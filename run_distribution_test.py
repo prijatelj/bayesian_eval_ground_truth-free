@@ -6,6 +6,7 @@ from datetime import datetime
 import json
 import logging
 import os
+import sys
 
 import numpy as np
 import tensorflow as tf
@@ -178,9 +179,9 @@ def test_normal(
     output_dir,
     loc=None,
     scale=None,
+    sample_size=1000,
     info_criterions=['bic'],
     mle_method='adam',
-    sample_size=1000,
     random_seed=None,
     standardize=None,
     initial='random',
@@ -202,14 +203,14 @@ def test_normal(
         either a float as the initial value of the scale, or a dict
         containing the loc and standard deviation of a normal distribution
         which this loc is drawn from randomly. If
+    sample_size : int, optional
+        The number of samples to draw from the normal distribution being fit.
+        Defaults to 1000.
     info_criterions : list(str)
         List of information criterion ids to be computed after finding the MLE.
     mle_method : str, optional
         Specifies the MLE/fitting method to use. Defaults to Gradient Descent
         via tensorflows Adam optimizer.
-    sample_size : int, optional
-        The number of samples to draw from the normal distribution being fit.
-        Defaults to 1000.
     random_seed : int, optional
         Integer to use as the random seeds for MLE.
     standardize : str, optional
@@ -289,7 +290,7 @@ def test_normal(
         )
 
     # Save the results and original values
-    results['src_normal_params'] = src_normal_params
+    results['src_params'] = src_normal_params
     results['intial_params'] = distrib_args
 
     experiment.io.save_json(
@@ -298,6 +299,7 @@ def test_normal(
     )
 
 
+# TODO may want to move all of this I/O to experiment dir... uncertain atm.
 def add_test_distrib_args(parser):
     """Adds arguments to the given `argparse.ArgumentParser`."""
     hypothesis_distrib = parser.add_argument_group(
@@ -331,6 +333,7 @@ def add_test_distrib_args(parser):
         dest='hypothesis_distrib.hypothesis_kfold_val',
     )
 
+    """
     hypothesis_distrib.add_argument(
         '--hypothesis_data_src',
         default=None,
@@ -345,6 +348,7 @@ def add_test_distrib_args(parser):
         ],
         dest='hypothesis_distrib.hypothesis_data_src',
     )
+    """
 
     hypothesis_distrib.add_argument(
         '--info_criterions',
@@ -357,12 +361,67 @@ def add_test_distrib_args(parser):
     hypothesis_distrib.add_argument(
         '--repeat_mle',
         default=1,
+        type=int,
         help='The number of times to repeat finding the MLE.',
         dest='hypothesis_distrib.repeat_mle',
     )
 
     # arg parse test_src_distrib specify and params
     # specify test_normal, expects loc and scale, ow. goes off default / random
+
+    hypothesis_distrib.add_argument(
+        '--sample_size',
+        default=1000,
+        type=int,
+        help='The number samples to draw from the source distribution to '
+            + 'generate the data to be fit.',
+        dest='hypothesis_distrib.sample_size',
+        #required=test_in_argv(),
+    )
+
+    # Normal params
+    hypothesis_distrib.add_argument(
+        '--loc',
+        default=10.0,
+        type=multi_typed_arg(float, json.loads),
+        help='Either a float or a dict containing the keys "loc":float, '
+        + '"scale":float to define a normal distribution for randomly '
+        + 'selecting a float for this argument. This is the location of the '
+        + 'mean of the source normal distribution.',
+        dest='hypothesis_distrib.loc',
+        #required=test_in_argv(['test_normal']),
+    )
+
+    hypothesis_distrib.add_argument(
+        '--scale',
+        default=5.0,
+        type=multi_typed_arg(float, json.loads),
+        help='Either a float or a dict containing the keys "loc":float, '
+        + '"scale":float to define a normal distribution for randomly '
+        + 'selecting a float for this argument. This is the scale '
+        + '(standard deviation) of the source normal distribution.',
+        dest='hypothesis_distrib.scale',
+        #required=test_in_argv(['test_normal']),
+    )
+
+
+def multi_typed_arg(*types):
+    """Returns a callable to check if a variable is any of the types given."""
+    def multi_type_conversion(x):
+        for t in types:
+            try:
+                return t(x)
+            except TypeError as e:
+                print('\n' + str(e) + '\n')
+                pass
+            except Exception as e:
+                print('\n' + str(e) + '\n')
+        raise argparse.ArgumentTypeError(
+            f'Arg of {type(x)} is not convertable to any of the types: {types}'
+        )
+    return multi_type_conversion
+    #return lambda x: any([isinstance(x, t) for t in types])
+
 
 if __name__ == '__main__':
     #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
@@ -372,6 +431,7 @@ if __name__ == '__main__':
         description='Perform hypothesis tests on which distribution is the '
             + 'source of the data.',
     )
+    argv = sys.argv
 
     if args.hypothesis_distrib.hypothesis_test == 'human':
         test_human_data(
@@ -380,22 +440,23 @@ if __name__ == '__main__':
             info_criterions=args.hypothesis_distrib.info_criterions,
         )
     elif args.hypothesis_distrib.hypothesis_test == 'model':
-        raise NotImplemented
+        raise NotImplementedError
     elif args.hypothesis_distrib.hypothesis_test == 'test_normal':
         for i in range(args.hypothesis_distrib.repeat_mle):
             test_normal(
                 vars(args.mle),
                 args.output_dir,
-                loc=10.0,
-                scale=5.0,
-                sample_size=100,
+                loc=args.hypothesis_distrib.loc,
+                scale=args.hypothesis_distrib.scale,
+                sample_size=args.hypothesis_distrib.sample_size,
+                info_criterions=args.hypothesis_distrib.info_criterions,
             )
     elif args.hypothesis_distrib.hypothesis_test == 'test_multinomial':
-        raise NotImplemented
+        raise NotImplementedError
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet':
-        raise NotImplemented
+        raise NotImplementedError
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet_multinomial':
-        raise NotImplemented
+        raise NotImplementedError
     else:
         raise ValueError(f'unrecognized hypothesis_test argument value: {args.hypothesis_test}')
 
