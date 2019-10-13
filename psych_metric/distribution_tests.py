@@ -488,52 +488,62 @@ def get_normal_param_vars(
         which this loc is drawn from randomly.
     """
     with tf.name_scope(name):
-        if isinstance(loc, dict) and isinstance(scale, dict):
-            return {
-                'loc': tf.constant(
-                    value=np.random.normal(**loc),
-                    dtype=tf.float32,
-                    name='loc',
-                ) if const_params and 'loc' in const_params else tf.Variable(
-                    initial_value=np.random.normal(**loc),
-                    dtype=tf.float32,
-                    name='loc',
-                ),
-                'scale': tf.constant(
-                    value=np.random.normal(**scale),
-                    dtype=tf.float32,
-                    name='scale',
-                ) if const_params and 'scale' in const_params else tf.Variable(
-                    initial_value=np.random.normal(**scale),
-                    dtype=tf.float32,
-                    name='scale',
-                ),
-            }
-        elif isinstance(loc, float) and isinstance(scale, float):
-            return {
-                'loc': tf.constant(
-                    value=loc,
-                    dtype=tf.float32,
-                    name='loc',
-                ) if const_params and 'loc' in const_params else tf.Variable(
-                    initial_value=loc,
-                    dtype=tf.float32,
-                    name='loc',
-                ),
-                'scale': tf.constant(
-                    value=scale,
-                    dtype=tf.float32,
-                    name='scale',
-                ) if const_params and 'scale' in const_params else tf.Variable(
-                    initial_value=scale,
-                    dtype=tf.float32,
-                    name='scale',
-                ),
-            }
+        params = {}
+
+        # Get loc
+        if isinstance(loc, dict):
+            params['loc'] = (tf.constant(
+                value=np.random.normal(**loc),
+                dtype=tf.float32,
+                name='loc',
+            ) if const_params and 'loc' in const_params else tf.Variable(
+                initial_value=np.random.normal(**loc),
+                dtype=tf.float32,
+                name='loc',
+            ))
+        elif isinstance(loc, float):
+            params['loc'] = (tf.constant(
+                value=loc,
+                dtype=tf.float32,
+                name='loc',
+            ) if const_params and 'loc' in const_params else tf.Variable(
+                initial_value=loc,
+                dtype=tf.float32,
+                name='loc',
+            ))
         else:
             raise TypeError(
-                'Both `loc` and `scale` must either be floats '
-                + 'xor dicts containing a loc and scale each for sampling '
-                + 'from a normal distribution to select the initial values. '
-                + f'Not {type(loc)} and {type(scale)}'
+                '`loc` must be either a float xor dict containing a loc and '
+                + 'scale for sampling from a normal distribution to select the '
+                + f'initial values. But recieved type: {type(loc)}'
             )
+
+        # Get scale
+        if isinstance(scale, dict):
+            params['scale'] = (tf.constant(
+                value=np.random.normal(**scale),
+                dtype=tf.float32,
+                name='scale',
+            ) if const_params and 'scale' in const_params else tf.Variable(
+                initial_value=np.random.normal(**scale),
+                dtype=tf.float32,
+                name='scale',
+            ))
+        elif isinstance(scale, float):
+            params['scale'] = (tf.constant(
+                value=scale,
+                dtype=tf.float32,
+                name='scale',
+            ) if const_params and 'scale' in const_params else tf.Variable(
+                initial_value=scale,
+                dtype=tf.float32,
+                name='scale',
+            ))
+        else:
+            raise TypeError(
+                '`scale` must be either a float xor dict containing a scale and '
+                + 'scale for sampling from a normal distribution to select the '
+                + f'initial values. But recieved type: {type(scale)}'
+            )
+
+        return params
