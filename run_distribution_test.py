@@ -361,6 +361,9 @@ def add_test_distrib_args(parser):
         dest='hypothesis_distrib.repeat_mle',
     )
 
+    # arg parse test_src_distrib specify and params
+    # specify test_normal, expects loc and scale, ow. goes off default / random
+
 if __name__ == '__main__':
     #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
     args, random_seeds = experiment.io.parse_args(
@@ -377,7 +380,7 @@ if __name__ == '__main__':
             info_criterions=args.hypothesis_distrib.info_criterions,
         )
     elif args.hypothesis_distrib.hypothesis_test == 'model':
-        pass
+        raise NotImplemented
     elif args.hypothesis_distrib.hypothesis_test == 'test_normal':
         for i in range(args.hypothesis_distrib.repeat_mle):
             test_normal(
@@ -388,11 +391,11 @@ if __name__ == '__main__':
                 sample_size=100,
             )
     elif args.hypothesis_distrib.hypothesis_test == 'test_multinomial':
-        pass
+        raise NotImplemented
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet':
-        pass
+        raise NotImplemented
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet_multinomial':
-        pass
+        raise NotImplemented
     else:
         raise ValueError(f'unrecognized hypothesis_test argument value: {args.hypothesis_test}')
 
