@@ -78,7 +78,7 @@ def mle_adam_distribs(
                     info_criterions,
                     len(labels)
                 )
-        elif isinstance(distrib_mle[distrib_id], distribution_tests.MLEResult):
+        elif isinstance(distrib_mle[distrib_id], distribution_tests.MLEResults):
             # TODO, distribution_tests.mle_adam() returns list always.
             distrib_mle[distrib_id].info_criterion = calc_info_criterion(
                     -distrib_mle[distrib_id].neg_log_likelihood,
@@ -178,45 +178,98 @@ def test_normal(
     output_dir,
     loc=None,
     scale=None,
-    mle_method='adam',
-    sample_size=10000,
     info_criterions=['bic'],
+    mle_method='adam',
+    sample_size=1000,
     random_seed=None,
     standardize=None,
     initial='random',
+    repeat_mle=1,
 ):
-    """Creates a Normal distribution and fits it using the given MLE method."""
-    # Create the original distribution to be estimated and its data sample
-    normal_params = {
-        'loc': loc if loc else (np.random.ranf(1) * np.random.randint(-100, 100))[0],
-        'scale': scale if scale else np.abs(np.random.ranf(1) * np.random.randint(1, 5))[0],
-    }
+    """Creates a Normal distribution and fits it using the given MLE method.
 
-    data = np.random.normal(size=sample_size, **normal_params)
+    Parameters
+    ----------
+    mle_args : dict
+        Arguments for MLE Adam.
+    output_dir : str
+        The filepath to the directory where the MLE results will be stored.
+    loc : float | dict, optional
+        either a float as the initial value of the loc, or a dict containing
+        the loc and standard deviation of a normal distribution which this
+        loc is drawn from randomly.
+    scale : float | dict, optional
+        either a float as the initial value of the scale, or a dict
+        containing the loc and standard deviation of a normal distribution
+        which this loc is drawn from randomly. If
+    info_criterions : list(str)
+        List of information criterion ids to be computed after finding the MLE.
+    mle_method : str, optional
+        Specifies the MLE/fitting method to use. Defaults to Gradient Descent
+        via tensorflows Adam optimizer.
+    sample_size : int, optional
+        The number of samples to draw from the normal distribution being fit.
+        Defaults to 1000.
+    random_seed : int, optional
+        Integer to use as the random seeds for MLE.
+    standardize : str, optional
+        The data standardization method to use, either 'extreme' or 'logical'.
+        Extreme uses the minimum of the data as the center and uses the max and
+        min as the scale. Logical uses the mean of the data as the center and
+        the standard deviation as the scale. All the generated samples are
+        standardized about the center and scale found from the data. Default is
+        no standardization.
+    initial : str, optional
+        A string identifier indicating how to initialize the Normal distrib to
+        be fit on the generated data. Options are: 'extreme', 'logical', or the
+        default is random initialization. 'extreme' and 'logical' are the same
+        as in `standardize`.
+    """
+    # Create the original distribution to be estimated and its data sample
+    src_normal_params = {}
+    if isinstance(loc, dict):
+        src_normal_params['loc'] = np.random.normal(**loc)
+    elif isinstance(loc, float):
+        src_normal_params['loc'] = loc
+    else:
+        src_normal_params['loc'] = (np.random.rand(1)
+            * np.random.randint(-100, 100))[0]
+
+    if isinstance(scale, dict):
+        src_normal_params['scale'] = np.random.normal(**scale)
+    elif isinstance(scale, float):
+        src_normal_params['scale'] = scale
+    else:
+        src_normal_params['scale'] = np.abs(np.random.rand(1)
+            * np.random.randint(1, 5))[0]
+
+    data = np.random.normal(size=sample_size, **src_normal_params)
 
     # Set the initial distribution args
     distrib_args = {'continuous_uniform': {'high': 1000, 'low': -1000}}
 
-    if initial == 'random':
-        distrib_args['normal'] = {
-            'loc': (np.random.ranf(1) * np.random.randint(-100, 100))[0],
-            'scale': np.abs(np.random.ranf(1) * np.random.randint(1, 5))[0],
-            #'loc': {'loc': 0.0, 'scale': 0.1},
-            #'scale': {'loc': 1.0, 'scale': 0.1},
-        }
-    elif initial == 'extreme':
+    if initial == 'extreme':
         # Extremes of data
         distrib_args['normal'] = {
             'loc': data.min(),
             'scale': data.max() - data.min(),
         }
-    else:
+    elif initial == 'random':
         # logical inital values given data
         distrib_args['normal'] = {
             'loc': data.mean(),
             'scale': np.sqrt(data.var()),
         }
+    else:
+        # Random initialization.
+        distrib_args['normal'] = {
+            'loc': (np.random.rand(1) * np.random.randint(-100, 100))[0],
+            'scale': np.abs(np.random.rand(1) * np.random.randint(1, 5))[0],
+            #'loc': {'loc': 0.0, 'scale': 0.1},
+            #'scale': {'loc': 1.0, 'scale': 0.1},
+        }
 
+    # Standardize the data
     if standardize == 'extreme':
         # Standardize the data given loc and scale.
         #data = (data - distrib_args['normal']['loc']) / distrib_args['normal']['scale']
@@ -236,7 +289,7 @@ def test_normal(
         )
 
     # Save the results and original values
-    results['actual_params'] = normal_params
+    results['src_normal_params'] = src_normal_params
     results['intial_params'] = distrib_args
 
     experiment.io.save_json(
@@ -301,6 +354,12 @@ def add_test_distrib_args(parser):
         dest='hypothesis_distrib.info_criterions',
     )
 
+    hypothesis_distrib.add_argument(
+        '--repeat_mle',
+        default=1,
+        help='The number of times to repeat finding the MLE.',
+        dest='hypothesis_distrib.repeat_mle',
+    )
 
 if __name__ == '__main__':
     #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
@@ -320,13 +379,14 @@ if __name__ == '__main__':
     elif args.hypothesis_distrib.hypothesis_test == 'model':
         pass
     elif args.hypothesis_distrib.hypothesis_test == 'test_normal':
-        test_normal(
-            vars(args.mle),
-            args.output_dir,
-            loc=10.0,
-            scale=5.0,
-            sample_size=100,
-        )
+        for i in range(args.hypothesis_distrib.repeat_mle):
+            test_normal(
+                vars(args.mle),
+                args.output_dir,
+                loc=10.0,
+                scale=5.0,
+                sample_size=100,
+            )
     elif args.hypothesis_distrib.hypothesis_test == 'test_multinomial':
         pass
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet':
