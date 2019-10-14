@@ -155,6 +155,7 @@ def mle_adam(
     name='MLE_adam',
     sess_config=None,
     tf_optimizer='adam',
+    tol_chain=1,
 ):
     """Uses tensorflow's ADAM optimizer to search the parameter space for MLE.
 
@@ -267,6 +268,8 @@ def mle_adam(
         params_history = []
         loss_history = []
 
+        loss_chain = 0
+
         i = 1
         continue_loop = True
         while continue_loop:
@@ -320,8 +323,16 @@ def mle_adam(
                     continue_loop = False
 
             if loss_history and np.abs(iter_results['neg_log_likelihood'] - loss_history[-1]) < tol_param:
-                logging.info('Loss convergence in %d iterations.', i)
-                continue_loop = False
+                loss_chain += 1
+
+                if loss_chain >= tol_chain:
+                    logging.info('Loss convergence in %d iterations.', i)
+                    continue_loop = False
+            else:
+                #loss_chain = 0
+                if loss_chain > 0:
+                    loss_chain -= 1
+
 
             if loss_history and (np.linalg.norm(iter_results['grad']) < tol_param).all():
                 logging.info('Gradient convergence in %d iterations.', i)
