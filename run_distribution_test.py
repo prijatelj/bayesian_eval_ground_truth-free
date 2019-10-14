@@ -3,9 +3,12 @@ import argparse
 import json
 import logging
 import os
+from numbers import Number
 import sys
 
 import numpy as np
+import tensorflow as tf
+import tensorflow_probability as tfp
 
 import experiment.io
 from psych_metric import distribution_tests
@@ -110,7 +113,7 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
 
 def test_human_data(args, random_seeds, info_criterions=['bic']):
     """Test the hypothesis distributions for the human data."""
-    # TODO Create the distributions and their args to be tested (hard coded options)
+    # Create the distributions and their args to be tested (hard coded options)
     if args.dataset_id == 'LabelMe':
         if args.label_src == 'annotations':
             raise NotImplementedError('`label_src` as "annotations" results in '
@@ -130,7 +133,6 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
                 },
             }
     elif args.dataset_id == 'FacialBeauty':
-        # TODO need to make a distrib of normal distribs, uniforms are fine though.
         distrib_args = {
             'discrete_uniform': {'high': 5, 'low': 1},
             'continuous_uniform': {'high': 5, 'low': 1},
@@ -179,8 +181,8 @@ def test_normal(
     info_criterions=['bic'],
     mle_method='adam',
     random_seed=None,
-    standardize=None,
     initial=None,
+    standardize=None,
     repeat_mle=1,
 ):
     """Creates a Normal distribution and fits it using the given MLE method.
@@ -209,18 +211,18 @@ def test_normal(
         via tensorflows Adam optimizer.
     random_seed : int, optional
         Integer to use as the random seeds for MLE.
+    initial : str, optional
+        A string identifier indicating how to initialize the Normal distrib to
+        be fit on the generated data. Options are: 'extreme', 'data', or the
+        default is random initialization. 'extreme' and 'data' are the same
+        as in `standardize`.
     standardize : str, optional
-        The data standardization method to use, either 'extreme' or 'logical'.
+        The data standardization method to use, either 'extreme' or 'data'.
         Extreme uses the minimum of the data as the center and uses the max and
-        min as the scale. Logical uses the mean of the data as the center and
+        min as the scale. Data uses the mean of the data as the center and
         the standard deviation as the scale. All the generated samples are
         standardized about the center and scale found from the data. Default is
         no standardization.
-    initial : str, optional
-        A string identifier indicating how to initialize the Normal distrib to
-        be fit on the generated data. Options are: 'extreme', 'logical', or the
-        default is random initialization. 'extreme' and 'logical' are the same
-        as in `standardize`.
     """
     # Create the original distribution to be estimated and its data sample
     src_normal_params = {}
@@ -251,8 +253,8 @@ def test_normal(
             'loc': data.min(),
             'scale': data.max() - data.min(),
         }
-    elif initial == 'logical':
-        # logical inital values given data
+    elif initial == 'data':
+        # inital values given data and assuming normality
         distrib_args['normal'] = {
             'loc': data.mean(),
             'scale': np.sqrt(data.var()),
@@ -271,7 +273,7 @@ def test_normal(
         # Standardize the data given loc and scale.
         #data = (data - distrib_args['normal']['loc']) / distrib_args['normal']['scale']
         data = (data - data.min()) / (data.max() - data.min())
-    elif standardize == 'logical':
+    elif standardize == 'data':
         # standardizes the data as typical
         data = (data - data.mean()) / np.sqrt(data.var())
 
@@ -295,7 +297,135 @@ def test_normal(
     )
 
 
-# TODO may want to move all of this I/O to experiment dir... uncertain atm.
+def test_dirichlet_multinomial(
+    mle_args,
+    output_dir,
+    total_count=None,
+    concentration=None,
+    num_classes=None,
+    sample_size=1000,
+    info_criterions=['bic'],
+    mle_method='adam',
+    random_seed=None,
+    init_total_count=None,
+    init_concentration=None,
+    repeat_mle=1,
+):
+    """Creates a Normal distribution and fits it using the given MLE method.
+
+    Parameters
+    ----------
+    mle_args : dict
+        Arguments for MLE Adam.
+    output_dir : str
+        The filepath to the directory where the MLE results will be stored.
+    total_count : float | dict, optional
+        either a float as the initial value of the loc, or a dict containing
+        the loc and standard deviation of a normal distribution which this
+        loc is drawn from randomly.
+    concentration : float | list(float), optional
+        either a postive float as the initial value of the scale, or a dict
+        containing the loc and standard deviation of a normal distribution
+        which this loc is drawn from randomly. If
+    num_classes : int, optional
+        The number of classes of the source Dirichlet-Multinomial. Only
+        required when the given a single float for `concentration`. `concentration`
+        is then turned into a list of length `num_classes` where ever element is
+        the single float given by `concentration`.
+    sample_size : int, optional
+        The number of samples to draw from the normal distribution being fit.
+        Defaults to 1000.
+    info_criterions : list(str)
+        List of information criterion ids to be computed after finding the MLE.
+    mle_method : str, optional
+        Specifies the MLE/fitting method to use. Defaults to Gradient Descent
+        via tensorflows Adam optimizer.
+    random_seed : int, optional
+        Integer to use as the random seeds for MLE.
+    initial : str, optional
+        A string identifier indicating how to initialize the Normal distrib to
+        be fit on the generated data. Options are: 'extreme', 'data', or the
+        default is random initialization. 'extreme' and 'data' are the same
+        as in `standardize`.
+    """
+    # Create the original distribution to be estimated and its data sample
+    src_params = {}
+    if isinstance(total_count, dict):
+        src_params['total_count'] = np.abs(np.random.normal(**total_count))
+    elif isinstance(total_count, float):
+        src_params['total_count'] = total_count
+    else:
+        src_params['total_count'] = np.abs(np.random.rand(1)
+            * np.random.randint(0, 100))[0]
+
+    if isinstance(concentration, float) and num_classes and isinstance(num_classes, Number):
+        src_params['concentration'] = [concentration] * num_classes
+    elif isinstance(concentration, list) or isinstance(concentration, np.ndarray):
+        src_params['concentration'] = concentration
+    elif isinstance(concentration, dict) and num_classes and isinstance(num_classes, Number):
+        # TODO Create concentration as a discrete, ordinal normal distribution?
+        # or perhaps sample the concentrations from that normal... just as a
+        # form of controled randomization.
+        raise NotImplementedError
+    elif num_classes and isinstance(num_classes, Number):
+        src_params['concentration'] = np.abs(np.random.rand(num_classes)
+            * np.random.rand(0, 100, num_classes))
+    else:
+        raise TypeError(
+            'Wrong type for `concentration` and `num_classes` not given. '
+            + f'Type recieved: {type(concentration)}'
+        )
+
+    src_distrib = tfp.distributions.DirichletMultinomial(**src_params)
+    data = src_distrib.sample(sample_size).eval(session=tf.Session())
+
+    # Set the initial distribution args
+    distrib_args = {
+        'discrete_uniform': {'high': 1000, 'low': -1000},
+        'dirichlet_multinomial': {}
+    }
+
+    # initial total_count
+    if init_total_count == 'data':
+        # The total votes for each sample gives the distribution for total_count
+        # Here, we are using total_counts with only a single value, and know
+        # that the generated data reflects this. So just sume the first row.
+        distrib_args['dirichlet_multinomial']['total_count'] = data[0].sum()
+    elif isinstance(init_total_count, Number) and init_total_count > 0:
+        distrib_args['dirichlet_multinomial']['total_count'] = [init_total_count] * len(data[0])
+    else:
+        distrib_args['dirichlet_multinomial']['total_count'] = np.random.randint(1, 1000)
+
+    # intial concentation
+    if init_concentration == 'data':
+        # The mean class frequency of the samples is the concentration.
+        distrib_args['dirichlet_multinomial']['total_count'] = data.mean(axis=0) / data[0].sum()
+    elif isinstance(init_concentration, Number) and init_concentration > 0:
+        # Uniform concentration of the value given.
+        distrib_args['dirichlet_multinomial']['concentration'] = [init_concentration] * len(data[0])
+    else: # principle of indifference
+        distrib_args['dirichlet_multinomial']['concentration'] = np.random.exponential(size=len(data[0]))
+
+    # Find MLE of models
+    if mle_method == 'adam':
+        results = mle_adam_distribs(
+            data,
+            distrib_args,
+            mle_args=mle_args,
+            info_criterions=info_criterions,
+            random_seed=None,
+        )
+
+    # Save the results and original values
+    results['src_params'] = src_params
+    results['intial_params'] = distrib_args
+
+    experiment.io.save_json(
+        os.path.join(args.output_dir, 'test_normal.json'),
+        results,
+    )
+
+# TODO may want to move all of this I/O to experiment.io ... uncertain atm.
 def add_test_distrib_args(parser):
     """Adds arguments to the given `argparse.ArgumentParser`."""
     hypothesis_distrib = parser.add_argument_group(
@@ -531,7 +661,16 @@ if __name__ == '__main__':
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet':
         raise NotImplementedError
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet_multinomial':
-        raise NotImplementedError
+        for i in range(args.hypothesis_distrib.repeat_mle):
+            test_dirichlet_multinomial(
+                vars(args.mle),
+                args.output_dir,
+                args.hypothesis_distrib.total_count,
+                args.hypothesis_distrib.concentration,
+                args.hypothesis_distrib.num_classes,
+                sample_size=args.hypothesis_distrib.sample_size,
+                info_criterions=args.hypothesis_distrib.info_criterions,
+            )
     else:
         raise ValueError(f'unrecognized hypothesis_test argument value: {args.hypothesis_test}')
 
