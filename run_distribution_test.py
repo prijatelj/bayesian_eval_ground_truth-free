@@ -134,28 +134,34 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
             labels = labels * 3
             # this is a distribution of distributions, all
             distrib_args = {
-                'discrete_uniform': {'high': 7, 'low': 0},
-                'continuous_uniform': {'high': 7, 'low': 0},
                 'dirichlet_multinomial': {
                     # 3 is max labels per sample, 8 classes
                     'total_count': 3,
                     # w/o prior knowledge, must use all ones
-                    #'concentration': np.ones(8),
+                    'concentration': np.ones(8),
+                    #'concentration': labels.mean(axis=0) / 3,
+                },
+                'dirichlet_multinomial': {
+                    # 3 is max labels per sample, 8 classes
+                    'total_count': 3,
+                    # prior knowledge from data alone for initial value
                     'concentration': labels.mean(axis=0) / 3,
-                    #'concentration': np.ones(8) * (1000 / 8),
                 },
             }
     elif args.dataset_id == 'FacialBeauty':
         # NOTE assumes frequency as label src
         labels = labels * 60
         distrib_args = {
-            'discrete_uniform': {'high': 5, 'low': 1},
-            'continuous_uniform': {'high': 5, 'low': 1},
-            'dirichlet_multinomial': {
+            'dirichlet_multinomial_uniform': { # TODO figure out how to freeze this. (get a single Likelihood, not MLE.
                 # 60 is max labels per sample, 5 classes
                 'total_count': 60,
                 # w/o prior knowledge, must use all ones
-                #'concentration': np.ones(5),
+                'concentration': np.ones(5), #uniform
+            },
+            'dirichlet_multinomial': {
+                # 60 is max labels per sample, 5 classes
+                'total_count': 60,
+                # prior knowledge from data alone for inital value
                 'concentration': labels.mean(axis=0) / 60,
             },
         }
