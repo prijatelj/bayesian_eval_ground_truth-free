@@ -154,6 +154,7 @@ def mle_adam(
     batch_size=1,
     name='MLE_adam',
     sess_config=None,
+    tf_optimizer='adam',
 ):
     """Uses tensorflow's ADAM optimizer to search the parameter space for MLE.
 
@@ -214,7 +215,13 @@ def mle_adam(
         )
 
         # Create optimizer
-        optimizer = tf.train.AdamOptimizer(**optimizer_args)
+        if tf_optimizer == 'adam':
+            optimizer = tf.train.AdamOptimizer(**optimizer_args)
+        elif tf_optimizer == 'nadam':
+            optimizer = tf.contrib.opt.NadamOptimizer(**optimizer_args)
+        else:
+            raise ValueError(f'Unexpected tf_optimizer value: {tf_optimizer}')
+
         global_step = tf.Variable(0, name='global_step', trainable=False)
 
         if const_params:

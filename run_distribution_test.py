@@ -113,40 +113,6 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
 
 def test_human_data(args, random_seeds, info_criterions=['bic']):
     """Test the hypothesis distributions for the human data."""
-    # Create the distributions and their args to be tested (hard coded options)
-    if args.dataset_id == 'LabelMe':
-        if args.label_src == 'annotations':
-            raise NotImplementedError('`label_src` as "annotations" results in '
-                + 'a distribution of distributions of distributions. This '
-                + 'needs addressed.')
-        else:
-            # this is a distribution of distributions, all
-            distrib_args = {
-                'discrete_uniform': {'high': 7, 'low': 0},
-                'continuous_uniform': {'high': 7, 'low': 0},
-                'dirichlet_multinomial': {
-                    # 3 is max labels per sample, 8 classes
-                    'total_count': 3,
-                    # w/o prior knowledge, must use all ones
-                    'concentration': np.ones(8),
-                    #'concentration': np.ones(8) * (1000 / 8),
-                },
-            }
-    elif args.dataset_id == 'FacialBeauty':
-        distrib_args = {
-            'discrete_uniform': {'high': 5, 'low': 1},
-            'continuous_uniform': {'high': 5, 'low': 1},
-            'dirichlet_multinomial': {
-                # 60 is max labels per sample, 5 classes
-                'total_count': 60,
-                # w/o prior knowledge, must use all ones
-                'concentration': np.ones(5),
-            },
-            #'normal': {'loc': , 'scale':},
-        }
-    else:
-        raise NotImplementedError('The `dataset_id` {args.dataset_id} is not supported.')
-
     #First, handle distrib test of src annotations
     # Load the src data, reformat as was done in training in `predictors.py`
     images, labels, bin_classes = load_prep_data(
@@ -157,6 +123,45 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
     )
     del images, bin_classes
 
+    # Create the distributions and their args to be tested (hard coded options)
+    if args.dataset_id == 'LabelMe':
+        if args.label_src == 'annotations':
+            raise NotImplementedError('`label_src` as "annotations" results in '
+                + 'a distribution of distributions of distributions. This '
+                + 'needs addressed.')
+        else:
+            # NOTE assumming using frequency
+            labels = labels * 3
+            # this is a distribution of distributions, all
+            distrib_args = {
+                'discrete_uniform': {'high': 7, 'low': 0},
+                'continuous_uniform': {'high': 7, 'low': 0},
+                'dirichlet_multinomial': {
+                    # 3 is max labels per sample, 8 classes
+                    'total_count': 3,
+                    # w/o prior knowledge, must use all ones
+                    #'concentration': np.ones(8),
+                    'concentration': labels.mean(axis=0) / 3,
+                    #'concentration': np.ones(8) * (1000 / 8),
+                },
+            }
+    elif args.dataset_id == 'FacialBeauty':
+        # NOTE assumes frequency as label src
+        labels = labels * 60
+        distrib_args = {
+            'discrete_uniform': {'high': 5, 'low': 1},
+            'continuous_uniform': {'high': 5, 'low': 1},
+            'dirichlet_multinomial': {
+                # 60 is max labels per sample, 5 classes
+                'total_count': 60,
+                # w/o prior knowledge, must use all ones
+                #'concentration': np.ones(5),
+                'concentration': labels.mean(axis=0) / 60,
+            },
+        }
+    else:
+        raise NotImplementedError('The `dataset_id` {args.dataset_id} is not supported.')
+
     results = mle_adam_distribs(
         labels,
         distrib_args,
@@ -164,6 +169,8 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
         info_criterions=info_criterions,
         random_seed=None,
     )
+
+    results['intial_params'] = distrib_args
 
     # Save the results
     experiment.io.save_json(
@@ -228,7 +235,7 @@ def test_normal(
     src_normal_params = {}
     if isinstance(loc, dict):
         src_normal_params['loc'] = np.random.normal(**loc)
-    elif isinstance(loc, float):
+    elif isinstance(loc, Number):
         src_normal_params['loc'] = loc
     else:
         src_normal_params['loc'] = (np.random.rand(1)
@@ -236,7 +243,7 @@ def test_normal(
 
     if isinstance(scale, dict):
         src_normal_params['scale'] = np.abs(np.random.normal(**scale))
-    elif isinstance(scale, float):
+    elif isinstance(scale, Number):
         src_normal_params['scale'] = scale
     else:
         src_normal_params['scale'] = np.abs(np.random.rand(1)
@@ -350,15 +357,17 @@ def test_dirichlet_multinomial(
     """
     # Create the original distribution to be estimated and its data sample
     src_params = {}
+    print(f'\n\ntotal count type {type(total_count)}\n\n')
     if isinstance(total_count, dict):
         src_params['total_count'] = np.abs(np.random.normal(**total_count))
-    elif isinstance(total_count, float):
+    elif isinstance(total_count, Number):
+        print(f'\n\ntotal count {total_count}\n\n')
         src_params['total_count'] = total_count
     else:
         src_params['total_count'] = np.abs(np.random.rand(1)
             * np.random.randint(0, 100))[0]
 
-    if isinstance(concentration, float) and num_classes and isinstance(num_classes, Number):
+    if isinstance(concentration, Number) and num_classes and isinstance(num_classes, Number):
         src_params['concentration'] = [concentration] * num_classes
     elif isinstance(concentration, list) or isinstance(concentration, np.ndarray):
         src_params['concentration'] = concentration
@@ -399,7 +408,7 @@ def test_dirichlet_multinomial(
     # intial concentation
     if init_concentration == 'data':
         # The mean class frequency of the samples is the concentration.
-        distrib_args['dirichlet_multinomial']['total_count'] = data.mean(axis=0) / data[0].sum()
+        distrib_args['dirichlet_multinomial']['concentration'] = data.mean(axis=0) / data[0].sum()
     elif isinstance(init_concentration, Number) and init_concentration > 0:
         # Uniform concentration of the value given.
         distrib_args['dirichlet_multinomial']['concentration'] = [init_concentration] * len(data[0])
@@ -421,7 +430,7 @@ def test_dirichlet_multinomial(
     results['intial_params'] = distrib_args
 
     experiment.io.save_json(
-        os.path.join(args.output_dir, 'test_normal.json'),
+        os.path.join(args.output_dir, 'test_dirichlet_multinomial.json'),
         results,
     )
 
@@ -478,7 +487,7 @@ def add_test_distrib_args(parser):
 
     hypothesis_distrib.add_argument(
         '--info_criterions',
-        default='bic',
+        default=['bic', 'aic', 'hqc'],
         nargs='+',
         help='The list of information criterion identifiers to use.',
         dest='hypothesis_distrib.info_criterions',
@@ -541,7 +550,7 @@ def add_test_distrib_args(parser):
 
     hypothesis_distrib.add_argument(
         '--concentration',
-        type=multi_typed_arg(float, str.split),
+        type=multi_typed_arg(float, lambda x: np.array(x.split(), dtype=float)),
         help='Either a positive float or a list of postive floats indicating '
         + 'the concentrations for as many classes there are in ',
         dest='hypothesis_distrib.concentration',
@@ -559,6 +568,7 @@ def add_test_distrib_args(parser):
             and check_argv(float, '--concentration')
         ),
     )
+
 
 def multi_typed_arg(*types):
     """Returns a callable to check if a variable is any of the types given."""
@@ -670,6 +680,8 @@ if __name__ == '__main__':
                 args.hypothesis_distrib.num_classes,
                 sample_size=args.hypothesis_distrib.sample_size,
                 info_criterions=args.hypothesis_distrib.info_criterions,
+                init_total_count='data',
+                init_concentration='data',
             )
     else:
         raise ValueError(f'unrecognized hypothesis_test argument value: {args.hypothesis_test}')
