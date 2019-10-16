@@ -60,6 +60,17 @@ def mle_adam_distribs(
                 -(np.log(1.0 / (init_params['high'] - init_params['low'])) * len(labels)),
                 init_params,
             )]
+        elif distrib_id == 'dirichlet_multinomial_uniform':
+            # Sets concentration always to 1 to force the uniform
+            init_params['concentration'] = np.ones(len(labels[0]))
+
+            dmu_distrib = tfp.distributions.DirichletMultinomial(**init_params)
+            neg_log_likelihood = -1.0 * tf.reduce_sum(dmu_distrib.log_prob(labels))
+
+            distrib_mle[distrib_id] = [distribution_tests.MLEResults(
+                neg_log_likelihood.eval(session=tf.Session()),
+                init_params,
+            )]
         else:
             distrib_mle[distrib_id] = distribution_tests.mle_adam(
                 distrib_id,
@@ -132,14 +143,12 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
         else:
             # NOTE assumming using frequency
             labels = labels * 3
-            # this is a distribution of distributions, all
             distrib_args = {
-                'dirichlet_multinomial': {
+                'dirichlet_multinomial_uniform': {
                     # 3 is max labels per sample, 8 classes
                     'total_count': 3,
                     # w/o prior knowledge, must use all ones
                     'concentration': np.ones(8),
-                    #'concentration': labels.mean(axis=0) / 3,
                 },
                 'dirichlet_multinomial': {
                     # 3 is max labels per sample, 8 classes
