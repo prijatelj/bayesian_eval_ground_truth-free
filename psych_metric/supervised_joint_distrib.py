@@ -31,7 +31,7 @@ class SupervisedJointDistrib(object):
         """
         Parameters
         ----------
-        target : np.ndarray
+        target : np.ndarray | tfp.distribution.Distribution
             The target data of the supervised learning task.
         predictor_output : np.ndarray
             The predictions of the predictor for the samples corresponding to
