@@ -33,6 +33,7 @@ class SupervisedJointDistrib(object):
         target_distrib,
         transform_distrib,
         data_type='nominal',
+        independent=False,
     ):
         """
         Parameters
@@ -54,6 +55,13 @@ class SupervisedJointDistrib(object):
             Identifier of the data type of the target and the predictor output.
             Values include 'nominal', 'ordinal', and 'continuous'. Defaults to
             'nominal'.
+        independent : bool, optional
+            The joint probability distribution's random variables are treated
+            as independent if True, otherwise the second random variable is
+            treated as dependent on the first (this is default). This affects
+            how the sampling is handled, specifically in how the
+            `transform_distrib` is treated. If True, the `transform_distrib` is
+            instead treated as the distrib of second random variable.
         """
         if target.shape != pred.shape:
             raise ValueError('`target.shape` and `pred.shape` must be the '
@@ -121,13 +129,13 @@ class SupervisedJointDistrib(object):
 
         # TODO obtain the transform matrix (change of basis matrix)
 
-        return
+        return transform_matrix
 
     def _transform_to(self, sample):
-        return
+        return self.transform_matrix ** sample
 
     def _transform_from(self, sample):
-        return
+        return sample ** self.transform_matrix
 
     def sample(self, num_samples):
         """Sample from the estimated joint probability distribution.
@@ -142,7 +150,12 @@ class SupervisedJointDistrib(object):
 
         # transform target samples to probability simplex
 
+
+        if self.independent:
+            # just sample from transform_distrib and return paired RVs.
+        else:
         # draw predictor output via transform function using target sample
+        # pred_sample = target_sample + sample_transform_distrib
 
         # transform predictor output samples back to original space
 
@@ -165,11 +178,10 @@ class SupervisedJointDistrib(object):
 
         distances = self._transform_to(pred) - self._transform_to(target)
 
-        # mean = 0, estimate covariances from distances
-        locs = np.zeros(pred.shape[1])
-        scales = np.std(pred, 0)
-        #covs = np.cov(pred)
+        # TODO need to explain reasoning for zeros as const mean, rather than sample mean
 
-        # TODO deterministically calculate the multivatiate gaussian distrib
-
-        return transform_distrib
+        # deterministically calculate the Maximum Likely multivatiate norrmal
+        return tfp.distributions.MultivariateNormalFullCovariance(
+            np.zeros(pred.shape[1]),
+            np.cov(distances, bias=False),
+        )
