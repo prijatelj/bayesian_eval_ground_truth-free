@@ -1,4 +1,18 @@
-"""Simple testing concept."""
+"""Trains the predictors on different formats of the data, in kfold CV.
+
+Saves results in the given output directory as follows:
+    output_dir/dataset_id/model_id/random_seed/datetime/#_fold_cv/eval_fold_#/
+
+    datetime directory is optional, and used for indicating the order of runs.
+    '#' is used to indicate the variable number in its respective spot, so
+    the number of K folds in '#_fold_cv/' and the focus fold number in
+    'eval_fold_#'.
+
+    And within can be the 'checkpoints/', 'pred.csv', 'summary.json', and model
+    weights as HDF5.
+
+    'checkpoints/' may contain weights.epoch.hdf5 or pred.epoch.hdf5
+"""
 import argparse
 from copy import deepcopy
 from datetime import datetime
