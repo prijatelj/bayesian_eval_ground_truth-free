@@ -156,6 +156,7 @@ class SupervisedJointDistrib(object):
         discrete distribtuion space of one dimension more. The orgin adjustment
         is used to move to the correct origin of the discrete distribtuion space.
         """
+        # NOTE tensroflow optimization instead here.
         origin_adjust = np.zeros(len(self.transform_matrix) + 1)
         origin_adjust[0] = 1
         return (sample @ self.transform_matrix) + origin_adjust
@@ -172,19 +173,25 @@ class SupervisedJointDistrib(object):
         # sample from target distribution
 
         # transform target samples to probability simplex
-
+        target_samples = self.target_distrib.sample(num_samples)
 
         if self.independent:
             # just sample from transform_distrib and return paired RVs.
-            pass
-        else:
+            return None
         # draw predictor output via transform function using target sample
         # pred_sample = target_sample + sample_transform_distrib
+        transform_samples = self.transform_distrib.sample(num_samples)
+        samples = tf.concat([target_samples, transform_samples])
+        joint_samples = samples.eval(session=tf.Session())
 
         # transform predictor output samples back to original space
-            pass
+        # NOTE this would probably be more optimal if I simply saved the graph
+        # for sampling and doing post transform in Tensorflow.
+        for i in range(samples):
+            joint_samples[i, 1] = self._transform_from(samples[i, 1])
 
-        return joint_prob_samples
+        #return samples.eval(session=tf.Session())
+        return joint_samples
 
     def _fit_transform_distrib(self, target, pred, distrib, distrib_id='normal'):
         """Fits and returns the transform distribution."""
