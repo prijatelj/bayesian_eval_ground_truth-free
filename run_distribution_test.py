@@ -560,7 +560,10 @@ def add_test_distrib_args(parser):
         + 'selecting a float for this argument. This is the total count '
         + 'of the source Dirichlet-Multinomial distribution.',
         dest='hypothesis_distrib.total_count',
-        required=check_argv(['test_dirichlet', 'test_dirichlet_multinomial']),
+        required=check_argv(
+            ['test_dirichlet', 'test_dirichlet_multinomial'],
+            '--hypothesis_test',
+        ),
     )
 
     hypothesis_distrib.add_argument(
@@ -569,7 +572,10 @@ def add_test_distrib_args(parser):
         help='Either a positive float or a list of postive floats indicating '
         + 'the concentrations for as many classes there are in ',
         dest='hypothesis_distrib.concentration',
-        required=check_argv(['test_dirichlet', 'test_dirichlet_multinomial']),
+        required=check_argv(
+            ['test_dirichlet', 'test_dirichlet_multinomial'],
+            '--hypothesis_test',
+        ),
     )
 
     hypothesis_distrib.add_argument(
@@ -579,7 +585,10 @@ def add_test_distrib_args(parser):
         + 'the concentrations for as many classes there are in ',
         dest='hypothesis_distrib.num_classes',
         required=(
-            check_argv(['test_dirichlet', 'test_dirichlet_multinomial'])
+            check_argv(
+                ['test_dirichlet', 'test_dirichlet_multinomial'],
+                '--hypothesis_test',
+            )
             and check_argv(float, '--concentration')
         ),
     )
@@ -601,16 +610,8 @@ def multi_typed_arg(*types):
         )
     return multi_type_conversion
 
-def check_argv(
-    value=[
-        'test_normal',
-        'test_multinomial',
-        'test_dirichlet',
-        'test_dirichlet_multinomial'
-    ],
-    arg='--hypothesis_test',
-    optional_arg=True,
-):
+
+def check_argv(value, arg, optional_arg=True):
     """Checks if the arg was given and checks if its value is one in the given
     iterable. If true to both, then the arg in question is required. This is
     often used to check if another arg is required dependent upon the value of
