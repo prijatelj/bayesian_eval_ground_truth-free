@@ -28,6 +28,7 @@ class SupervisedJointDistrib(object):
     """
 
     def __init__(
+        self,
         target,
         pred,
         target_distrib,
@@ -65,8 +66,10 @@ class SupervisedJointDistrib(object):
         """
         if target.shape != pred.shape:
             raise ValueError('`target.shape` and `pred.shape` must be the '
-                + f'same. Instead recieved shapes {taget.shape} and '
+                + f'same. Instead recieved shapes {target.shape} and '
                 + f'{pred.shape}.')
+
+        self.independent = independent
 
         # Get transform matrix from data
         self.transform_matrix = self._get_change_of_basis_matrix(
@@ -76,12 +79,12 @@ class SupervisedJointDistrib(object):
         # TODO parallelize the fitting of the target and predictor distribs
 
         # Fit the target data
-        if isinstance(target_distrib, tfp.distribution.Distribution):
+        if isinstance(target_distrib, tfp.distributions.Distribution):
             # Use given distribution as the fitted distribution.
             self.target_distrib = target_distrib
         elif isinstance(target_distrib, dict):
             # If given a dict, fit the distrib to the data
-            if target_distrib['distrib_id'] = 'DirichletMultinomial':
+            if target_distrib['distrib_id'] == 'DirichletMultinomial':
                 self.target_distrib = distribution_tests.mle_adam(**target_distrib)
             else:
                 raise ValueError('Currently only "DirichletMultinomial" for '
@@ -92,7 +95,7 @@ class SupervisedJointDistrib(object):
 
 
         # Fit the transformation function of the target to the predictor output
-        if isinstance(transform_distrib, tfp.distribution.Distribution):
+        if isinstance(transform_distrib, tfp.distributions.Distribution):
             self.transform_distrib = transform_distrib
         elif isinstance(transform_distrib, dict):
             self.transform_distrib = self._fit_transform_distrib(
@@ -105,9 +108,13 @@ class SupervisedJointDistrib(object):
                 + 'type `tfp.distributions.Distribution` or `dict`.')
 
     def _get_change_of_basis_matrix(self, input_dim):
-        """Returns an invertable square matrix that transforms from an
-        `input_dim` space representation of a discrete probability simplex to a
-        `input_dim` - 1 dimension probability simplex.
+        """Creates a matrix that transforms from an `input_dim` space
+        representation of a `input_dim` - 1 discrete probability simplex to
+        that probability simplex's space.
+
+        The first dimension is arbitrarily chosen to collapse and is the
+        expected dimension to be adjusted for when moving the origin in the
+        change of basis.
 
         Parameters
         ----------
@@ -126,16 +133,32 @@ class SupervisedJointDistrib(object):
             left-transfrom matrix and converts the other way as a
             right-transform matrix.
         """
+        # Create n-1 spanning vectors, Using first dim as origin of new basis.
+        spanning_vectors = np.vstack((
+            -np.ones(input_dim -1),
+            np.eye(input_dim -1),
+        ))
 
-        # TODO obtain the transform matrix (change of basis matrix)
-
-        return transform_matrix
+        # Create orthonormal basis of simplex
+        return np.linalg.qr(spanning_vectors)[0].T
 
     def _transform_to(self, sample):
-        return self.transform_matrix ** sample
+        """Transforms the sample from discrete distribtuion space into the
+        probability simplex space of one dimension less. The orgin adjustment
+        is used to move to the correct origin of the probability simplex space.
+        """
+        origin_adjust = np.zeros(len(self.transform_matrix))
+        origin_adjust[0] = 1
+        return self.transform_matrix @ (sample - origin_adjust)
 
     def _transform_from(self, sample):
-        return sample ** self.transform_matrix
+        """Transforms the sample from probability simplex space into the
+        discrete distribtuion space of one dimension more. The orgin adjustment
+        is used to move to the correct origin of the discrete distribtuion space.
+        """
+        origin_adjust = np.zeros(len(self.transform_matrix) + 1)
+        origin_adjust[0] = 1
+        return (sample @ self.transform_matrix) + origin_adjust
 
     def sample(self, num_samples):
         """Sample from the estimated joint probability distribution.
@@ -153,16 +176,18 @@ class SupervisedJointDistrib(object):
 
         if self.independent:
             # just sample from transform_distrib and return paired RVs.
+            pass
         else:
         # draw predictor output via transform function using target sample
         # pred_sample = target_sample + sample_transform_distrib
 
         # transform predictor output samples back to original space
+            pass
 
         return joint_prob_samples
 
     def _fit_transform_distrib(self, target, pred, distrib, distrib_id='normal'):
-        """Fits the transform distribution."""
+        """Fits and returns the transform distribution."""
 
         # TODO make some handling of MLE not converging if using adam, ie. to
         # allow the usage of non-convergence mle or not. (should be fine using
@@ -178,10 +203,12 @@ class SupervisedJointDistrib(object):
 
         distances = self._transform_to(pred) - self._transform_to(target)
 
-        # TODO need to explain reasoning for zeros as const mean, rather than sample mean
+        # NOTE logically, mean should be zero given the simplex and distances.
+        # Will need to resample more given
 
         # deterministically calculate the Maximum Likely multivatiate norrmal
         return tfp.distributions.MultivariateNormalFullCovariance(
-            np.zeros(pred.shape[1]),
-            np.cov(distances, bias=False),
+            #np.zeros(pred.shape[1]),
+            np.mean(pred.shape[1], axis=0),
+            np.cov(distances, bias=False, rowvar=False),
         )
