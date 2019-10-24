@@ -177,15 +177,23 @@ class SupervisedJointDistrib(object):
 
         if self.independent:
             # just sample from transform_distrib and return paired RVs.
-            return None
+            transform_samples = self.transform_distrib.sample(num_samples)
+            samples =  tf.stack([target_samples, transform_samples], 1)
+
+            return samples.eval(session=tf.Session())
+
         # draw predictor output via transform function using target sample
         # pred_sample = target_sample + sample_transform_distrib
         transform_samples = self.transform_distrib.sample(num_samples)
-        samples = tf.concat([target_samples, transform_samples])
+        # Add the target sample to the transform sample to undo distance calc
+        samples = tf.stack(
+            [target_samples, transform_samples + target_samples],
+            1,
+        )
         joint_samples = samples.eval(session=tf.Session())
 
         # transform predictor output samples back to original space
-        # NOTE this would probably be more optimal if I simply saved the graph
+        # NOTE this would probably be more optimal if simply saved the graph
         # for sampling and doing post transform in Tensorflow.
         for i in range(samples):
             joint_samples[i, 1] = self._transform_from(samples[i, 1])
