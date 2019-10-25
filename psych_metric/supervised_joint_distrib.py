@@ -29,12 +29,13 @@ class SupervisedJointDistrib(object):
 
     def __init__(
         self,
-        target,
-        pred,
         target_distrib,
         transform_distrib,
+        target=None,
+        pred=None,
         data_type='nominal',
         independent=False,
+        sample_dim=None,
     ):
         """
         Parameters
@@ -63,18 +64,32 @@ class SupervisedJointDistrib(object):
             how the sampling is handled, specifically in how the
             `transform_distrib` is treated. If True, the `transform_distrib` is
             instead treated as the distrib of second random variable.
+        sample_dim : int, optional
+            The number of dimensions of a single sample of both the target and
+            predictor distribtutions. This is only required when `target` and
+            `pred` are not provided.
         """
-        if target.shape != pred.shape:
-            raise ValueError('`target.shape` and `pred.shape` must be the '
-                + f'same. Instead recieved shapes {target.shape} and '
-                + f'{pred.shape}.')
-
         self.independent = independent
 
-        # Get transform matrix from data
-        self.transform_matrix = self._get_change_of_basis_matrix(
-            target.shape[1]
-        )
+        if target is not None and pred is not None:
+            if target.shape != pred.shape:
+                raise ValueError('`target.shape` and `pred.shape` must be the '
+                    + f'same. Instead recieved shapes {target.shape} and '
+                    + f'{pred.shape}.')
+
+            # Get transform matrix from data
+            self.transform_matrix = self._get_change_of_basis_matrix(
+                target.shape[1]
+            )
+        elif isinstance(sample_dim, int):
+            self.transform_matrix = self._get_change_of_basis_matrix(sample_dim)
+        else:
+            TypeError(
+                '`target` and `pred` must be provided together, '
+                + 'otherwise `sample_dim` must be given instead, along with '
+                + '`target_distrib` and `transform_distrib` given explicitly '
+                + 'as an already defined distribution each.'
+            )
 
         # TODO parallelize the fitting of the target and predictor distribs
 
