@@ -11,6 +11,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 import experiment.io
+import experiment.distrib
 from psych_metric import distribution_tests
 from predictors import load_prep_data
 
@@ -247,22 +248,7 @@ def test_normal(
         no standardization.
     """
     # Create the original distribution to be estimated and its data sample
-    src_normal_params = {}
-    if isinstance(loc, dict):
-        src_normal_params['loc'] = np.random.normal(**loc)
-    elif isinstance(loc, Number):
-        src_normal_params['loc'] = loc
-    else:
-        src_normal_params['loc'] = (np.random.rand(1)
-            * np.random.randint(-100, 100))[0]
-
-    if isinstance(scale, dict):
-        src_normal_params['scale'] = np.abs(np.random.normal(**scale))
-    elif isinstance(scale, Number):
-        src_normal_params['scale'] = scale
-    else:
-        src_normal_params['scale'] = np.abs(np.random.rand(1)
-            * np.random.randint(1, 5))[0]
+    src_normal_params = experiment.distrib.get_normal_params(loc, scale)
 
     data = np.random.normal(size=sample_size, **src_normal_params)
 
@@ -284,8 +270,8 @@ def test_normal(
     else:
         # Random initialization.
         distrib_args['normal'] = {
-            'loc': (np.random.rand(1) * np.random.randint(-100, 100))[0],
-            'scale': np.abs(np.random.rand(1) * np.random.randint(1, 5))[0],
+            'loc': np.random.uniform(-100, 100),
+            'scale': np.random.uniform(1, 5),
             #'loc': {'loc': 0.0, 'scale': 0.1},
             #'scale': {'loc': 1.0, 'scale': 0.1},
         }
@@ -333,7 +319,8 @@ def test_dirichlet_multinomial(
     init_concentration=None,
     repeat_mle=1,
 ):
-    """Creates a Normal distribution and fits it using the given MLE method.
+    """Creates a Dirichlet-Multinomial distribution and fits it using the given
+    MLE method.
 
     Parameters
     ----------
@@ -371,34 +358,11 @@ def test_dirichlet_multinomial(
         as in `standardize`.
     """
     # Create the original distribution to be estimated and its data sample
-    src_params = {}
-    print(f'\n\ntotal count type {type(total_count)}\n\n')
-    if isinstance(total_count, dict):
-        src_params['total_count'] = np.abs(np.random.normal(**total_count))
-    elif isinstance(total_count, Number):
-        print(f'\n\ntotal count {total_count}\n\n')
-        src_params['total_count'] = total_count
-    else:
-        src_params['total_count'] = np.abs(np.random.rand(1)
-            * np.random.randint(0, 100))[0]
-
-    if isinstance(concentration, Number) and num_classes and isinstance(num_classes, Number):
-        src_params['concentration'] = [concentration] * num_classes
-    elif isinstance(concentration, list) or isinstance(concentration, np.ndarray):
-        src_params['concentration'] = concentration
-    elif isinstance(concentration, dict) and num_classes and isinstance(num_classes, Number):
-        # TODO Create concentration as a discrete, ordinal normal distribution?
-        # or perhaps sample the concentrations from that normal... just as a
-        # form of controled randomization.
-        raise NotImplementedError
-    elif num_classes and isinstance(num_classes, Number):
-        src_params['concentration'] = np.abs(np.random.rand(num_classes)
-            * np.random.randint(0, 100, num_classes))
-    else:
-        raise TypeError(
-            'Wrong type for `concentration` and `num_classes` not given. '
-            + f'Type recieved: {type(concentration)}'
-        )
+    src_params = experiment.distrib.get_dirichlet_multinomial_params(
+        total_count,
+        concentration,
+        num_classes,
+    )
 
     src_distrib = tfp.distributions.DirichletMultinomial(**src_params)
     data = src_distrib.sample(sample_size).eval(session=tf.Session())
