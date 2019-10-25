@@ -393,7 +393,7 @@ def test_dirichlet_multinomial(
         raise NotImplementedError
     elif num_classes and isinstance(num_classes, Number):
         src_params['concentration'] = np.abs(np.random.rand(num_classes)
-            * np.random.rand(0, 100, num_classes))
+            * np.random.randint(0, 100, num_classes))
     else:
         raise TypeError(
             'Wrong type for `concentration` and `num_classes` not given. '
