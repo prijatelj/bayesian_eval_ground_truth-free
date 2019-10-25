@@ -233,6 +233,7 @@ class SupervisedJointDistrib(object):
         # Will need to resample more given
 
         # deterministically calculate the Maximum Likely multivatiate norrmal
+        # TODO need to handle when covariance = 0 and change to an infinitesimal
         return tfp.distributions.MultivariateNormalFullCovariance(
             #np.zeros(pred.shape[1]),
             np.mean(distances, axis=0),
