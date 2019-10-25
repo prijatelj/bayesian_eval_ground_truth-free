@@ -107,6 +107,9 @@ class SupervisedJointDistrib(object):
             raise TypeError('`transform_distrib` is expected to be either of '
                 + 'type `tfp.distributions.Distribution` or `dict`.')
 
+    def _is_prob_distrib(self, vector):
+        return vector.sum() == 1 and (vector >= 0).all() and (vector <= 1).all()
+
     def _get_change_of_basis_matrix(self, input_dim):
         """Creates a matrix that transforms from an `input_dim` space
         representation of a `input_dim` - 1 discrete probability simplex to
@@ -192,13 +195,19 @@ class SupervisedJointDistrib(object):
         )
         joint_samples = samples.eval(session=tf.Session())
 
-        # transform predictor output samples back to original space
         # NOTE this would probably be more optimal if simply saved the graph
-        # for sampling and doing post transform in Tensorflow.
+        # for sampling and doing post transform in Tensorflow. Use vars for num
+        # of samples.
         for i in range(samples):
+            # Log the number of resamplings, cuz that could be useful info.
             joint_samples[i, 1] = self._transform_from(samples[i, 1])
 
-        #return samples.eval(session=tf.Session())
+            while not self._is_prob_distrib(joint_samples[i, 1]):
+                # Resample until a proper probability distribution.
+                joint_samples[i, 1] = self.transform_distrib.sample(1).eval(
+                    session=tf.Session()
+                ) + joint + joint_samples[i, 0]
+
         return joint_samples
 
     def _fit_transform_distrib(self, target, pred, distrib, distrib_id='normal'):
@@ -214,9 +223,11 @@ class SupervisedJointDistrib(object):
 
         if distrib_id != 'normal' or distrib_id != 'gaussian':
             raise ValueError('Currently only "gaussian" or "normal" is '
-            + 'supported for the transform distribution as proof of concept.')
+                + 'supported for the transform distribution as proof of '
+                + 'concept.'
+            )
 
-        distances = self._transform_to(pred) - self._transform_to(target)
+        distances = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
 
         # NOTE logically, mean should be zero given the simplex and distances.
         # Will need to resample more given
@@ -224,6 +235,6 @@ class SupervisedJointDistrib(object):
         # deterministically calculate the Maximum Likely multivatiate norrmal
         return tfp.distributions.MultivariateNormalFullCovariance(
             #np.zeros(pred.shape[1]),
-            np.mean(pred.shape[1], axis=0),
+            np.mean(distances, axis=0),
             np.cov(distances, bias=False, rowvar=False),
         )
