@@ -4,6 +4,7 @@ distribution and that the prediction output can be obtained with some error by
 a transformation function of the target distribution.
 """
 from copy import deepcopy
+import math
 
 import numpy as np
 import tensorflow as tf
@@ -40,15 +41,11 @@ class SupervisedJointDistrib(object):
         data_type='nominal',
         independent=False,
         sample_dim=None,
+        total_count=None,
     ):
         """
         Parameters
         ----------
-        target : np.ndarray
-            The target data of the supervised learning task.
-        pred : np.ndarray
-            The predictions of the predictor for the samples corresponding to
-            the target data.
         target_distrib : dict | tfp.distribution.Distribution
             Either the parameters to a  distribution to be used as the fitted
             distribution the target data, or the actual distribution to be
@@ -57,6 +54,11 @@ class SupervisedJointDistrib(object):
             Either the parameters to a  distribution to be used as the fitted
             distribution the target data, or the actual distribution to be
             used.
+        target : np.ndarray, optional
+            The target data of the supervised learning task.
+        pred : np.ndarray, optional
+            The predictions of the predictor for the samples corresponding to
+            the target data.
         data_type : str, optional
             Identifier of the data type of the target and the predictor output.
             Values include 'nominal', 'ordinal', and 'continuous'. Defaults to
@@ -72,14 +74,26 @@ class SupervisedJointDistrib(object):
             The number of dimensions of a single sample of both the target and
             predictor distribtutions. This is only required when `target` and
             `pred` are not provided.
+        total_count : int
+            Non-zero, positive integer of total count for the
+            Dirichlet-multinomial target distribution.
         """
         self.independent = independent
+        if not isinstance(total_count, int):
+            raise TypeError(' '.join([
+                '`total_count` of type `int` must be passed in order to use',
+                'DirichletMultinomial distribution as the target',
+                f'distribution, but recieved type {type(total_count)}',
+                'instead.',
+            ]))
+        self.total_count = total_count
 
         if target is not None and pred is not None:
             if target.shape != pred.shape:
-                raise ValueError('`target.shape` and `pred.shape` must be the '
-                    + f'same. Instead recieved shapes {target.shape} and '
-                    + f'{pred.shape}.')
+                raise ValueError(' '.join([
+                    '`target.shape` and `pred.shape` must be the same.',
+                    f'Insteadrecieved shapes {target.shape} and {pred.shape}.',
+                ]))
 
             # Get transform matrix from data
             self.transform_matrix = self._get_change_of_basis_matrix(
@@ -88,12 +102,12 @@ class SupervisedJointDistrib(object):
         elif isinstance(sample_dim, int):
             self.transform_matrix = self._get_change_of_basis_matrix(sample_dim)
         else:
-            TypeError(
-                '`target` and `pred` must be provided together, '
-                + 'otherwise `sample_dim` must be given instead, along with '
-                + '`target_distrib` and `transform_distrib` given explicitly '
-                + 'as an already defined distribution each.'
-            )
+            TypeError(' '.join([
+                '`target` and `pred` must be provided together, otherwise',
+                '`sample_dim` must be given instead, along with',
+                '`target_distrib` and `transform_distrib` given explicitly as',
+                'an already defined distribution each.',
+            ]))
 
         # TODO parallelize the fitting of the target and predictor distribs
 
@@ -145,7 +159,7 @@ class SupervisedJointDistrib(object):
         return new
 
     def _is_prob_distrib(self, vector):
-        return vector.sum() == 1 and (vector >= 0).all() and (vector <= 1).all()
+        return math.isclose(vector.sum(), 1) and (vector >= 0).all() and (vector <= 1).all()
 
     def _get_change_of_basis_matrix(self, input_dim):
         """Creates a matrix that transforms from an `input_dim` space
@@ -187,7 +201,7 @@ class SupervisedJointDistrib(object):
         probability simplex space of one dimension less. The orgin adjustment
         is used to move to the correct origin of the probability simplex space.
         """
-        origin_adjust = np.zeros(len(self.transform_matrix))
+        origin_adjust = np.zeros(self.transform_matrix.shape[1])
         origin_adjust[0] = 1
         return self.transform_matrix @ (sample - origin_adjust)
 
@@ -197,55 +211,94 @@ class SupervisedJointDistrib(object):
         is used to move to the correct origin of the discrete distribtuion space.
         """
         # NOTE tensroflow optimization instead here.
-        origin_adjust = np.zeros(len(self.transform_matrix) + 1)
+        origin_adjust = np.zeros(self.transform_matrix.shape[1])
         origin_adjust[0] = 1
         return (sample @ self.transform_matrix) + origin_adjust
 
-    def sample(self, num_samples):
+    def sample(self, num_samples, normalize=False):
         """Sample from the estimated joint probability distribution.
+
+        Parameters
+        ----------
+        normalized_samples : bool, optional (default=False)
+            If True, the samples' distributions will be normalized such that
+            their values are in the range [0, 1] and all sum to 1, otherwise
+            they will be in the range [0, total_count] and sum to total_count.
+            This is intended specifically for when the two random variables are
+            distributions of distributions (ie. Dirichlet-multinomial).
 
         Returns
         -------
-        np.ndarray, shape(samples, input_dim, 2)
-            Array of samples from the joint probability distribution of the
-            target and the predictor output.
+        (np.ndarray, np.ndarray), shape(samples, input_dim, 2)
+            Two arrays of samples from the joint probability distribution of
+            the target and the predictor output aligned by samples in their
+            first dimension.
         """
         # sample from target distribution
 
-        # transform target samples to probability simplex
-        target_samples = self.target_distrib.sample(num_samples)
+        # Draw transform target samples and normalize into probability simplex
+        tf_target_samples = self.target_distrib.sample(num_samples)
 
         if self.independent:
             # just sample from transform_distrib and return paired RVs.
-            transform_samples = self.transform_distrib.sample(num_samples)
-            samples =  tf.stack([target_samples, transform_samples], 1)
+            tf_transform_samples = self.transform_distrib.sample(num_samples)
+            if normalize and self.total_count and isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial):
+                tf_target_samples /= self.total_count
+                tf_transform_samples /= self.total_count
 
-            return samples.eval(session=tf.Session())
+            # Note expects the samples to have the same dimensionality.
+            tf_samples =  tf.stack([tf_target_samples, tf_transform_samples], 1)
+
+            samples = tf_samples.eval(session=tf.Session())
+
+            return samples[:, 0], samples[:,1]
+
+        # Normalize the target samples for use with dependent transform distrib
+        tf_target_samples /= self.total_count
 
         # draw predictor output via transform function using target sample
         # pred_sample = target_sample + sample_transform_distrib
-        transform_samples = self.transform_distrib.sample(num_samples)
+        tf_transform_samples = self.transform_distrib.sample(num_samples)
+
         # Add the target sample to the transform sample to undo distance calc
-        samples = tf.stack(
-            [target_samples, transform_samples + target_samples],
-            1,
-        )
-        joint_samples = samples.eval(session=tf.Session())
+        target_samples = tf_target_samples.eval(session=tf.Session())
+        transform_samples = tf_transform_samples.eval(session=tf.Session())
+
+        # TODO add transformed target_samples to transform samples
 
         # NOTE this would probably be more optimal if simply saved the graph
         # for sampling and doing post transform in Tensorflow. Use vars for num
         # of samples.
-        for i in range(len(joint_samples)):
-            # Log the number of resamplings, cuz that could be useful info.
-            joint_samples[i, 1] = self._transform_from(samples[i, 1])
 
-            while not self._is_prob_distrib(joint_samples[i, 1]):
+         # TODO if large samples are drawn, this is inefficent
+        prob_transform_samples = []
+
+        for i in range(len(target_samples)):
+            # TODO Log the number of resamplings, cuz that could be useful info.
+            transformed_target = self._transform_to(target_samples[i])
+
+            prob_transform_samples.append(self._transform_from(
+                transform_samples[i] + transformed_target
+            ))
+
+            while not self._is_prob_distrib(prob_transform_samples[i]):
+                print('if this repeaets alot it broke')
+                print(f'{prob_transform_samples[i]}')
+                print(f'len prob = {len(prob_transform_samples)}')
+                print(f'i = {i}')
+                print(f'target_samples = {target_samples[i]}')
+                print(f'prob sums to {prob_transform_samples[i].sum()}')
+
                 # Resample until a proper probability distribution.
-                joint_samples[i, 1] = self.transform_distrib.sample(1).eval(
-                    session=tf.Session()
-                ) + joint_samples[i, 0]
+                prob_transform_samples[i] = self._transform_from(
+                    self.transform_distrib.sample(1).eval(session=tf.Session())
+                    + transformed_target
+                )
+        transform_samples = np.vstack(prob_transform_samples)
 
-        return joint_samples
+        if normalize:
+            return target_samples, transform_samples
+        return target_samples * self.total_count, transform_samples * self.total_count
 
     def _fit_transform_distrib(self, target, pred, distrib, distrib_id='normal'):
         """Fits and returns the transform distribution."""
