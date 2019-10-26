@@ -3,6 +3,7 @@ distribution. Assumes that the predictor output is dependent on the target
 distribution and that the prediction output can be obtained with some error by
 a transformation function of the target distribution.
 """
+from copy import deepcopy
 
 import numpy as np
 import tensorflow as tf
@@ -18,6 +19,9 @@ class SupervisedJointDistrib(object):
 
     Attributes
     ----------
+    independent : bool
+        True if the random variables are indpendent of one anothers, False
+        otherwise. Default is False.
     transformation_matrix : np.ndarray
         The matrix that transforms from the
     target_distribution : tfp.distribution.Distribution
@@ -108,7 +112,6 @@ class SupervisedJointDistrib(object):
             raise TypeError('`target_distrib` is expected to be either of type '
                 + '`tfp.distributions.Distribution` or `dict`.')
 
-
         # Fit the transformation function of the target to the predictor output
         if isinstance(transform_distrib, tfp.distributions.Distribution):
             self.transform_distrib = transform_distrib
@@ -121,6 +124,25 @@ class SupervisedJointDistrib(object):
         else:
             raise TypeError('`transform_distrib` is expected to be either of '
                 + 'type `tfp.distributions.Distribution` or `dict`.')
+
+    def __copy__(self):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        new.__dict__.update(self.__dict__)
+        return new
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+
+        for k, v in self.__dict__.items():
+            if k == 'transform_distrib' or k == 'target_distrib':
+                setattr(new, k, v.copy())
+            else:
+                setattr(new, k, deepcopy(v, memo))
+
+        return new
 
     def _is_prob_distrib(self, vector):
         return vector.sum() == 1 and (vector >= 0).all() and (vector <= 1).all()
@@ -221,7 +243,7 @@ class SupervisedJointDistrib(object):
                 # Resample until a proper probability distribution.
                 joint_samples[i, 1] = self.transform_distrib.sample(1).eval(
                     session=tf.Session()
-                ) + joint + joint_samples[i, 0]
+                ) + joint_samples[i, 0]
 
         return joint_samples
 
