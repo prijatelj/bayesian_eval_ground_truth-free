@@ -235,7 +235,7 @@ class SupervisedJointDistrib(object):
         # NOTE this would probably be more optimal if simply saved the graph
         # for sampling and doing post transform in Tensorflow. Use vars for num
         # of samples.
-        for i in range(samples):
+        for i in range(len(joint_samples)):
             # Log the number of resamplings, cuz that could be useful info.
             joint_samples[i, 1] = self._transform_from(samples[i, 1])
 
