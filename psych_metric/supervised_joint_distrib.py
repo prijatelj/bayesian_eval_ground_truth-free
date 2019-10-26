@@ -320,32 +320,44 @@ class SupervisedJointDistrib(object):
             return target_samples, transform_samples
         return target_samples * self.total_count, transform_samples * self.total_count
 
-    def _fit_transform_distrib(self, target, pred, distrib, distrib_id='normal'):
+    def _fit_transform_distrib(self, target, pred, distrib='MultivariateNormal'):
         """Fits and returns the transform distribution."""
+        distances = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
 
         # TODO make some handling of MLE not converging if using adam, ie. to
         # allow the usage of non-convergence mle or not. (should be fine using
         # multivariate gaussian)
-        if not isinstance(distrib, dict):
-            # NOTE may be unnecessary given expectation to only be called by class code
-            raise TypeError('`distrib` is expected to be of type `dict` not '
-                + f'`{type(distrib)}`')
+        if isinstance(distrib, str):
+            if distrib != 'MultivariateNormal':
+                raise ValueError(' '.join([
+                    'Currently only "MultivariateNormal" is supported for the',
+                    'transform distribution as proof of concept.',
+                    f'{distrib} is not supported.',
+                ]))
+            # NOTE logically, mean should be zero given the simplex and
+            # distances.  Will need to resample more given
 
-        if distrib_id != 'normal' or distrib_id != 'gaussian':
-            raise ValueError('Currently only "gaussian" or "normal" is '
-                + 'supported for the transform distribution as proof of '
-                + 'concept.'
+            # deterministically calculate the Maximum Likely multivatiate
+            # norrmal TODO need to handle when covariance = 0 and change to an
+            # infinitesimal
+            return tfp.distributions.MultivariateNormalFullCovariance(
+                #np.zeros(pred.shape[1]),
+                np.mean(distances, axis=0),
+                np.cov(distances, bias=False, rowvar=False),
             )
+        if isinstance(distrib, dict):
+            if distrib['distrib_id'] != 'MultivariateNormal':
+                raise ValueError(' '.join([
+                    'Currently only "MultivariateNormal" is supported for the',
+                    'transform distribution as proof of concept.',
+                    f'{distrib["distrib_id"]} is not a supported value for key',
+                    '`distrib_id`.',
+                ]))
 
-        distances = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
-
-        # NOTE logically, mean should be zero given the simplex and distances.
-        # Will need to resample more given
-
-        # deterministically calculate the Maximum Likely multivatiate norrmal
-        # TODO need to handle when covariance = 0 and change to an infinitesimal
-        return tfp.distributions.MultivariateNormalFullCovariance(
-            #np.zeros(pred.shape[1]),
-            np.mean(distances, axis=0),
-            np.cov(distances, bias=False, rowvar=False),
-        )
+            self.target_distrib = distribution_tests.mle_adam(
+                data=distances,
+                **distrib,
+            )
+        else:
+            raise TypeError('`distrib` is expected to be of type `str` or '
+                + f'`dict` not `{type(distrib)}`')
