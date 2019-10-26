@@ -147,8 +147,8 @@ def get_multivariate_normal_full_cov_params(
     elif covariance_matrix is None:
         # Create symmetric matrix from hardcoded uniform distribution.
         params['covariance_matrix'] = np.random.uniform(
-            -100,
-            100,
+            -0.05,
+            0.05,
             [sample_dim, sample_dim],
         )
 
