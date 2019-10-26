@@ -124,11 +124,14 @@ def get_multivariate_normal_full_cov_params(
         # Simply store the covariance matrix as is.
         params['covariance_matrix'] = covariance_matrix
     elif isinstance(covariance_matrix, Number):
-        # Set all covariances to the same value.
+        # Set all covariances to the same value, except the diag
         params['covariance_matrix'] = np.full(
             [sample_dim, sample_dim],
             covariance_matrix,
         )
+
+        # Ensure positive definite matrix
+        params['covariance_matrix'] += sample_dim * np.eye(sample_dim)
     elif isinstance(covariance_matrix, dict):
         # Create symmetric matrix from uniform distribution.
         params['covariance_matrix'] = np.random.uniform(
@@ -138,6 +141,9 @@ def get_multivariate_normal_full_cov_params(
 
         # Ensure symmetric about diagonal
         params['covariance_matrix'] = (params['covariance_matrix'] + params['covariance_matrix'].T) / 2
+
+        # Ensure positive definite matrix
+        params['covariance_matrix'] += sample_dim * np.eye(sample_dim)
     elif covariance_matrix is None:
         # Create symmetric matrix from hardcoded uniform distribution.
         params['covariance_matrix'] = np.random.uniform(
@@ -148,6 +154,9 @@ def get_multivariate_normal_full_cov_params(
 
         # Ensure symmetric about diagonal
         params['covariance_matrix'] = (params['covariance_matrix'] + params['covariance_matrix'].T) / 2
+
+        # Ensure positive definite matrix
+        params['covariance_matrix'] += sample_dim * np.eye(sample_dim)
     else:
         raise TypeError(
             'Wrong type for `covariance_matrix`. '
