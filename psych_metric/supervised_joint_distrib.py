@@ -115,19 +115,39 @@ class SupervisedJointDistrib(object):
         if isinstance(target_distrib, tfp.distributions.Distribution):
             # Use given distribution as the fitted distribution.
             self.target_distrib = target_distrib
+        elif isinstance(target_distrib, str):
+            if target_distrib != 'DirichletMultinomial':
+                raise ValueError('Currently only "DirichletMultinomial" for '
+                + 'the target distribution is supported as proof of concept.')
+
+            # By default, use UMVUE of params of given data. No MLE fitting.
+            self.target_distrib = tfp.distributions.DirichletMultinomial(
+                self.transform_matrix.shape[1],
+                np.mean(target, axis=0) / self.transform_matrix.shape[1],
+            )
         elif isinstance(target_distrib, dict):
-            # If given a dict, fit the distrib to the data
+            # If given a dict, use as initial parameters and fit with MLE
             if target_distrib['distrib_id'] == 'DirichletMultinomial':
-                self.target_distrib = distribution_tests.mle_adam(**target_distrib)
+                self.target_distrib = distribution_tests.mle_adam(
+                    data=target,
+                    **target_distrib,
+                )
             else:
                 raise ValueError('Currently only "DirichletMultinomial" for '
                 + 'the target distribution is supported as proof of concept.')
         else:
-            raise TypeError('`target_distrib` is expected to be either of type '
-                + '`tfp.distributions.Distribution` or `dict`.')
+            raise TypeError(' '.join([
+                '`target_distrib` is expected to be either of type',
+                '`tfp.distributions.Distribution`, `str`, or `dict`, not',
+                f'{type(dict)}.',
+                'If a `str`, then it is the name of the distribution.',
+                'If `dict`, then it is the parameters of the distribution ',
+                'with "distrib_id" as a key to indicate which distribution.',
+            ]))
 
         # Fit the transformation function of the target to the predictor output
         if isinstance(transform_distrib, tfp.distributions.Distribution):
+            # Use given distribution as the fitted distribution
             self.transform_distrib = transform_distrib
         elif isinstance(transform_distrib, dict):
             self.transform_distrib = self._fit_transform_distrib(
