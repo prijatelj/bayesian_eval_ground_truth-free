@@ -1,5 +1,18 @@
-"""Simple testing concept."""
-import argparse
+"""Trains the predictors on different formats of the data, in kfold CV.
+
+Saves results in the given output directory as follows:
+    output_dir/dataset_id/model_id/random_seed/datetime/#_fold_cv/eval_fold_#/
+
+    datetime directory is optional, and used for indicating the order of runs.
+    '#' is used to indicate the variable number in its respective spot, so
+    the number of K folds in '#_fold_cv/' and the focus fold number in
+    'eval_fold_#'.
+
+    And within can be the 'checkpoints/', 'pred.csv', 'summary.json', and model
+    weights as HDF5.
+
+    'checkpoints/' may contain weights.epoch.hdf5 or pred.epoch.hdf5
+"""
 from copy import deepcopy
 import csv
 from datetime import datetime
@@ -17,7 +30,9 @@ import tensorflow as tf
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import KFold, StratifiedKFold
 
+import experiment.io
 from psych_metric.datasets import data_handler
+
 
 class CheckpointValidaitonOutput(keras.callbacks.Callback):
     """Saves the validaiton output and target pairs to a csv file for every
@@ -88,7 +103,6 @@ def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
         # TODO perhaps should be handled in dataset class load_images function.
         # TODO -1 is hardcoded expected Missing value for annotator. Good for only LabelMe
         # TODO avoid the usage of pd.SparseDataFrame as it contains critical bugs in latest pandas releases (its depracted)
-        # TODO remove useless columns (those that only contain -1: no labels)
         if dataset_id == 'LabelMe':
             labels = pd.DataFrame(dataset.df.values).replace(-1, np.NaN).dropna(
                 'columns',
@@ -233,6 +247,8 @@ def run_experiment(
         if focus_fold:
             # TODO run single train, test, maybe put in kfold_cv? idk.
             pass
+            # TODO add focus fold implementation
+            raise NotImplementedError('`focus_fold` for loading and testing a specific fold given `k` folds and data is not yet implemented.')
         else:
             kfold_cv(
                 model_config,
@@ -255,11 +271,12 @@ def kfold_cv(
     save_pred=True,
     save_model=True,
     stratified=None,
-    test_focus_fold=True,
+    train_focus_fold=False,
     shuffle=True,
     repeat=None,
     period=0,
     period_save_pred=False,
+    #focus_fold=None,
 ):
     """Performs kfold cross validation on the model and saves the results.
 
@@ -282,8 +299,8 @@ def kfold_cv(
         True, the data is stratified when split to preserve class balance of
         original dataset. If a 1-D array-like object of same length as data,
         then it is treated as the strata of the data for splitting.
-    test_focus_fold : bool, optional
-        If True (default), the single focus fold will be the current
+    train_focus_fold : bool, optional
+        If False (default), the single focus fold will be the current
         iteration's test set while the rest are used for training the model,
         otherwise the focus fold is the only fold used for training and the
         rest are used for testing.
@@ -330,14 +347,14 @@ def kfold_cv(
         os.makedirs(output_dir_eval_fold, exist_ok=True)
 
         # Set the correct train and test indices
-        if test_focus_fold:
-            train_idx = other_folds
-            test_idx = focus_fold
-        else:
+        if train_focus_fold:
             train_idx = focus_fold
             test_idx = other_folds
+        else:
+            train_idx = other_folds
+            test_idx = focus_fold
 
-        # TODO create callbacks for the model.
+        # Create callbacks for the model.
         if period > 0:
             checkpoint_dir = os.path.join(output_dir_eval_fold, 'checkpoints')
             os.makedirs(checkpoint_dir, exist_ok=True)
@@ -359,7 +376,7 @@ def kfold_cv(
         logging.info(f'{i + 1}/{kfolds} fold cross validation: Training')
 
         if period_save_pred:
-            # TODO handle filling in Y True for validation data...
+            # TODO properly handle filling in Y True for validation data.
             model, init_times, train_times = prepare_model(
                 model_config,
                 features[train_idx],
@@ -407,7 +424,7 @@ def kfold_cv(
         }
 
         # save summary
-        save_json(
+        experiment.io.save_json(
             os.path.join(output_dir_eval_fold, 'summary.json'),
             kfold_summary,
         )
@@ -545,6 +562,9 @@ def load_model(
         if crowd_layer:
             # TODO model.compile('adam', CrowdLayer...)
             raise NotImplementedError
+        elif kl_div:
+            print("\nKL DIV!\n")
+            model.compile('adam', 'kullback_leibler_divergence')
         else:
             model.compile('adam', 'categorical_crossentropy')
     if model_id.lower() == 'resnext50':
@@ -604,7 +624,10 @@ def vgg16_model(
         input_layer = keras.layers.Input(shape=(8, 8, 512), dtype='float32')
         x = input_layer
     else:
-        raise ValueError('`parts`: expected "full", "vgg16", or "labelme", but recieved `f{parts}`.')
+        raise ValueError(
+            '`parts`: expected "full", "vgg16", or "labelme", but recieved '
+            + f'`{parts}`.'
+        )
 
     # Add the layers specified in Crowd Layer paper.
     x = keras.layers.Flatten()(x)
@@ -658,277 +681,10 @@ def resnext50_model(
     return keras.models.Model(inputs=input_layer, outputs=x)
 
 
-def save_json(filepath, results, additional_info=None, deep_copy=True):
-    """Saves the content in results and additional info to a JSON.
-
-    Parameters
-    ----------
-    filepath : str
-        The filepath to the resulting JSON.
-    results : dict
-        The dictionary to be saved to file as a JSON.
-    additional_info : dict
-        Additional information to be added to results (to be removed).
-    deep_copy : bool
-        Deep copies the dictionary prior to saving due to making the contents
-        JSON serializable.
-    """
-    if deep_copy:
-        results = deepcopy(results)
-    if additional_info:
-        # TODO remove this if deemed superfulous
-        results.update(additional_info)
-
-    with open(filepath, 'w') as summary_file:
-        for key in results:
-            if isinstance(results[key], np.ndarray):
-                # save to numpy specifc dir and save as csv.
-                results[key] = results[key].tolist()
-            elif isinstance(results[key], np.integer):
-                results[key] = int(results[key])
-            elif isinstance(results[key], np.floating):
-                results[key] = float(results[key])
-
-        json.dump(results, summary_file, indent=4, sort_keys=True)
-
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run proof of concept ')
+    #args, data_config, model_config, kfold_cv_args, random_seeds = experiment.io.parse_args()
+    args, random_seeds = experiment.io.parse_args()
 
-    # Model args.
-    parser.add_argument(
-        '-m',
-        '--model_id',
-        default='vgg16',
-        help='The model to use',
-        choices=['vgg16', 'resnext50'],
-    )
-    parser.add_argument(
-        '-p',
-        '--parts',
-        default='labelme',
-        help='The part of the model to use, if parts are allowed (vgg16)',
-        choices=['full', 'vgg16', 'labelme'],
-    )
-    parser.add_argument(
-        '-b',
-        '--batch_size',
-        default=32,
-        type=int,
-        help='The number of units in dense layer of letnet.'
-    )
-    parser.add_argument(
-        '-e',
-        '--epochs',
-        default=1,
-        type=int,
-        help='The number of epochs.',
-    )
-    parser.add_argument(
-        '-r',
-        '--random_seeds',
-        default=None,
-        nargs='+',
-        type=int,
-        help='The random seed to use for initialization of the model.',
-    )
-    parser.add_argument(
-        '-w',
-        '--weights_file',
-        default=None,
-        help='The file containing the model weights to set at initialization.',
-    )
-    parser.add_argument(
-        '--kl_div',
-        action='store_true',
-        help='Uses Kullback Leibler Divergence as loss instead of Categorical Cross Entropy',
-    )
-
-    # Data args
-    parser.add_argument(
-        '-d',
-        '--dataset_id',
-        default='LabelMe',
-        help='The dataset to use',
-        choices=['LabelMe', 'FacialBeauty', 'All_Ratings'],
-    )
-    parser.add_argument(
-        'dataset_filepath',
-        help='The filepath to the data directory',
-    )
-    parser.add_argument(
-        '-l',
-        '--label_src',
-        default='majority_vote',
-        help='The source of labels to use for training.',
-        choices=['majority_vote', 'frequency', 'ground_truth', 'annotations'],
-    )
-    parser.add_argument(
-        '--focus_fold',
-        default=None,
-        type=int,
-        help='The focus fold to split the data on to form train and test sets for a singlemodel train and evaluate session (No K-fold Cross Validation; Just evaluates one partition).',
-    )
-
-    # Output args
-    parser.add_argument(
-        '-o',
-        '--output_dir',
-        default='./',
-        help='Filepath to the output directory.',
-    )
-    parser.add_argument(
-        '-s',
-        '--summary_path',
-        default='',
-        help='Filepath appened to the output directory for saving the summaries.',
-    )
-
-    # Hardware
-    parser.add_argument(
-        '--cpu',
-        default=1,
-        type=int,
-        help='The number of available CPUs.',
-    )
-    parser.add_argument(
-        '--cpu_cores',
-        default=1,
-        type=int,
-        help='The number of available cores per CPUs.',
-    )
-    parser.add_argument(
-        '--gpu',
-        default=0,
-        type=int,
-        help='The number of available GPUs. Pass negative value if no CUDA.',
-    )
-    parser.add_argument(
-        '--which_gpu',
-        default=None,
-        type=int,
-        help='The number of available GPUs. Pass negative value if no CUDA.',
-    )
-
-    # K Fold CV args
-    parser.add_argument(
-        '-k',
-        '--kfolds',
-        default=5,
-        type=int,
-        help='The number of available CPUs.',
-    )
-    parser.add_argument(
-        '--no_shuffle_data',
-        action='store_false',
-        help='Disable shuffling of data.',
-    )
-    parser.add_argument(
-        '--crowd_layer',
-        action='store_true',
-        help='Use crowd layer in ANNs.',
-    )
-    parser.add_argument(
-        '--no_save_pred',
-        action='store_false',
-        help='Predictions will not be saved.',
-    )
-    parser.add_argument(
-        '--no_save_model',
-        action='store_false',
-        help='Model will not be saved.',
-    )
-    parser.add_argument(
-        '--stratified',
-        action='store_true',
-        help='Stratified K fold cross validaiton will be used.',
-    )
-    parser.add_argument(
-        '--train_focus_fold',
-        action='store_true',
-        help='The focus fold in K fold cross validaiton will be used for '
-        + 'training and the rest will be used for testing..',
-    )
-
-    parser.add_argument(
-        '--period',
-        default=0,
-        type=int,
-        help='The number of epochs between checkpoints for ModelCheckpoint.',
-    )
-
-    parser.add_argument(
-        '--period_save_pred',
-        action='store_true',
-        help='Saves trained models performance on validation data for every period.',
-    )
-
-    # Logging
-    parser.add_argument(
-        '--log_level',
-        default='WARNING',
-        help='The log level to be logged.',
-    )
-    parser.add_argument(
-        '--log_file',
-        default=None,
-        type=str,
-        help='The log file to be written to.',
-    )
-
-    args = parser.parse_args()
-
-    # Set logging configuration
-    numeric_level = getattr(logging, args.log_level.upper(), None)
-    if not isinstance(numeric_level, int):
-        raise ValueError('Invalid log level: %s' % args.log_level)
-    if args.log_file is not None:
-        dir_part = args.log_file.rpartition(os.path.sep)[0]
-        os.makedirs(dir_part, exist_ok=True)
-        logging.basicConfig(filename=args.log_file, level=numeric_level)
-    else:
-        logging.basicConfig(level=numeric_level)
-
-    # Set the Hardware
-    config = tf.ConfigProto(
-        intra_op_parallelism_threads=args.cpu_cores,
-        inter_op_parallelism_threads=args.cpu_cores,
-        allow_soft_placement=True,
-        device_count={
-            'CPU': args.cpu,
-            'GPU': args.gpu,
-        } if args.gpu >= 0 else {'CPU': args.cpu},
-    )
-
-    keras.backend.set_session(tf.Session(config=config))
-
-    # package the arguements:
-    data_config = {'dataset_filepath': args.dataset_filepath}
-
-    model_config = {
-        'model_id': args.model_id,
-        'init': {'crowd_layer': args.crowd_layer, 'kl_div': args.kl_div},
-        'train': {'epochs': args.epochs, 'batch_size': args.batch_size},
-        'parts': args.parts,
-    }
-
-    kfold_cv_args = {
-        'kfolds': args.kfolds,
-        'save_pred': args.no_save_pred,
-        'save_model': args.no_save_model,
-        'stratified': args.stratified,
-        'test_focus_fold': not args.train_focus_fold,
-        'shuffle': args.no_shuffle_data,
-        # 'repeat': None,
-        'period': args.period,
-        'period_save_pred': args.period_save_pred,
-    }
-
-    if len(args.random_seeds) == 1:
-        kfold_cv_args['random_seed'] = args.random_seeds[0]
-        random_seeds = None
-    else:
-        random_seeds = args.random_seeds
 
     # TODO implement testing of a specific model and data partition from summary.json
     # TODO then implement that on wide scale for all 'checkpoints' missing predictions.
@@ -941,9 +697,9 @@ if __name__ == '__main__':
             args.output_dir,
             args.label_src,
             args.dataset_id,
-            data_config,
-            model_config,
-            kfold_cv_args,
+            vars(args.data),
+            vars(args.model),
+            vars(kfold_cv),
             focus_fold=args.focus_fold,
             random_seeds=random_seeds,
         )
