@@ -30,6 +30,7 @@ class SupervisedJointDistrib(object):
     transform_distribution : tfp.distribution.Distribution
         The probability distribution of the transformation function for
         transforming the target distribution to the predictor output data.
+    sample_tf_sess: tf.Session() | None
     """
 
     def __init__(
@@ -42,6 +43,7 @@ class SupervisedJointDistrib(object):
         independent=False,
         sample_dim=None,
         total_count=None,
+        tf_sess_config=None,
     ):
         """
         Parameters
@@ -136,6 +138,13 @@ class SupervisedJointDistrib(object):
             raise TypeError('`transform_distrib` is expected to be either of '
                 + 'type `tfp.distributions.Distribution` or `dict`.')
 
+        # Create the Tensorflow session and ops for sampling if dependent
+        if not self.independent:
+            self._create_sampling_attributes()
+
+            # Create the predictor output pdf via Kernel Density Estimation
+            self._create_empirical_predictor_pdf()
+
     def __copy__(self):
         cls = self.__class__
         new = cls.__new__(cls)
@@ -200,6 +209,31 @@ class SupervisedJointDistrib(object):
                 'If `dict`, then it is the parameters of the distribution ',
                 'with "distrib_id" as a key to indicate which distribution.',
             ]))
+
+    def _create_sampling_attributes(self):
+        """Creates the Tensorflow session and ops for sampling."""
+        raise NotImplementedError()
+
+
+
+    def _create_empirical_predictor_pdf(
+    self,
+        sample_size=10000,
+        kernel='tophat',
+    ):
+        """Creates a probability density function for the predictor output from
+        the transform distribution via sampling of the joint distribution and
+        using Kernel Density Estimation (KDE).
+
+        Parameters
+        ----------
+        sample_size : int, optional (default=10000)
+            The number of samples to draw from the joint distribution to use to
+            get samples of the predictor output to use in fitting the KDE.
+        kernel : str
+            The kernel identifier to be used by the KDE. Defaults to "tophat".
+        """
+        raise NotImplementedError()
 
     def _is_prob_distrib(self, vector):
         """Checks if the vector is a valid discrete probability distribution."""
@@ -278,6 +312,9 @@ class SupervisedJointDistrib(object):
             the target and the predictor output aligned by samples in their
             first dimension.
         """
+
+
+
         # sample from target distribution
 
         # Draw transform target samples and normalize into probability simplex
@@ -390,6 +427,7 @@ class SupervisedJointDistrib(object):
         """Log probability density/mass function."""
         # TODO target distrib always easy, just tfp. ... . log_prob()
 
-        # TODO predictor output is not so easy, if only have
+        # TODO predictor output is not so easy, if only have transform distrib,
+        # then able to get empirical pdf of predictor output via samplingG;;
 
         return
