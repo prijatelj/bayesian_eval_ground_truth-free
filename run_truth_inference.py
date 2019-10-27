@@ -18,7 +18,7 @@ from psych_metric.datasets import data_handler
 from psych_metric.truth_inference import zheng_2017
 from psych_metric.metric import baseline as metric_baseline
 
-import random_seed_generator
+from experiment import random_seed_generator
 
 # TODO create a setup where it is efficient and safe/reliable in saving data
 # in a tmp dir as it goes, and saving all of the results in an output directory.
