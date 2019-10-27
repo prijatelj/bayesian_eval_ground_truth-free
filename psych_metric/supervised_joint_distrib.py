@@ -143,7 +143,7 @@ class SupervisedJointDistrib(object):
             self._create_sampling_attributes()
 
             # Create the predictor output pdf via Kernel Density Estimation
-            self._create_empirical_predictor_pdf()
+            #self._create_empirical_predictor_pdf()
 
     def __copy__(self):
         cls = self.__class__
@@ -210,11 +210,13 @@ class SupervisedJointDistrib(object):
                 'with "distrib_id" as a key to indicate which distribution.',
             ]))
 
-    def _create_sampling_attributes(self):
+    def _create_sampling_attributes(self, sess_config=None):
         """Creates the Tensorflow session and ops for sampling."""
-        raise NotImplementedError()
+        #raise NotImplementedError()
 
+        self.tf_sample_sess = tf.Session(config=sess_config)
 
+        #num_samples = tf.placeholder(tf.int32)
 
     def _create_empirical_predictor_pdf(
     self,
@@ -313,7 +315,11 @@ class SupervisedJointDistrib(object):
             first dimension.
         """
 
-
+        #tf_sample_sess.run(
+        #    self.target_samples,
+        #    self.predictor_samples,
+        #    feed_dict={'num_samples': num_samples}
+        #)
 
         # sample from target distribution
 
@@ -330,7 +336,7 @@ class SupervisedJointDistrib(object):
             # Note expects the samples to have the same dimensionality.
             tf_samples =  tf.stack([tf_target_samples, tf_transform_samples], 1)
 
-            samples = tf_samples.eval(session=tf.Session())
+            samples = tf_samples.eval(session=self.tf_sample_sess)
 
             return samples[:, 0], samples[:,1]
 
@@ -342,8 +348,8 @@ class SupervisedJointDistrib(object):
         tf_transform_samples = self.transform_distrib.sample(num_samples)
 
         # Add the target sample to the transform sample to undo distance calc
-        target_samples = tf_target_samples.eval(session=tf.Session())
-        transform_samples = tf_transform_samples.eval(session=tf.Session())
+        target_samples = tf_target_samples.eval(session=self.tf_sample_sess)
+        transform_samples = tf_transform_samples.eval(session=self.tf_sample_sess)
 
         # TODO add transformed target_samples to transform samples
 
