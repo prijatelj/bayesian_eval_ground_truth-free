@@ -112,42 +112,19 @@ class SupervisedJointDistrib(object):
         # TODO parallelize the fitting of the target and predictor distribs
 
         # Fit the target data
-        if isinstance(target_distrib, tfp.distributions.Distribution):
-            # Use given distribution as the fitted distribution.
-            self.target_distrib = target_distrib
-        elif isinstance(target_distrib, str):
-            if target_distrib != 'DirichletMultinomial':
-                raise ValueError('Currently only "DirichletMultinomial" for '
-                + 'the target distribution is supported as proof of concept.')
-
-            # By default, use UMVUE of params of given data. No MLE fitting.
-            self.target_distrib = tfp.distributions.DirichletMultinomial(
-                self.transform_matrix.shape[1],
-                np.mean(target, axis=0) / self.transform_matrix.shape[1],
-            )
-        elif isinstance(target_distrib, dict):
-            # If given a dict, use as initial parameters and fit with MLE
-            if target_distrib['distrib_id'] == 'DirichletMultinomial':
-                self.target_distrib = distribution_tests.mle_adam(
-                    data=target,
-                    **target_distrib,
-                )
-            else:
-                raise ValueError('Currently only "DirichletMultinomial" for '
-                + 'the target distribution is supported as proof of concept.')
-        else:
-            raise TypeError(' '.join([
-                '`target_distrib` is expected to be either of type',
-                '`tfp.distributions.Distribution`, `str`, or `dict`, not',
-                f'{type(dict)}.',
-                'If a `str`, then it is the name of the distribution.',
-                'If `dict`, then it is the parameters of the distribution ',
-                'with "distrib_id" as a key to indicate which distribution.',
-            ]))
+        self.target_distrib = self._fit_independent_distrib(
+            target_distrib,
+            target,
+        )
 
         # Fit the transformation function of the target to the predictor output
-        if isinstance(transform_distrib, tfp.distributions.Distribution):
-            # Use given distribution as the fitted distribution
+        if self.independent:
+            self.transform_distrib = self._fit_independent_distrib(
+                transform_distrib,
+                pred,
+            )
+        elif isinstance(transform_distrib, tfp.distributions.Distribution):
+            # Use given distribution as the fitted dependent distribution
             self.transform_distrib = transform_distrib
         elif isinstance(transform_distrib, dict):
             self.transform_distrib = self._fit_transform_distrib(
@@ -178,7 +155,54 @@ class SupervisedJointDistrib(object):
 
         return new
 
+    def _fit_independent_distrib(self, distrib, data=None):
+        """Fits the given data with an independent distribution."""
+        if isinstance(distrib, tfp.distributions.Distribution):
+            # Use given distribution as the fitted distribution.
+            return distrib
+        elif isinstance(distrib, str):
+            # By default, use UMVUE of params of given data. No MLE fitting.
+            if distrib == 'DirichletMultinomial':
+                return  tfp.distributions.DirichletMultinomial(
+                    self.transform_matrix.shape[1],
+                    np.mean(data, axis=0) / self.transform_matrix.shape[1],
+                )
+            elif distrib == 'MultivariateNormal':
+                return tfp.distributions.MultivariateNormalFullCovariance(
+                    np.mean(data, axis=0),
+                    np.cov(data, bias=False, rowvar=False),
+                )
+            else:
+                raise ValueError(' '.join([
+                    'Currently only "DirichletMultinomial" or',
+                    '"MultivariateNormal" for ' 'independent distributions ',
+                    'are supported as proof of concept.',
+                ]))
+        elif isinstance(distrib, dict):
+            # If given a dict, use as initial parameters and fit with MLE
+            if distrib['distrib_id'] == 'DirichletMultinomial' or distrib['distrib_id'] == 'MultivariateNormal':
+                return  distribution_tests.mle_adam(
+                    data=data,
+                    **distrib,
+                )
+            else:
+                raise ValueError(' '.join([
+                    'Currently only "DirichletMultinomial" or',
+                    '"MultivariateNormal" for ' 'independent distributions ',
+                    'are supported as proof of concept.',
+                ]))
+        else:
+            raise TypeError(' '.join([
+                '`distrib` is expected to be either of type',
+                '`tfp.distributions.Distribution`, `str`, or `dict`, not',
+                f'{type(dict)}.',
+                'If a `str`, then it is the name of the distribution.',
+                'If `dict`, then it is the parameters of the distribution ',
+                'with "distrib_id" as a key to indicate which distribution.',
+            ]))
+
     def _is_prob_distrib(self, vector):
+        """Checks if the vector is a valid discrete probability distribution."""
         return math.isclose(vector.sum(), 1) and (vector >= 0).all() and (vector <= 1).all()
 
     def _get_change_of_basis_matrix(self, input_dim):
@@ -302,7 +326,7 @@ class SupervisedJointDistrib(object):
             ))
 
             while not self._is_prob_distrib(prob_transform_samples[i]):
-                print('if this repeaets alot it broke')
+                print('\nif this repeaets alot it broke')
                 print(f'{prob_transform_samples[i]}')
                 print(f'len prob = {len(prob_transform_samples)}')
                 print(f'i = {i}')
@@ -361,3 +385,11 @@ class SupervisedJointDistrib(object):
         else:
             raise TypeError('`distrib` is expected to be of type `str` or '
                 + f'`dict` not `{type(distrib)}`')
+
+    def log_prob(self, values):
+        """Log probability density/mass function."""
+        # TODO target distrib always easy, just tfp. ... . log_prob()
+
+        # TODO predictor output is not so easy, if only have
+
+        return
