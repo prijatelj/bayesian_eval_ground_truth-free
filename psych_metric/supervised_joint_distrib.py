@@ -4,7 +4,6 @@ distribution and that the prediction output can be obtained with some error by
 a transformation function of the target distribution.
 """
 from copy import deepcopy
-import math
 
 import numpy as np
 import tensorflow as tf
@@ -32,7 +31,8 @@ class SupervisedJointDistrib(object):
         transforming the target distribution to the predictor output data.
     tf_sample_sess: tf.Session
     tf_target_samples: tf.Tensor
-    tf_predictor_samples: tf.Tensor
+    tf_pred_samples: tf.Tensor
+    tf_num_samples: tf.placeholder
     """
 
     def __init__(
@@ -140,12 +140,13 @@ class SupervisedJointDistrib(object):
             raise TypeError('`transform_distrib` is expected to be either of '
                 + 'type `tfp.distributions.Distribution` or `dict`.')
 
-        # Create the Tensorflow session and ops for sampling if dependent
-        if not self.independent:
-            self._create_sampling_attributes()
+        # Create the Tensorflow session and ops for sampling
+        self._create_sampling_attributes(tf_sess_config)
 
+        if not self.independent:
             # Create the predictor output pdf via Kernel Density Estimation
             #self._create_empirical_predictor_pdf()
+            pass
 
     def __copy__(self):
         cls = self.__class__
@@ -218,24 +219,26 @@ class SupervisedJointDistrib(object):
 
         self.tf_sample_sess = tf.Session(config=sess_config)
 
-        num_samples = tf.placeholder(tf.int32)
+        num_samples = tf.placeholder(tf.int32, name='num_samples')
 
         self.tf_target_samples = self.target_distrib.sample(num_samples)
 
         if self.independent:
             # just sample from transform_distrib and return paired RVs.
-            self.tf_transform_samples = self.transform_distrib.sample(num_samples)
+            self.tf_pred_samples = self.transform_distrib.sample(num_samples)
         else:
             # Normalize the target samples for use with dependent transform
             norm_target_samples = self.tf_target_samples / self.total_count
 
             # Create the origin adjustment for going to and from n-1 simplex.
-            origin_adjust = tf.zeros(self.transform_matrix.shape[1])
+            origin_adjust = np.zeros(self.transform_matrix.shape[1])
             origin_adjust[0] = 1
 
             # Convert the normalized target samples into the n-1 simplex basis.
-            target_simplex_samples = self.transform_matrix @ \
-                (norm_target_samples - origin_adjust)
+            #target_simplex_samples = self.transform_matrix @ \
+            #    (norm_target_samples - origin_adjust)
+            target_simplex_samples = (norm_target_samples - origin_adjust) \
+                @ self.transform_matrix.T
 
             # Draw the transform distances from transform distribution
             transform_dists = self.transform_distrib.sample(num_samples)
@@ -244,8 +247,12 @@ class SupervisedJointDistrib(object):
             pred_simplex_samples = transform_dists + target_simplex_samples
 
             # Convert the predictor sample back into correct distrib space.
-            self.tf_pred_samples = (pred_simplex_samples
-                @ self.transform_matrix) + origin_adjust
+            #self.tf_pred_samples = ((pred_simplex_samples
+            #    @ self.transform_matrix) + origin_adjust) * self.total_count
+            self.tf_pred_samples = ((pred_simplex_samples
+                @ self.transform_matrix) + origin_adjust) * self.total_count
+
+        self.tf_num_samples = num_samples
 
         # Run once. the saved memory is freed upon this class instance deletion.
         self.tf_sample_sess.run((
@@ -272,9 +279,22 @@ class SupervisedJointDistrib(object):
         """
         raise NotImplementedError()
 
-    def _is_prob_distrib(self, vector):
+    def _is_prob_distrib(
+        self,
+        vector,
+        rtol=1e-09,
+        atol=1e-09,
+        equal_nan=False,
+        axis=1,
+    ):
         """Checks if the vector is a valid discrete probability distribution."""
-        return math.isclose(vector.sum(), 1) and (vector >= 0).all() and (vector <= 1).all()
+        # check if each row sums to 1
+        sums_to_one = np.isclose(vector.sum(axis), 1, rtol, atol, equal_nan)
+
+        # check if all values are w/in range
+        in_range = (vector >= 0).all(axis) == (vector <= 1).all(axis)
+
+        return sums_to_one == in_range
 
     def _get_change_of_basis_matrix(self, input_dim):
         """Creates a matrix that transforms from an `input_dim` space
@@ -350,89 +370,55 @@ class SupervisedJointDistrib(object):
             first dimension.
         """
 
-        #tf_sample_sess.run(
-        #    self.target_samples,
-        #    self.predictor_samples,
-        #    feed_dict={'num_samples': num_samples}
-        #)
-
-        # TODO Get any and all indices of non-probability distrib samples
-        # rerun session w/ num_samples = num_bad_samples * freq of bad adjustment
-        # FIFO fill and repeat.
-
-        # NOTE using Tensorflow while not enough samples and check/rejection
-        # done in Tensorflow would be more optimal. This is next step if
-        # necessary.
-
-        # Once all gathered, return unnormalized, or normalize and return.
-
-        # sample from target distribution
-
-        # Draw transform target samples and normalize into probability simplex
-        tf_target_samples = self.target_distrib.sample(num_samples)
+        target_samples, pred_samples = self.tf_sample_sess.run(
+            [self.tf_target_samples, self.tf_pred_samples],
+            feed_dict={self.tf_num_samples: num_samples}
+        )
 
         if self.independent:
-            # just sample from transform_distrib and return paired RVs.
-            tf_transform_samples = self.transform_distrib.sample(num_samples)
-            if normalize and self.total_count and isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial):
-                tf_target_samples /= self.total_count
-                tf_transform_samples /= self.total_count
-
-            # Note expects the samples to have the same dimensionality.
-            tf_samples =  tf.stack([tf_target_samples, tf_transform_samples], 1)
-
-            samples = tf_samples.eval(session=self.tf_sample_sess)
-
-            return samples[:, 0], samples[:,1]
-
-        # Normalize the target samples for use with dependent transform distrib
-        tf_target_samples /= self.total_count
-
-        # draw predictor output via transform function using target sample
-        # pred_sample = target_sample + sample_transform_distrib
-        tf_transform_samples = self.transform_distrib.sample(num_samples)
-
-        # Add the target sample to the transform sample to undo distance calc
-        target_samples = tf_target_samples.eval(session=self.tf_sample_sess)
-        transform_samples = tf_transform_samples.eval(session=self.tf_sample_sess)
-
-        # TODO add transformed target_samples to transform samples
-
-        # NOTE this would probably be more optimal if simply saved the graph
-        # for sampling and doing post transform in Tensorflow. Use vars for num
-        # of samples.
-
-         # TODO if large samples are drawn, this is inefficent
-        prob_transform_samples = []
-
-        for i in range(len(target_samples)):
-            # TODO Log the number of resamplings, cuz that could be useful info.
-            transformed_target = self._transform_to(target_samples[i])
-
-            prob_transform_samples.append(self._transform_from(
-                transform_samples[i] + transformed_target
-            ))
-
-            while not self._is_prob_distrib(prob_transform_samples[i]):
-                """
-                print('\nif this repeaets alot it broke')
-                print(f'{prob_transform_samples[i]}')
-                print(f'len prob = {len(prob_transform_samples)}')
-                print(f'i = {i}')
-                print(f'target_samples = {target_samples[i]}')
-                print(f'prob sums to {prob_transform_samples[i].sum()}')
-                """
-
-                # Resample until a proper probability distribution.
-                prob_transform_samples[i] = self._transform_from(
-                    self.transform_distrib.sample(1).eval(session=tf.Session())
-                    + transformed_target
+            if normalize:
+                return (
+                    target_samples / self.total_count,
+                    pred_samples / self.total_count,
                 )
-        transform_samples = np.vstack(prob_transform_samples)
+            return target_samples, pred_samples
+
+        # NOTE using Tensorflow while loop to resample and check/rejection
+        # would be more optimal. This is next step if necessary.
+
+        # Get any and all indices of non-probability distrib samples
+        bad_sample_idx = np.argwhere(np.logical_not(
+            self._is_prob_distrib(pred_samples),
+        ))
+        if len(bad_sample_idx) > 1:
+            bad_sample_idx = np.squeeze(bad_sample_idx)
+        num_bad_samples = len(bad_sample_idx)
+        #adjust_bad = num_bad_samples * (num_samples / (num_samples - num_bad_samples))
+
+        while num_bad_samples > 0:
+            print(f'Bad Times: num bad samples = {num_bad_samples}')
+            # rerun session w/ enough samples to replace bad samples and some.
+            new_pred = self.tf_sample_sess.run(
+                self.tf_pred_samples,
+                #feed_dict={self.tf_num_samples: np.ceil(num_bad_samples * adjust_bad)},
+                feed_dict={self.tf_num_samples: num_bad_samples},
+            )
+
+            pred_samples[bad_sample_idx] = new_pred
+
+            bad_sample_idx = np.argwhere(np.logical_not(
+                self._is_prob_distrib(pred_samples),
+            ))
+            if len(bad_sample_idx) > 1:
+                bad_sample_idx = np.squeeze(bad_sample_idx)
+            num_bad_samples = len(bad_sample_idx)
 
         if normalize:
-            return target_samples, transform_samples
-        return target_samples * self.total_count, transform_samples * self.total_count
+            return (
+                target_samples / self.total_count,
+                pred_samples / self.total_count,
+            )
+        return target_samples, pred_samples
 
     def _fit_transform_distrib(self, target, pred, distrib='MultivariateNormal'):
         """Fits and returns the transform distribution."""
