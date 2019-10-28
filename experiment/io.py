@@ -151,6 +151,7 @@ def add_logging_args(parser):
         '--log_level',
         default='WARNING',
         help='The log level to be logged.',
+        choices=['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
     )
     parser.add_argument(
         '--log_file',
