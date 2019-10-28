@@ -30,7 +30,9 @@ class SupervisedJointDistrib(object):
     transform_distribution : tfp.distribution.Distribution
         The probability distribution of the transformation function for
         transforming the target distribution to the predictor output data.
-    sample_tf_sess: tf.Session() | None
+    tf_sample_sess: tf.Session
+    tf_target_samples: tf.Tensor
+    tf_predictor_samples: tf.Tensor
     """
 
     def __init__(
@@ -216,7 +218,40 @@ class SupervisedJointDistrib(object):
 
         self.tf_sample_sess = tf.Session(config=sess_config)
 
-        #num_samples = tf.placeholder(tf.int32)
+        num_samples = tf.placeholder(tf.int32)
+
+        self.tf_target_samples = self.target_distrib.sample(num_samples)
+
+        if self.independent:
+            # just sample from transform_distrib and return paired RVs.
+            self.tf_transform_samples = self.transform_distrib.sample(num_samples)
+        else:
+            # Normalize the target samples for use with dependent transform
+            norm_target_samples = self.tf_target_samples / self.total_count
+
+            # Create the origin adjustment for going to and from n-1 simplex.
+            origin_adjust = tf.zeros(self.transform_matrix.shape[1])
+            origin_adjust[0] = 1
+
+            # Convert the normalized target samples into the n-1 simplex basis.
+            target_simplex_samples = self.transform_matrix @ \
+                (norm_target_samples - origin_adjust)
+
+            # Draw the transform distances from transform distribution
+            transform_dists = self.transform_distrib.sample(num_samples)
+
+            # Add the target to the transform distance to undo distance calc
+            pred_simplex_samples = transform_dists + target_simplex_samples
+
+            # Convert the predictor sample back into correct distrib space.
+            self.tf_pred_samples = (pred_simplex_samples
+                @ self.transform_matrix) + origin_adjust
+
+        # Run once. the saved memory is freed upon this class instance deletion.
+        self.tf_sample_sess.run((
+            tf.global_variables_initializer(),
+            tf.local_variables_initializer(),
+        ))
 
     def _create_empirical_predictor_pdf(
     self,
@@ -321,6 +356,16 @@ class SupervisedJointDistrib(object):
         #    feed_dict={'num_samples': num_samples}
         #)
 
+        # TODO Get any and all indices of non-probability distrib samples
+        # rerun session w/ num_samples = num_bad_samples * freq of bad adjustment
+        # FIFO fill and repeat.
+
+        # NOTE using Tensorflow while not enough samples and check/rejection
+        # done in Tensorflow would be more optimal. This is next step if
+        # necessary.
+
+        # Once all gathered, return unnormalized, or normalize and return.
+
         # sample from target distribution
 
         # Draw transform target samples and normalize into probability simplex
@@ -369,12 +414,14 @@ class SupervisedJointDistrib(object):
             ))
 
             while not self._is_prob_distrib(prob_transform_samples[i]):
+                """
                 print('\nif this repeaets alot it broke')
                 print(f'{prob_transform_samples[i]}')
                 print(f'len prob = {len(prob_transform_samples)}')
                 print(f'i = {i}')
                 print(f'target_samples = {target_samples[i]}')
                 print(f'prob sums to {prob_transform_samples[i].sum()}')
+                """
 
                 # Resample until a proper probability distribution.
                 prob_transform_samples[i] = self._transform_from(
