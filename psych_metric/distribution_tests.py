@@ -407,6 +407,16 @@ def get_distrib_param_vars(
             tfp.distributions.DirichletMultinomial(**params),
             params,
         )
+    elif distrib_id == 'dirichlet':
+        params = get_dirichlet_param_vars(
+            random_seed=random_seed,
+            const_params=const_params,
+            **init_params,
+        )
+        return (
+            tfp.distributions.Dirichlet(**params),
+            params,
+        )
     elif distrib_id == 'normal':
         params = get_normal_param_vars(
             random_seed=random_seed,
@@ -424,6 +434,48 @@ def get_distrib_param_vars(
         )
 
 
+def get_dirichlet_param_vars(
+    num_classes=None,
+    max_concentration=None,
+    concentration=None,
+    const_params=None,
+    random_seed=None,
+    name='dirichlet_params',
+):
+    """Create tf.Variable parameters for the Dirichlet distribution."""
+    # TODO
+    with tf.name_scope(name):
+        if num_classes and max_concentration:
+            return {
+                'concentration': tf.Variable(
+                    initial_value=np.random.uniform(
+                        0,
+                        max_concentration,
+                        num_classes,
+                    ),
+                    dtype=tf.float32,
+                    name='concentration',
+                ),
+            }
+        elif concentration is not None:
+            return {
+                'concentration': tf.constant(
+                    value=concentration,
+                    dtype=tf.float32,
+                    name='concentration',
+                ) if const_params and 'concentration' in const_params else tf.Variable(
+                    initial_value=concentration,
+                    dtype=tf.float32,
+                    name='concentration',
+                ),
+            }
+        else:
+            raise ValueError(' '.join([
+                'Must pass either both and `concentration` xor pass',
+                '`num_classes`, and `max_concentration`',
+            ]))
+
+
 def get_dirichlet_multinomial_param_vars(
     num_classes=None,
     max_concentration=None,
@@ -432,7 +484,7 @@ def get_dirichlet_multinomial_param_vars(
     concentration=None,
     const_params=None,
     random_seed=None,
-    name='dirichlet_multinomial',
+    name='dirichlet_multinomial_params',
 ):
     """Create tf.Variable parameters for the Dirichlet distribution."""
     with tf.name_scope(name):
@@ -490,7 +542,7 @@ def get_normal_param_vars(
     scale,
     random_seed=None,
     const_params=None,
-    name='normal',
+    name='normal_params',
 ):
     """Create tf.Variable parameters for the normal distribution.
 
