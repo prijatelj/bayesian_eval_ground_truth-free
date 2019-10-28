@@ -4,6 +4,7 @@ distribution and that the prediction output can be obtained with some error by
 a transformation function of the target distribution.
 """
 from copy import deepcopy
+import math
 
 import numpy as np
 import tensorflow as tf
@@ -11,6 +12,7 @@ import tensorflow_probability as tfp
 
 from psych_metric import distribution_tests
 
+# TODO handle continuous distrib of continuous distrib, only discrete atm.
 
 class SupervisedJointDistrib(object):
     """Bayesian distribution fitting of a joint probability distribution whose
@@ -144,9 +146,10 @@ class SupervisedJointDistrib(object):
         self._create_sampling_attributes(tf_sess_config)
 
         if not self.independent:
-            # Create the predictor output pdf via Kernel Density Estimation
-            #self._create_empirical_predictor_pdf()
-            pass
+            # Create the predictor output pdf estimate
+            self._create_empirical_predictor_pdf()
+        else:
+            self.pred_distrib = None
 
     def __copy__(self):
         cls = self.__class__
@@ -175,9 +178,11 @@ class SupervisedJointDistrib(object):
         elif isinstance(distrib, str):
             # By default, use UMVUE of params of given data. No MLE fitting.
             if distrib == 'DirichletMultinomial':
+                #total_count = np.sum(data, axis=1).max(0)
+                total_count = math.fsum(data[0])
                 return  tfp.distributions.DirichletMultinomial(
-                    self.transform_matrix.shape[1],
-                    np.mean(data, axis=0) / self.transform_matrix.shape[1],
+                    total_count,
+                    np.mean(data, axis=0), #/ total_count,
                 )
             elif distrib == 'MultivariateNormal':
                 return tfp.distributions.MultivariateNormalFullCovariance(
@@ -261,9 +266,8 @@ class SupervisedJointDistrib(object):
         ))
 
     def _create_empirical_predictor_pdf(
-    self,
-        sample_size=10000,
-        kernel='tophat',
+        self,
+        num_samples=10000,
     ):
         """Creates a probability density function for the predictor output from
         the transform distribution via sampling of the joint distribution and
@@ -271,19 +275,31 @@ class SupervisedJointDistrib(object):
 
         Parameters
         ----------
-        sample_size : int, optional (default=10000)
+        num_samples : int, optional (default=10000)
             The number of samples to draw from the joint distribution to use to
             get samples of the predictor output to use in fitting the KDE.
         kernel : str
             The kernel identifier to be used by the KDE. Defaults to "tophat".
         """
-        raise NotImplementedError()
+        target_samples, pred_samples = self.sample(num_samples)
+        del target_samples
+
+        # bandwidth is prior standard deviation, but how to select that from
+        # data of a distribution of distributions?
+        # KDE may be necessary for the continuous case.
+
+        # Could create a DirMult distribution, since we know it will be of that strucutre.
+        # TODO uses "UMVUE" for fitting DirMult, must confirm UMVUE is correct!
+        self.pred_distrib = self._fit_independent_distrib(
+            'DirichletMultinomial',
+            pred_samples,
+        )
 
     def _is_prob_distrib(
         self,
         vector,
         rtol=1e-09,
-        atol=1e-09,
+        atol=0.0,
         equal_nan=False,
         axis=1,
     ):
@@ -397,6 +413,7 @@ class SupervisedJointDistrib(object):
 
         while num_bad_samples > 0:
             print(f'Bad Times: num bad samples = {num_bad_samples}')
+
             # rerun session w/ enough samples to replace bad samples and some.
             new_pred = self.tf_sample_sess.run(
                 self.tf_pred_samples,
@@ -468,5 +485,13 @@ class SupervisedJointDistrib(object):
 
         # TODO predictor output is not so easy, if only have transform distrib,
         # then able to get empirical pdf of predictor output via samplingG;;
+        if self.independent:
+            return (
+                self.target_distrib.log_prob(values[0]).eval(session=tf.Session()),
+                self.transform_distrib.log_prob(values[1]).eval(session=tf.Session()),
+            )
 
-        return
+        return (
+            self.target_distrib.log_prob(values[0]).eval(session=tf.Session()),
+            self.pred_distrib.log_prob(values[1]).eval(session=tf.Session()),
+        )
