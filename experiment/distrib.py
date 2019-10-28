@@ -3,6 +3,54 @@ from numbers import Number
 
 import numpy as np
 
+
+def get_dirichlet_params(
+    concentration=None,
+    num_classes=None
+):
+    """Either packages the parameters into a dict or creates the parameters
+    first from some specification on how to create them (ie. drawing from
+    normal distribution).
+
+    Parameters
+    ----------
+    concentration : float | list(float), optional
+        Either a postive float as the initial value of the scale, or a dict
+        containing the loc and standard deviation of a normal distribution
+        which this loc is drawn from randomly. If
+    num_classes : int
+        The number of classes of the source Dirichlet-Multinomial. Only
+        required when the given a single float for `concentration`.
+        `concentration` is then turned into a list of length `num_classes`
+        where ever element is the single float given by `concentration`.
+
+    Returns
+    -------
+    dict
+        Dictionary of the values of the parameters.
+    """
+    params = {}
+
+    # concentration
+    if isinstance(concentration, Number) and  isinstance(num_classes, Number):
+        params['concentration'] = [concentration] * num_classes
+    elif isinstance(concentration, list) or isinstance(concentration, np.ndarray):
+        params['concentration'] = concentration
+    elif isinstance(concentration, dict) and isinstance(num_classes, Number):
+        # TODO Create concentration as a discrete, ordinal normal distribution?
+        # or perhaps sample the concentrations from that normal... just as a
+        # form of controled randomization.
+        raise NotImplementedError
+    elif isinstance(num_classes, Number):
+        params['concentration'] = np.random.uniform(0, 100, num_classes)
+    else:
+        raise TypeError(
+            'Wrong type for `concentration` and `num_classes` not given. '
+            + f'Type recieved: {type(concentration)}'
+        )
+
+    return params
+
 def get_dirichlet_multinomial_params(
     total_count=None,
     concentration=None,
