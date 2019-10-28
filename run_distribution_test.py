@@ -72,6 +72,17 @@ def mle_adam_distribs(
                 neg_log_likelihood.eval(session=tf.Session()),
                 init_params,
             )]
+        elif distrib_id == 'dirichlet_uniform':
+            # Sets concentration always to 1 to force the uniform
+            init_params['concentration'] = np.ones(len(labels[0]))
+
+            du_distrib = tfp.distributions.Dirichlet(**init_params)
+            neg_log_likelihood = -1.0 * tf.reduce_sum(du_distrib.log_prob(labels))
+
+            distrib_mle[distrib_id] = [distribution_tests.MLEResults(
+                neg_log_likelihood.eval(session=tf.Session()),
+                init_params,
+            )]
         else:
             distrib_mle[distrib_id] = distribution_tests.mle_adam(
                 distrib_id,
@@ -157,6 +168,14 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
                     # prior knowledge from data alone for initial value
                     'concentration': labels.mean(axis=0) / 3,
                 },
+                'dirichlet_uniform': {
+                    # w/o prior knowledge, must use all ones
+                    'concentration': np.ones(8),
+                },
+                'dirichlet': {
+                    # prior knowledge from data alone for initial value
+                    'concentration': labels.mean(axis=0),
+                },
             }
     elif args.dataset_id == 'FacialBeauty':
         # NOTE assumes frequency as label src
@@ -173,6 +192,14 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
                 'total_count': 60,
                 # prior knowledge from data alone for inital value
                 'concentration': labels.mean(axis=0) / 60,
+            },
+            'dirichlet_uniform': {
+                # w/o prior knowledge, must use all ones
+                'concentration': np.ones(5), #uniform
+            },
+            'dirichlet': {
+                # prior knowledge from data alone for inital value
+                'concentration': labels.mean(axis=0),
             },
         }
     else:
@@ -413,6 +440,99 @@ def test_dirichlet_multinomial(
         results,
     )
 
+
+def test_dirichlet(
+    mle_args,
+    output_dir,
+    concentration=None,
+    num_classes=None,
+    sample_size=1000,
+    info_criterions=['bic'],
+    mle_method='adam',
+    random_seed=None,
+    init_concentration=None,
+    repeat_mle=1,
+):
+    """Creates a Dirichlet-Multinomial distribution and fits it using the given
+    MLE method.
+
+    Parameters
+    ----------
+    mle_args : dict
+        Arguments for MLE Adam.
+    output_dir : str
+        The filepath to the directory where the MLE results will be stored.
+    concentration : float | list(float), optional
+        either a postive float as the initial value of the scale, or a dict
+        containing the loc and standard deviation of a normal distribution
+        which this loc is drawn from randomly. If
+    num_classes : int, optional
+        The number of classes of the source Dirichlet. Only
+        required when the given a single float for `concentration`. `concentration`
+        is then turned into a list of length `num_classes` where ever element is
+        the single float given by `concentration`.
+    sample_size : int, optional
+        The number of samples to draw from the normal distribution being fit.
+        Defaults to 1000.
+    info_criterions : list(str)
+        List of information criterion ids to be computed after finding the MLE.
+    mle_method : str, optional
+        Specifies the MLE/fitting method to use. Defaults to Gradient Descent
+        via tensorflows Adam optimizer.
+    random_seed : int, optional
+        Integer to use as the random seeds for MLE.
+    initial : str, optional
+        A string identifier indicating how to initialize the Normal distrib to
+        be fit on the generated data. Options are: 'extreme', 'data', or the
+        default is random initialization. 'extreme' and 'data' are the same
+        as in `standardize`.
+    """
+    # Create the original distribution to be estimated and its data sample
+    src_params = experiment.distrib.get_dirichlet_params(
+        concentration,
+        num_classes,
+    )
+
+    src_distrib = tfp.distributions.Dirichlet(**src_params)
+    data = src_distrib.sample(sample_size).eval(session=tf.Session())
+
+    # Set the initial distribution args
+    distrib_args = {
+        'discrete_uniform': {'high': 1000, 'low': -1000},
+        'dirichlet_uniform': {'concentration': np.ones(num_classes)},
+        'dirichlet': {}
+    }
+
+    # intial concentation
+    if init_concentration == 'data':
+        # The mean class frequency of the samples is the concentration.
+        distrib_args['dirichlet']['concentration'] = data.mean(axis=0) / data[0].sum()
+    elif isinstance(init_concentration, Number) and init_concentration > 0:
+        # Uniform concentration of the value given.
+        distrib_args['dirichlet']['concentration'] = [init_concentration] * len(data[0])
+    else: # principle of indifference
+        distrib_args['dirichlet']['concentration'] = np.random.exponential(size=len(data[0]))
+
+    # Find MLE of models
+    if mle_method == 'adam':
+        results = mle_adam_distribs(
+            data,
+            distrib_args,
+            mle_args=mle_args,
+            info_criterions=info_criterions,
+            random_seed=None,
+        )
+
+    # Save the results and original values
+    results['src_params'] = src_params
+    results['intial_params'] = distrib_args
+
+    experiment.io.save_json(
+        os.path.join(args.output_dir, 'test_dirichlet.json'),
+        results,
+    )
+
+
 # TODO may want to move all of this I/O to experiment.io ... uncertain atm.
 def add_test_distrib_args(parser):
     """Adds arguments to the given `argparse.ArgumentParser`."""
@@ -525,7 +645,7 @@ def add_test_distrib_args(parser):
         + 'of the source Dirichlet-Multinomial distribution.',
         dest='hypothesis_distrib.total_count',
         required=check_argv(
-            ['test_dirichlet', 'test_dirichlet_multinomial'],
+            ['test_dirichlet_multinomial'],
             '--hypothesis_test',
         ),
     )
@@ -649,7 +769,16 @@ if __name__ == '__main__':
     elif args.hypothesis_distrib.hypothesis_test == 'test_multinomial':
         raise NotImplementedError
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet':
-        raise NotImplementedError
+        for i in range(args.hypothesis_distrib.repeat_mle):
+            test_dirichlet(
+                vars(args.mle),
+                args.output_dir,
+                args.hypothesis_distrib.concentration,
+                args.hypothesis_distrib.num_classes,
+                sample_size=args.hypothesis_distrib.sample_size,
+                info_criterions=args.hypothesis_distrib.info_criterions,
+                init_concentration='data',
+            )
     elif args.hypothesis_distrib.hypothesis_test == 'test_dirichlet_multinomial':
         for i in range(args.hypothesis_distrib.repeat_mle):
             test_dirichlet_multinomial(
