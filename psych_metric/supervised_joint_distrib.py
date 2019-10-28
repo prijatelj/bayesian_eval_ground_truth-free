@@ -86,6 +86,13 @@ class SupervisedJointDistrib(object):
         """
         self.independent = independent
         if not isinstance(total_count, int):
+            # Check if any distribs are DirMult()s. They need total_counts
+            if (
+                isinstance(target_distrib, tfp.distributions.DirichletMultinomial)
+                or 'DirichletMultinomial' == target_distrib['distrib_id']
+                or isinstance(transform_distrib, tfp.distributions.DirichletMultinomial)
+                or 'DirichletMultinomial' == transform_distrib['distrib_id']
+            ):
             raise TypeError(' '.join([
                 '`total_count` of type `int` must be passed in order to use',
                 'DirichletMultinomial distribution as the target',
@@ -178,12 +185,13 @@ class SupervisedJointDistrib(object):
         elif isinstance(distrib, str):
             # By default, use UMVUE of params of given data. No MLE fitting.
             if distrib == 'DirichletMultinomial':
-                #total_count = np.sum(data, axis=1).max(0)
-                total_count = math.fsum(data[0])
+                total_count = np.sum(data, axis=1).max(0)
                 return  tfp.distributions.DirichletMultinomial(
                     total_count,
                     np.mean(data, axis=0), #/ total_count,
                 )
+            elif distrib == 'Dirichlet':
+                return  tfp.distributions.Dirichlet(np.mean(data, axis=0))
             elif distrib == 'MultivariateNormal':
                 return tfp.distributions.MultivariateNormalFullCovariance(
                     np.mean(data, axis=0),
@@ -191,21 +199,25 @@ class SupervisedJointDistrib(object):
                 )
             else:
                 raise ValueError(' '.join([
-                    'Currently only "DirichletMultinomial" or',
+                    'Currently only "Dirichlet", "DirichletMultinomial" or',
                     '"MultivariateNormal" for ' 'independent distributions ',
                     'are supported as proof of concept.',
                 ]))
         elif isinstance(distrib, dict):
             # If given a dict, use as initial parameters and fit with MLE
-            if distrib['distrib_id'] == 'DirichletMultinomial' or distrib['distrib_id'] == 'MultivariateNormal':
+            if (
+                distrib['distrib_id'] == 'DirichletMultinomial'
+                or distrib['distrib_id'] == 'Dirichlet'
+                or distrib['distrib_id'] == 'MultivariateNormal'
+            ):
                 return  distribution_tests.mle_adam(
                     data=data,
                     **distrib,
                 )
             else:
                 raise ValueError(' '.join([
-                    'Currently only "DirichletMultinomial" or',
-                    '"MultivariateNormal" for ' 'independent distributions ',
+                    'Currently only "DirichletMultinomial", "Dirichlet", or',
+                    '"MultivariateNormal" for ' 'independent distributions',
                     'are supported as proof of concept.',
                 ]))
         else:
@@ -291,7 +303,7 @@ class SupervisedJointDistrib(object):
         # Could create a DirMult distribution, since we know it will be of that strucutre.
         # TODO uses "UMVUE" for fitting DirMult, must confirm UMVUE is correct!
         self.pred_distrib = self._fit_independent_distrib(
-            'DirichletMultinomial',
+            'Dirichlet',
             pred_samples,
         )
 
@@ -371,12 +383,15 @@ class SupervisedJointDistrib(object):
 
         Parameters
         ----------
-        normalized_samples : bool, optional (default=False)
+        normalize : bool, optional (default=False)
             If True, the samples' distributions will be normalized such that
             their values are in the range [0, 1] and all sum to 1, otherwise
             they will be in the range [0, total_count] and sum to total_count.
             This is intended specifically for when the two random variables are
             distributions of distributions (ie. Dirichlet-multinomial).
+
+            Ensure the elements sum to one (under assumption they sum to total
+            counts.)
 
         Returns
         -------
@@ -393,10 +408,12 @@ class SupervisedJointDistrib(object):
 
         if self.independent:
             if normalize:
-                return (
-                    target_samples / self.total_count,
-                    pred_samples / self.total_count,
-                )
+                if isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial):
+                    target_samples = target_samples / self.total_count
+
+                if isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial):
+                    pred_samples = pred_samples / self.total_count
+
             return target_samples, pred_samples
 
         # NOTE using Tensorflow while loop to resample and check/rejection
@@ -431,10 +448,13 @@ class SupervisedJointDistrib(object):
             num_bad_samples = len(bad_sample_idx)
 
         if normalize:
-            return (
-                target_samples / self.total_count,
-                pred_samples / self.total_count,
-            )
+            if isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial):
+                target_samples = target_samples / self.total_count
+
+                # NOTE assumes that predictors samples is of the same
+                # output as target, when target is a DirichletMultinomial.
+                pred_samples = pred_samples / self.total_count
+
         return target_samples, pred_samples
 
     def _fit_transform_distrib(self, target, pred, distrib='MultivariateNormal'):
