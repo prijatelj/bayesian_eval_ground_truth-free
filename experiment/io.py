@@ -269,6 +269,23 @@ def add_mle_args(parser):
         dest='mle.tol_grad',
     )
 
+    mle.add_argument(
+        '--tol_chain',
+        default=1,
+        type=int,
+        help=' '.join([
+            'The number of iterations that a tolerance must be surpassed in',
+            'order to be considered as convergence. Default is 1, meaning as',
+            'soon as the tolerance threshold is surpassed, it is considered',
+            'to have converged. This is a soft chain of tolerances, meaning',
+            'that the tally of number of surpassed tolerances only increments',
+            'and decrements by one every iteration, staying within the range ',
+            'of [0. tol_chain]. The tally does not reset to 0 after a single',
+            'iteration of not surpassing the tolerance threshold.',
+        ]),
+        dest='mle.tol_chain',
+    )
+
     # optimizer_args
     mle.add_argument(
         '--learning_rate',
