@@ -397,7 +397,7 @@ def get_distrib_param_vars(
     (tfp.distribution.Distribution, dict('param': tf.Variables))
         the distribution and tf.Variables as its parameters.
     """
-    if distrib_id == 'dirichlet_multinomial':
+    if distrib_id.lower() == 'dirichletmultinomial'or distrib_id == 'dirichlet_multinomial':
         params = get_dirichlet_multinomial_param_vars(
             random_seed=random_seed,
             const_params=const_params,
@@ -407,7 +407,7 @@ def get_distrib_param_vars(
             tfp.distributions.DirichletMultinomial(**params),
             params,
         )
-    elif distrib_id == 'dirichlet':
+    elif distrib_id.lower() == 'dirichlet':
         params = get_dirichlet_param_vars(
             random_seed=random_seed,
             const_params=const_params,
@@ -417,7 +417,7 @@ def get_distrib_param_vars(
             tfp.distributions.Dirichlet(**params),
             params,
         )
-    elif distrib_id == 'normal':
+    elif distrib_id.lower() == 'normal':
         params = get_normal_param_vars(
             random_seed=random_seed,
             const_params=const_params,
