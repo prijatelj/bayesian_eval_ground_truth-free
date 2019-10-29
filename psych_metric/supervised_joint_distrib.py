@@ -7,6 +7,8 @@ from copy import deepcopy
 import math
 
 import numpy as np
+import scipy
+from sklearn.neighbors import BallTree
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -23,8 +25,8 @@ class SupervisedJointDistrib(object):
     ----------
     independent : bool
         True if the random variables are indpendent of one anothers, False
-        otherwise. Default is False.
-    transformation_matrix : np.ndarray
+        otherwise. Default is False
+    transform_matrix : np.ndarray
         The matrix that transforms from the
     target_distribution : tfp.distribution.Distribution
         The probability distribution of the target data.
@@ -35,6 +37,13 @@ class SupervisedJointDistrib(object):
     tf_target_samples: tf.Tensor
     tf_pred_samples: tf.Tensor
     tf_num_samples: tf.placeholder
+    knn_tree : sklearn.neighbors.BallTree
+        The BallTree that is used to calculate the empirical density of the
+        predictor probability density function when the predictor random
+        variable is dependent on the target.
+    knn_pdf_num_samples : int
+        Number of samples used to estimate the predictor pdf when predictor is
+        dependent on target.
     """
 
     def __init__(
@@ -45,6 +54,7 @@ class SupervisedJointDistrib(object):
         pred=None,
         data_type='nominal',
         independent=False,
+        num_neighbors=10,
         sample_dim=None,
         total_count=None,
         tf_sess_config=None,
@@ -85,13 +95,21 @@ class SupervisedJointDistrib(object):
             Dirichlet-multinomial target distribution.
         """
         self.independent = independent
+        self.num_neighbors = num_neighbors
+
         if not isinstance(total_count, int):
             # Check if any distribs are DirMult()s. They need total_counts
             if (
                 isinstance(target_distrib, tfp.distributions.DirichletMultinomial)
-                or 'DirichletMultinomial' == target_distrib['distrib_id']
+                or (
+                    isinstance(target_distrib, dict)
+                    and 'DirichletMultinomial' == target_distrib['distrib_id']
+                )
                 or isinstance(transform_distrib, tfp.distributions.DirichletMultinomial)
-                or 'DirichletMultinomial' == transform_distrib['distrib_id']
+                or (
+                    isinstance(transform_distrib, dict)
+                    and 'DirichletMultinomial' == transform_distrib['distrib_id']
+                )
             ):
                 raise TypeError(' '.join([
                     '`total_count` of type `int` must be passed in order to',
@@ -156,7 +174,8 @@ class SupervisedJointDistrib(object):
             # Create the predictor output pdf estimate
             self._create_empirical_predictor_pdf()
         else:
-            self.pred_distrib = None
+            #self.pred_distrib = None
+            self.knn_tree = None
 
     def __copy__(self):
         cls = self.__class__
@@ -297,7 +316,13 @@ class SupervisedJointDistrib(object):
             self.tf_pred_samples = self.transform_distrib.sample(num_samples)
         else:
             # Normalize the target samples for use with dependent transform
-            norm_target_samples = self.tf_target_samples / self.total_count
+            if isinstance(
+                self.target_distrib,
+                tfp.distributions.DirichletMultinomial,
+            ):
+                norm_target_samples = self.tf_target_samples / self.total_count
+            else:
+                norm_target_samples = self.tf_target_samples
 
             # Create the origin adjustment for going to and from n-1 simplex.
             origin_adjust = np.zeros(self.transform_matrix.shape[1])
@@ -319,7 +344,13 @@ class SupervisedJointDistrib(object):
             #self.tf_pred_samples = ((pred_simplex_samples
             #    @ self.transform_matrix) + origin_adjust) * self.total_count
             self.tf_pred_samples = ((pred_simplex_samples
-                @ self.transform_matrix) + origin_adjust) * self.total_count
+                @ self.transform_matrix) + origin_adjust)
+
+            if isinstance(
+                self.target_distrib,
+                tfp.distributions.DirichletMultinomial,
+            ):
+                self.tf_pred_samples = self.tf_pred_samples * self.total_count
 
         self.tf_num_samples = num_samples
 
@@ -331,7 +362,8 @@ class SupervisedJointDistrib(object):
 
     def _create_empirical_predictor_pdf(
         self,
-        num_samples=10000,
+        num_samples=1e6,
+        sess_config=None,
     ):
         """Creates a probability density function for the predictor output from
         the transform distribution via sampling of the joint distribution and
@@ -348,16 +380,10 @@ class SupervisedJointDistrib(object):
         target_samples, pred_samples = self.sample(num_samples)
         del target_samples
 
-        # bandwidth is prior standard deviation, but how to select that from
-        # data of a distribution of distributions?
-        # KDE may be necessary for the continuous case.
-
-        # Could create a DirMult distribution, since we know it will be of that strucutre.
-        # TODO uses "UMVUE" for fitting DirMult, must confirm UMVUE is correct!
-        self.pred_distrib = self._fit_independent_distrib(
-            'Dirichlet',
-            pred_samples,
-        )
+        if sess_config is None:
+            sess_config = tf.Session()
+        self.knn_tree = BallTree(pred_samples)
+        self.knn_pdf_num_samples = num_samples
 
     def _is_prob_distrib(
         self,
@@ -553,7 +579,28 @@ class SupervisedJointDistrib(object):
             raise TypeError('`distrib` is expected to be of type `str` or '
                 + f'`dict` not `{type(distrib)}`')
 
-    def log_prob(self, targets, preds):
+    def knn_log_prob(self, preds, k=None):
+        """Empirically estimates the predictor log probability using K Nearest
+        Neighbords.
+        """
+        if k is None:
+            k = self.num_neighbors
+        if len(preds.shape) == 1:
+            # single sample
+            preds = preds.reshape(1, -1)
+
+        radius = self.knn_tree.query(preds, k)[0][:, -1]
+
+        # log(k) - log(n) - log(volume)
+        log_prob = np.log(k) - np.log(self.knn_pdf_num_samples)
+
+        # calculate the n-1 sphere volume being contained w/in the n-1 simplex
+        n = self.transform_matrix.shape[1] - 1
+        log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) - scipy.special.gammaln(n / 2 + 1)
+
+        return log_prob
+
+    def log_prob(self, targets, preds, num_neighbors=None):
         """Log probability density/mass function calculation for the individual
         random variables."""
         if (
@@ -576,5 +623,5 @@ class SupervisedJointDistrib(object):
 
         return (
             self.target_distrib.log_prob(targets).eval(session=tf.Session()),
-            self.pred_distrib.log_prob(preds).eval(session=tf.Session()),
+            self.knn_log_prob(preds, num_neighbors),
         )
