@@ -93,12 +93,12 @@ class SupervisedJointDistrib(object):
                 or isinstance(transform_distrib, tfp.distributions.DirichletMultinomial)
                 or 'DirichletMultinomial' == transform_distrib['distrib_id']
             ):
-            raise TypeError(' '.join([
-                '`total_count` of type `int` must be passed in order to use',
-                'DirichletMultinomial distribution as the target',
-                f'distribution, but recieved type {type(total_count)}',
-                'instead.',
-            ]))
+                raise TypeError(' '.join([
+                    '`total_count` of type `int` must be passed in order to',
+                    'use DirichletMultinomial distribution as the target',
+                    f'distribution, but recieved type {type(total_count)}',
+                    'instead.',
+                ]))
         self.total_count = total_count
 
         if target is not None and pred is not None:
@@ -177,22 +177,72 @@ class SupervisedJointDistrib(object):
 
         return new
 
-    def _fit_independent_distrib(self, distrib, data=None):
+    def _fit_independent_distrib(self, distrib, data=None, mle_args=None):
         """Fits the given data with an independent distribution."""
         if isinstance(distrib, tfp.distributions.Distribution):
             # Use given distribution as the fitted distribution.
             return distrib
         elif isinstance(distrib, str):
             # By default, use UMVUE of params of given data. No MLE fitting.
+            if data is None:
+                raise ValueError('`data` must be provided when `distrib` '
+                    + 'is of type `str`')
+
             if distrib == 'DirichletMultinomial':
                 total_count = np.sum(data, axis=1).max(0)
+
+                if mle_args:
+                    mle_results = distribution_tests.mle_adam(
+                        distrib,
+                        data,
+                        init_params={
+                            'total_count': total_count,
+                            'concentration': np.mean(data, axis=0),
+                        },
+                        const_params=['total_count'],
+                        **mle_args,
+                    )
+
+                    return  tfp.distributions.DirichletMultinomial(
+                        **mle_results.params
+                    )
+
                 return  tfp.distributions.DirichletMultinomial(
                     total_count,
                     np.mean(data, axis=0), #/ total_count,
                 )
             elif distrib == 'Dirichlet':
+                if mle_args:
+                    mle_results = distribution_tests.mle_adam(
+                        distrib,
+                        data,
+                        init_params={'concentration': np.mean(data, axis=0)},
+                        **mle_args,
+                    )
+
+                    return  tfp.distributions.DirichletMultinomial(
+                        **mle_results.params
+                    )
+
                 return  tfp.distributions.Dirichlet(np.mean(data, axis=0))
             elif distrib == 'MultivariateNormal':
+                if mle_args:
+                    raise NotImplemented('Needs added to mle_adam().')
+
+                    mle_results = distribution_tests.mle_adam(
+                        distrib,
+                        data,
+                        init_params={
+                            'loc': np.mean(data, axis=0),
+                            'covariance_matrix': np.cov(data, bias=False, rowvar=False),
+                        },
+                        **mle_args,
+                    )
+
+                    return  tfp.distributions.DirichletMultinomial(
+                        **mle_results.params
+                    )
+
                 return tfp.distributions.MultivariateNormalFullCovariance(
                     np.mean(data, axis=0),
                     np.cov(data, bias=False, rowvar=False),
@@ -211,8 +261,10 @@ class SupervisedJointDistrib(object):
                 or distrib['distrib_id'] == 'MultivariateNormal'
             ):
                 return  distribution_tests.mle_adam(
-                    data=data,
-                    **distrib,
+                    distrib['distrib_id'],
+                    data,
+                    init_params=distrib['params'],
+                    **mle_args,
                 )
             else:
                 raise ValueError(' '.join([
@@ -492,8 +544,10 @@ class SupervisedJointDistrib(object):
                 ]))
 
             self.target_distrib = distribution_tests.mle_adam(
-                data=distances,
-                **distrib,
+                distrib['distrib_id'],
+                data,
+                init_params=distrib['params'],
+                **mle_args,
             )
         else:
             raise TypeError('`distrib` is expected to be of type `str` or '
