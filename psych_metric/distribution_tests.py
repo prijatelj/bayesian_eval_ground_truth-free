@@ -136,6 +136,30 @@ def dic(likelihood_function, num_params, num_samples, mle=None, mean_lf=None):
     # return 2 * (expected_value_likelihood_func - math.log(mle) - math.log(likelihood_funciton))
 
 
+def calc_info_criterion(mle, num_params, criterions, num_samples=None):
+    """Calculate information criterions with mle_list and other information."""
+    info_criterion = {}
+
+    if 'bic' in criterions:
+        info_criterion['bic'] = distribution_tests.bic(
+            mle,
+            num_params,
+            num_samples,
+        )
+
+    if 'aic' in criterions:
+        info_criterion['aic'] = distribution_tests.aic(mle, num_params)
+
+    if 'hqc' in criterions:
+        info_criterion['hqc'] = distribution_tests.hqc(
+            mle,
+            num_params,
+            num_samples,
+        )
+
+    return info_criterion
+
+
 # NOTE MLE search over params  could be done in SHADHO instead
 def mle_adam(
     distrib_id,
