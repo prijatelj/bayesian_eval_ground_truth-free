@@ -172,9 +172,16 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
                     # w/o prior knowledge, must use all ones
                     'concentration': np.ones(8),
                 },
-                'dirichlet': {
+                'dirichlet_mean_count': {
                     # prior knowledge from data alone for initial value
                     'concentration': labels.mean(axis=0),
+                },
+                'dirichlet_mean_norm': {
+                    # prior knowledge from data alone for initial value
+                    'concentration': labels.mean(axis=0) / 3,
+                },
+                'dirichlet_ones': {
+                    'concentration': np.ones(8),
                 },
             }
     elif args.dataset_id == 'FacialBeauty':
@@ -197,9 +204,16 @@ def test_human_data(args, random_seeds, info_criterions=['bic']):
                 # w/o prior knowledge, must use all ones
                 'concentration': np.ones(5), #uniform
             },
-            'dirichlet': {
-                # prior knowledge from data alone for inital value
+            'dirichlet_mean_count': {
+                # prior knowledge from data alone for initial value
                 'concentration': labels.mean(axis=0),
+            },
+            'dirichlet_mean_norm': {
+                # prior knowledge from data alone for initial value
+                'concentration': labels.mean(axis=0) / 60,
+            },
+            'dirichlet_ones': {
+                'concentration': np.ones(5),
             },
         }
     else:
