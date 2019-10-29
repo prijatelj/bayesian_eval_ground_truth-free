@@ -496,6 +496,9 @@ def test_dirichlet(
     src_distrib = tfp.distributions.Dirichlet(**src_params)
     data = src_distrib.sample(sample_size).eval(session=tf.Session())
 
+    # TODO ? round to tiny floating point decimals to try to avoid NaNs
+    #data = np.maximum(data, np.finfo(data.dtype).tiny)
+
     # Set the initial distribution args
     distrib_args = {
         'discrete_uniform': {'high': 1000, 'low': -1000},
