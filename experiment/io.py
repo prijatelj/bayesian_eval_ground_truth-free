@@ -271,7 +271,7 @@ def add_mle_args(parser):
 
     mle.add_argument(
         '--tol_chain',
-        default=1,
+        default=3,
         type=int,
         help=' '.join([
             'The number of iterations that a tolerance must be surpassed in',
@@ -289,7 +289,8 @@ def add_mle_args(parser):
     # optimizer_args
     mle.add_argument(
         '--learning_rate',
-        default=1e-3,
+        #default=1e-3,
+        default=.8,
         type=float,
         help='A Tensor or a floating point vlaue. The learning rate.',
         dest='mle.optimizer_args.learning_rate',
