@@ -194,7 +194,7 @@ class SupervisedJointDistrib(object):
                 if mle_args:
                     mle_results = distribution_tests.mle_adam(
                         distrib,
-                        data,
+                        np.maximum(data, np.finfo(data.dtype).tiny),
                         init_params={
                             'total_count': total_count,
                             'concentration': np.mean(data, axis=0),
@@ -215,7 +215,7 @@ class SupervisedJointDistrib(object):
                 if mle_args:
                     mle_results = distribution_tests.mle_adam(
                         distrib,
-                        data,
+                        np.maximum(data, np.finfo(data.dtype).tiny),
                         init_params={'concentration': np.mean(data, axis=0)},
                         **mle_args,
                     )
@@ -231,7 +231,7 @@ class SupervisedJointDistrib(object):
 
                     mle_results = distribution_tests.mle_adam(
                         distrib,
-                        data,
+                        np.maximum(data, np.finfo(data.dtype).tiny),
                         init_params={
                             'loc': np.mean(data, axis=0),
                             'covariance_matrix': np.cov(data, bias=False, rowvar=False),
@@ -262,7 +262,7 @@ class SupervisedJointDistrib(object):
             ):
                 return  distribution_tests.mle_adam(
                     distrib['distrib_id'],
-                    data,
+                    np.maximum(data, np.finfo(data.dtype).tiny),
                     init_params=distrib['params'],
                     **mle_args,
                 )
@@ -545,7 +545,7 @@ class SupervisedJointDistrib(object):
 
             self.target_distrib = distribution_tests.mle_adam(
                 distrib['distrib_id'],
-                data,
+                np.maximum(data, np.finfo(data.dtype).tiny),
                 init_params=distrib['params'],
                 **mle_args,
             )
@@ -559,13 +559,29 @@ class SupervisedJointDistrib(object):
 
         # TODO predictor output is not so easy, if only have transform distrib,
         # then able to get empirical pdf of predictor output via samplingG;;
+        if (
+            isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial)
+            or isinstance(self.target_distrib, tfp.distributions.Dirichlet)
+        ):
+            targets = np.maximum(values[0], np.finfo(values[0].dtype).tiny)
+        else:
+            targets = values[0]
+
+        preds = values[1]
+
         if self.independent:
+            if (
+                isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial)
+                or isinstance(self.transform_distrib, tfp.distributions.Dirichlet)
+            ):
+                pred = np.maximum(pred, np.finfo(values[0].dtype).tiny)
+
             return (
-                self.target_distrib.log_prob(values[0]).eval(session=tf.Session()),
-                self.transform_distrib.log_prob(values[1]).eval(session=tf.Session()),
+                self.target_distrib.log_prob(targets).eval(session=tf.Session()),
+                self.transform_distrib.log_prob(preds).eval(session=tf.Session()),
             )
 
         return (
-            self.target_distrib.log_prob(values[0]).eval(session=tf.Session()),
-            self.pred_distrib.log_prob(values[1]).eval(session=tf.Session()),
+            self.target_distrib.log_prob(targets).eval(session=tf.Session()),
+            self.pred_distrib.log_prob(preds).eval(session=tf.Session()),
         )
