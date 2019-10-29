@@ -553,28 +553,21 @@ class SupervisedJointDistrib(object):
             raise TypeError('`distrib` is expected to be of type `str` or '
                 + f'`dict` not `{type(distrib)}`')
 
-    def log_prob(self, values):
-        """Log probability density/mass function."""
-        # TODO target distrib always easy, just tfp. ... . log_prob()
-
-        # TODO predictor output is not so easy, if only have transform distrib,
-        # then able to get empirical pdf of predictor output via samplingG;;
+    def log_prob(self, targets, preds):
+        """Log probability density/mass function calculation for the individual
+        random variables."""
         if (
             isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial)
             or isinstance(self.target_distrib, tfp.distributions.Dirichlet)
         ):
-            targets = np.maximum(values[0], np.finfo(values[0].dtype).tiny)
-        else:
-            targets = values[0]
-
-        preds = values[1]
+            targets = np.maximum(targets, np.finfo(targets.dtype).tiny)
 
         if self.independent:
             if (
                 isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial)
                 or isinstance(self.transform_distrib, tfp.distributions.Dirichlet)
             ):
-                pred = np.maximum(pred, np.finfo(values[0].dtype).tiny)
+                pred = np.maximum(pred, np.finfo(targets.dtype).tiny)
 
             return (
                 self.target_distrib.log_prob(targets).eval(session=tf.Session()),
