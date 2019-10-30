@@ -10,7 +10,6 @@ from numbers import Number
 import sys
 
 import numpy as np
-from sklearn.neighbors.kde import KernelDensity
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -23,14 +22,14 @@ from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
 
 def test_identical(
     output_dir,
-    #total_count,
     concentration,
     num_classes,
+    loc,
+    covariance_matrix,
+    kfolds=5,
     sample_size=1000,
     info_criterions=['bic', 'aic', 'hqc'],
     random_seed=None,
-    #init_total_count=None,
-    init_concentration=None,
     repeat_mle=1,
     test_independent=True,
     mle_args=None,
@@ -69,17 +68,17 @@ def test_identical(
     """
     # Create the source target distribution
     src_target_params = experiment.distrib.get_dirichlet_params(
-        #total_count,
         concentration,
         num_classes,
     )
 
     # Create the source transform distribution
-    src_transform_params =  experiment.distrib.get_multivariate_normal_full_cov_params(
+    src_transform_params = experiment.distrib.get_multivariate_normal_full_cov_params(
         loc,
         covariance_matrix,
     )
 
+    # Combine them into a joint distribution
     src_joint_distrib = SupervisedJointDistrib(
         tfp.distributions.Dirichlet(**src_target_params),
         tfp.distributions.MultivariateNormalFullCovariance(
@@ -88,9 +87,10 @@ def test_identical(
         sample_dim=len(src_target_params['concentration']),
     )
 
-    data = src_joint_distrib.sample(sample_size)
+    # Create the sample data that the distribs will fit.
+    target, pred = src_joint_distrib.sample(sample_size)
 
-    # TODO set the other distribs, POI, UMVUE, MLE_adam (if flag is True)
+    # Save the distribs args
     distrib_args = {'source_distrib': {
         'target_distrib': src_target_params,
         'transform_distrib': src_transform_params,
@@ -99,8 +99,7 @@ def test_identical(
     # Principle of Indifference distribution (the lowest baseline) No dependence
     distrib_args['principle_of_indifference'] = {
         'target_distrib': {
-            #'total_count': src_target_params['total_count'],
-            'concentration': [1] * data.shape[1],
+            'concentration': [1] * num_classes,
         },
     }
     distrib_args['principle_of_indifference']['transform_distrib'] = distrib_args['principle_of_indifference']['target_distrib']
@@ -109,92 +108,118 @@ def test_identical(
         tfp.distributions.Dirichlet(
             **distrib_args['principle_of_indifference']['target_distrib'],
         ),
-        tfp.distributions.MultivariateNormalFullCovariance(
+        tfp.distributions.Dirichlet(
             **distrib_args['principle_of_indifference']['transform_distrib'],
         ),
-        sample_dim=data.shape[1],
+        sample_dim=num_classes,
         independent=True,
     )
 
     # Dict to store all info and results for this test as a JSON.
-    results = {'kfolds': kfolds, 'invariant_distribs': distrib_args, 'focus_folds': {}}
+    results = {
+        'kfolds': kfolds,
+        'invariant_distribs': distrib_args,
+        'focus_folds': {},
+    }
 
-    # concentration + class means + covariances
-    num_src_params = data.shape[1] * 2 + np.ceil((data.shape[1] ** 2) / 2)
+    # number of params = 2 * |concentration|
+    num_independent_params = 2 * num_classes
+    # number of params = |concentration| + |class means| + |covariances|
+    num_src_params = num_independent_params + num_classes * (num_classes + 1) / 2
+
+    # Create list of distribs to loop through in each fold.
+    distribs = ['src', 'poi', 'umvu']
+    if test_independent:
+        distribs += ['independent_umvu']
+    if mle_args is not None:
+        distribs += ['umvu_mle']
+        if test_independent:
+            distribs += ['independent_umvu_mle']
 
     # K Fold CV of fitting methods UMVUE and MLE (via Adam) SJDs.
-    for i, (train_idx, test_idx) in enumerate(kfold_generator(kfolds, data)):
+    for i, (train_idx, test_idx) in enumerate(kfold_generator(kfolds, target)):
         if random_seed:
             np.random.seed(random_seed)
             tf.set_random_seed(random_seed)
 
         focus_fold = {}
 
-        umvue = SupervisedJointDistrib(
-            'Dirichlet',
-            'MultivariateNormal',
-            target[train_idx],
-            pred[train_idx],
-        )
+        for distrib in distribs:
+            if distrib == 'src':
+                sjd = src_joint_distrib
+                num_params = num_src_params
+            elif distrib == 'poi':
+                sjd = principle_of_indifference
+                num_params = num_independent_params
+            elif distrib == 'umvu':
+                sjd = SupervisedJointDistrib(
+                    'Dirichlet',
+                    'MultivariateNormal',
+                    target[train_idx],
+                    pred[train_idx],
+                )
+                num_params = num_src_params
+            elif distrib == 'umvu_mle':
+                sjd = SupervisedJointDistrib(
+                    'Dirichlet',
+                    'MultivariateNormal',
+                    target[train_idx],
+                    pred[train_idx],
+                    mle_args=mle_args,
+                )
+                num_params = num_src_params
+            elif distrib == 'independent_umvu':
+                sjd = SupervisedJointDistrib(
+                    'Dirichlet',
+                    'Dirichlet',
+                    target[train_idx],
+                    pred[train_idx],
+                    independent=True,
+                )
+                num_params = num_independent_params
+            elif distrib == 'independent_umvu_mle':
+                sjd = SupervisedJointDistrib(
+                    'Dirichlet',
+                    'Dirichlet',
+                    target[train_idx],
+                    pred[train_idx],
+                    mle_args=mle_args,
+                    independent=True,
+                )
+                num_params = num_independent_params
 
-        # evaluate on in & out of sample: SRC, POI, UMVUE, Independents
-        # calculate Likelihood
-
-        # in-sample/training log prob
-        focus_fold['src']['train']['log_prob'] = src.log_prob(target[train_idx], pred[train_idx])
-        focus_fold['poi']['train']['log_prob'] = poi.log_prob(target[train_idx], pred[train_idx])
-        focus_fold['umvue']['train']['log_prob'] = umvue.log_prob(target[train_idx], pred[train_idx])
-
-        # out-sample/testing log prob
-        log_prob['test']['src'] = src.log_prob(target[test_idx], pred[test_idx])
-        log_prob['test']['poi'] = poi.log_prob(target[test_idx], pred[test_idx])
-        log_prob['test']['umvue'] = umvue.log_prob(target[test_idx], pred[test_idx])
-
-
-        for distrib in distrib_args:
-            # in-sample/training log prob
-            log_prob['train']['src'] = src.log_prob(target[train_idx], pred[train_idx])
-
-            # calculate Information criterions
-            focus_fold['']= distribution_tests.calc_info_criterion(
-                umvue_log_prob,
-                num_src_params,
-            )
-
-            # out-sample/testing log prob
-            log_prob['test']['src'] = src.log_prob(target[test_idx], pred[test_idx])
-
-
-        if test_independent:
-            independent_umvue = SupervisedJointDistrib(
-                'Dirichlet',
-                'Dirichlet',
+            # In sample log prob
+            focus_fold[distrib]['train']['log_prob'] = sjd.log_prob(
                 target[train_idx],
                 pred[train_idx],
-                independent=True,
+            )
+            # In sample info criterions
+            focus_fold[distrib]['train']['info_criterion'] = distribution_tests.calc_info_criterion(
+                focus_fold[distrib]['train']['log_prob'],
+                num_params,
+                info_criterions,
+                num_samples=len(train_idx),
             )
 
-        # TODO If mle_args given, use an MLE method
-        if mle_args is not None:
-            umvue_mle = SupervisedJointDistrib(
-                'Dirichlet',
-                'MultivariateNormal',
-                target[train_idx],
-                pred[train_idx],
-                mle_args=mle_args,
+            # Out sample log prob
+            focus_fold[distrib]['test']['log_prob'] = sjd.log_prob(
+                target[test_idx],
+                pred[test_idx],
             )
-
-            focus_fold['mle']['train']['log_prob']
+            # Out sample info criterions
+            focus_fold[distrib]['test']['info_criterion'] = distribution_tests.calc_info_criterion(
+                focus_fold[distrib]['test']['log_prob'],
+                num_params,
+                info_criterions,
+                num_samples=len(test_idx),
+            )
 
         # Save all the results for this fold.
         results['focus_folds'][i + 1] = focus_fold
 
-
-
     # TODO Iteratively save ?  Save the results
-
     experiment.io.save_json(
-        os.path.join(args.output_dir, 'test_SJD_identical.json'),
+        os.path.join(output_dir, 'test_SJD_identical.json'),
         results,
     )
 
@@ -229,6 +254,7 @@ def test_shift(shift=1, shift_right=True):
     other for so many spots with wrap around.
     """
     pass
+
 
 if __name__ == '__main__':
     # TODO write up argparse code for this (possibly repurposing older args).
