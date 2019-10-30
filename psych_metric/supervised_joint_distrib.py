@@ -157,15 +157,12 @@ class SupervisedJointDistrib(object):
         elif isinstance(transform_distrib, tfp.distributions.Distribution):
             # Use given distribution as the fitted dependent distribution
             self.transform_distrib = transform_distrib
-        elif isinstance(transform_distrib, dict):
+        else:
             self.transform_distrib = self._fit_transform_distrib(
                 target,
                 pred,
                 transform_distrib,
             )
-        else:
-            raise TypeError('`transform_distrib` is expected to be either of '
-                + 'type `tfp.distributions.Distribution` or `dict`.')
 
         # Create the Tensorflow session and ops for sampling
         self._create_sampling_attributes(tf_sess_config)
@@ -579,49 +576,49 @@ class SupervisedJointDistrib(object):
             raise TypeError('`distrib` is expected to be of type `str` or '
                 + f'`dict` not `{type(distrib)}`')
 
-    def knn_log_prob(self, preds, k=None):
+    def knn_log_prob(self, pred, k=None):
         """Empirically estimates the predictor log probability using K Nearest
         Neighbords.
         """
         if k is None:
             k = self.num_neighbors
-        if len(preds.shape) == 1:
+        if len(pred.shape) == 1:
             # single sample
-            preds = preds.reshape(1, -1)
+            pred = pred.reshape(1, -1)
 
-        radius = self.knn_tree.query(preds, k)[0][:, -1]
+        radius = self.knn_tree.query(pred, k)[0][:, -1]
 
         # log(k) - log(n) - log(volume)
         log_prob = np.log(k) - np.log(self.knn_pdf_num_samples)
 
         # calculate the n-1 sphere volume being contained w/in the n-1 simplex
         n = self.transform_matrix.shape[1] - 1
-        log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) - scipy.special.gammaln(n / 2 + 1)
+        log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) + scipy.special.gammaln(n / 2 + 1)
 
         return log_prob
 
-    def log_prob(self, targets, preds, num_neighbors=None):
+    def log_prob(self, target, pred, num_neighbors=None):
         """Log probability density/mass function calculation for the individual
         random variables."""
         if (
             isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial)
             or isinstance(self.target_distrib, tfp.distributions.Dirichlet)
         ):
-            targets = np.maximum(targets, np.finfo(targets.dtype).tiny)
+            target = np.maximum(target, np.finfo(target.dtype).tiny)
 
         if self.independent:
             if (
                 isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial)
                 or isinstance(self.transform_distrib, tfp.distributions.Dirichlet)
             ):
-                pred = np.maximum(pred, np.finfo(targets.dtype).tiny)
+                pred = np.maximum(pred, np.finfo(target.dtype).tiny)
 
             return (
-                self.target_distrib.log_prob(targets).eval(session=tf.Session()),
-                self.transform_distrib.log_prob(preds).eval(session=tf.Session()),
+                self.target_distrib.log_prob(target).eval(session=tf.Session()),
+                self.transform_distrib.log_prob(pred).eval(session=tf.Session()),
             )
 
         return (
-            self.target_distrib.log_prob(targets).eval(session=tf.Session()),
-            self.knn_log_prob(preds, num_neighbors),
+            self.target_distrib.log_prob(target).eval(session=tf.Session()),
+            self.knn_log_prob(pred, num_neighbors),
         )
