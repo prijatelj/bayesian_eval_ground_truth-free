@@ -117,7 +117,7 @@ def test_identical(
     )
 
     # Dict to store all info and results for this test as a JSON.
-    results = {'kfolds': kfolds, 'focus_folds': {}}
+    results = {'kfolds': kfolds, 'invariant_distribs': distrib_args, 'focus_folds': {}}
 
     # concentration + class means + covariances
     num_src_params = data.shape[1] * 2 + np.ceil((data.shape[1] ** 2) / 2)
@@ -128,7 +128,7 @@ def test_identical(
             np.random.seed(random_seed)
             tf.set_random_seed(random_seed)
 
-        results['focus_folds'][i + 1] = {'init_params': {}}
+        focus_fold = {}
 
         umvue = SupervisedJointDistrib(
             'Dirichlet',
@@ -139,24 +139,31 @@ def test_identical(
 
         # evaluate on in & out of sample: SRC, POI, UMVUE, Independents
         # calculate Likelihood
-        umvue_log_prob = umvue.log_prob(target[test_idx], pred[test_idx])
 
-        # calculate Information criterions
-        distribution_tests.calc_info_criterion(
-            umvue_log_prob,
-            num_src_params,
-        )
+        # in-sample/training log prob
+        focus_fold['src']['train']['log_prob'] = src.log_prob(target[train_idx], pred[train_idx])
+        focus_fold['poi']['train']['log_prob'] = poi.log_prob(target[train_idx], pred[train_idx])
+        focus_fold['umvue']['train']['log_prob'] = umvue.log_prob(target[train_idx], pred[train_idx])
 
-        # TODO target distribution is straight-forward,
-        # TODO predictor distribution is not as straight-forward:
-        #   Need to marginalize over the input of the transform to get distrib
-        #   of the predictor output. Getting an empirical distribution via
-        #   samlping.
-        #   This involves: set samples as x, cdf is y, if y values uniformly
-        #   spread & mapped those values to x, gets the CDF of any prob
-        #   OR, use scikit-learn Kernel Density Estimation (tophat) because
-        #   this is a distribution of discrete distributions (thus continuous
-        #   on the first distribution, but finite support).
+        # out-sample/testing log prob
+        log_prob['test']['src'] = src.log_prob(target[test_idx], pred[test_idx])
+        log_prob['test']['poi'] = poi.log_prob(target[test_idx], pred[test_idx])
+        log_prob['test']['umvue'] = umvue.log_prob(target[test_idx], pred[test_idx])
+
+
+        for distrib in distrib_args:
+            # in-sample/training log prob
+            log_prob['train']['src'] = src.log_prob(target[train_idx], pred[train_idx])
+
+            # calculate Information criterions
+            focus_fold['']= distribution_tests.calc_info_criterion(
+                umvue_log_prob,
+                num_src_params,
+            )
+
+            # out-sample/testing log prob
+            log_prob['test']['src'] = src.log_prob(target[test_idx], pred[test_idx])
+
 
         if test_independent:
             independent_umvue = SupervisedJointDistrib(
@@ -176,6 +183,13 @@ def test_identical(
                 pred[train_idx],
                 mle_args=mle_args,
             )
+
+            focus_fold['mle']['train']['log_prob']
+
+        # Save all the results for this fold.
+        results['focus_folds'][i + 1] = focus_fold
+
+
 
     # TODO Iteratively save ?  Save the results
 
