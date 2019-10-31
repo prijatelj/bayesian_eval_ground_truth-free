@@ -141,21 +141,13 @@ def calc_info_criterion(mle, num_params, criterions, num_samples=None):
     info_criterion = {}
 
     if 'bic' in criterions:
-        info_criterion['bic'] = distribution_tests.bic(
-            mle,
-            num_params,
-            num_samples,
-        )
+        info_criterion['bic'] = bic(mle, num_params, num_samples)
 
     if 'aic' in criterions:
-        info_criterion['aic'] = distribution_tests.aic(mle, num_params)
+        info_criterion['aic'] = aic(mle, num_params)
 
     if 'hqc' in criterions:
-        info_criterion['hqc'] = distribution_tests.hqc(
-            mle,
-            num_params,
-            num_samples,
-        )
+        info_criterion['hqc'] = hqc(mle, num_params, num_samples)
 
     return info_criterion
 
