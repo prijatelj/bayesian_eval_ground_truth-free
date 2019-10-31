@@ -49,5 +49,7 @@ def kfold_generator(
 
     for other_folds, focus_fold in fold_indices:
         # Set the correct train and test indices
-        yield (focus_fold, other_folds if train_focus_fold
-            else other_folds, focus_fold)
+        if train_focus_fold:
+            yield focus_fold, other_folds
+        else:
+            yield other_folds, focus_fold
