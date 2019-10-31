@@ -223,7 +223,7 @@ class SupervisedJointDistrib(object):
                     )
 
                     return  tfp.distributions.DirichletMultinomial(
-                        **mle_results.params
+                        **mle_results[0].params
                     )
 
                 return  tfp.distributions.DirichletMultinomial(
@@ -239,8 +239,8 @@ class SupervisedJointDistrib(object):
                         **mle_args,
                     )
 
-                    return  tfp.distributions.DirichletMultinomial(
-                        **mle_results.params
+                    return  tfp.distributions.Dirichlet(
+                        **mle_results[0].params
                     )
 
                 return  tfp.distributions.Dirichlet(np.mean(data, axis=0))
@@ -258,7 +258,7 @@ class SupervisedJointDistrib(object):
                     )
 
                     return  tfp.distributions.DirichletMultinomial(
-                        **mle_results.params
+                        **mle_results[0].params
                     )
                 """
 
@@ -331,11 +331,16 @@ class SupervisedJointDistrib(object):
             # Convert the normalized target samples into the n-1 simplex basis.
             #target_simplex_samples = self.transform_matrix @ \
             #    (norm_target_samples - origin_adjust)
-            target_simplex_samples = (norm_target_samples - origin_adjust) \
-                @ self.transform_matrix.T
+            target_simplex_samples = tf.cast(
+                (norm_target_samples - origin_adjust) @ self.transform_matrix.T,
+                tf.float32,
+            )
 
             # Draw the transform distances from transform distribution
-            transform_dists = self.transform_distrib.sample(num_samples)
+            transform_dists = tf.cast(
+                self.transform_distrib.sample(num_samples),
+                tf.float32,
+            )
 
             # Add the target to the transform distance to undo distance calc
             pred_simplex_samples = transform_dists + target_simplex_samples
@@ -362,7 +367,7 @@ class SupervisedJointDistrib(object):
 
     def _create_empirical_predictor_pdf(
         self,
-        num_samples=1e6,
+        num_samples=int(1e6),
         sess_config=None,
     ):
         """Creates a probability density function for the predictor output from
@@ -371,7 +376,7 @@ class SupervisedJointDistrib(object):
 
         Parameters
         ----------
-        num_samples : int, optional (default=10000)
+        num_samples : int, optional (default=int(1e6))
             The number of samples to draw from the joint distribution to use to
             get samples of the predictor output to use in fitting the KDE.
         kernel : str
@@ -380,8 +385,6 @@ class SupervisedJointDistrib(object):
         target_samples, pred_samples = self.sample(num_samples)
         del target_samples
 
-        if sess_config is None:
-            sess_config = tf.Session()
         self.knn_tree = BallTree(pred_samples)
         self.knn_pdf_num_samples = num_samples
 
@@ -614,7 +617,7 @@ class SupervisedJointDistrib(object):
                 isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial)
                 or isinstance(self.transform_distrib, tfp.distributions.Dirichlet)
             ):
-                pred = np.maximum(pred, np.finfo(target.dtype).tiny)
+                pred = np.maximum(pred, np.finfo(pred.dtype).tiny)
 
             return (
                 self.target_distrib.log_prob(target).eval(session=tf.Session()),
