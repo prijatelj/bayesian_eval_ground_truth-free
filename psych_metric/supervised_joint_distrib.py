@@ -169,13 +169,11 @@ class SupervisedJointDistrib(object):
 
         # Create the Tensorflow session and ops for sampling
         self._create_sampling_attributes(tf_sess_config)
-
-        if not self.independent:
-            # Create the predictor output pdf estimate
-            self._create_empirical_predictor_pdf()
-        else:
-            #self.pred_distrib = None
-            self.knn_tree = None
+        self._create_log_joint_prob_attributes(
+            self.independent,
+            tf_sess_config,
+        )
+        #self._create_empirical_predictor_pdf(independent=self.independent)
 
     def __copy__(self):
         cls = self.__class__
@@ -365,10 +363,83 @@ class SupervisedJointDistrib(object):
             tf.local_variables_initializer(),
         ))
 
+    def _create_log_joint_prob_attributes(
+        self,
+        independent,
+        sess_config=None,
+    ):
+        if independent:
+            self.tf_log_prob_sess = None
+            self.joint_log_prob = None
+            self.log_prob_target_samples = None
+            self.log_prob_pred_samples = None
+            return
+
+        self.tf_log_prob_sess = tf.Session(config=sess_config)
+
+        # The target and predictor samples will be given.
+        log_prob_target_samples = tf.placeholder(
+            tf.float32,
+            name='log_prob_target_samples',
+        )
+        log_prob_pred_samples = tf.placeholder(
+            tf.float32,
+            name='log_prob_pred_samples',
+        )
+
+        # Normalize the samples for use with dependent transform
+        if isinstance(
+            self.target_distrib,
+            tfp.distributions.DirichletMultinomial,
+        ):
+            norm_target_samples = log_prob_target_samples / self.total_count
+        else:
+            norm_target_samples = log_prob_target_samples
+
+        if isinstance(
+            self.transform_distrib,
+            tfp.distributions.DirichletMultinomial,
+        ):
+            norm_pred_samples = log_prob_pred_samples / self.total_count
+        else:
+            norm_pred_samples = log_prob_pred_samples
+
+        # Create the origin adjustment for going to and from n-1 simplex.
+        origin_adjust = np.zeros(self.transform_matrix.shape[1])
+        origin_adjust[0] = 1
+
+        # Convert the normalized samples into the n-1 simplex basis.
+        target_simplex_samples = tf.cast(
+            (norm_target_samples - origin_adjust) @ self.transform_matrix.T,
+            tf.float32,
+        )
+        pred_simplex_samples = tf.cast(
+            (norm_pred_samples - origin_adjust) @ self.transform_matrix.T,
+            tf.float32,
+        )
+
+        # Get the distances between pred and target
+        distances = pred_simplex_samples - target_simplex_samples
+
+        # Calculate the transform distrib's log prob of these distances
+        self.joint_log_prob = self.transform_distrib.log_prob(distances)
+
+        # Save the placeholders as class attributes
+        self.log_prob_target_samples = log_prob_target_samples
+        self.log_prob_pred_samples = log_prob_pred_samples
+
+        # Run once. the saved memory is freed upon this class instance deletion.
+        self.tf_log_prob_sess.run((
+            tf.global_variables_initializer(),
+            tf.local_variables_initializer(),
+        ))
+
+        return
+
     def _create_empirical_predictor_pdf(
         self,
         num_samples=int(1e6),
-        sess_config=None,
+        independent=False,
     ):
         """Creates a probability density function for the predictor output from
         the transform distribution via sampling of the joint distribution and
@@ -382,11 +453,15 @@ class SupervisedJointDistrib(object):
         kernel : str
             The kernel identifier to be used by the KDE. Defaults to "tophat".
         """
-        target_samples, pred_samples = self.sample(num_samples)
-        del target_samples
+        if independent:
+            self.knn_tree = None
+            self.knn_pdf_num_samples = None
+        else:
+            target_samples, pred_samples = self.sample(num_samples)
+            del target_samples
 
-        self.knn_tree = BallTree(pred_samples)
-        self.knn_pdf_num_samples = num_samples
+            self.knn_tree = BallTree(pred_samples)
+            self.knn_pdf_num_samples = num_samples
 
     def _is_prob_distrib(
         self,
@@ -574,7 +649,7 @@ class SupervisedJointDistrib(object):
 
             self.target_distrib = distribution_tests.mle_adam(
                 distrib['distrib_id'],
-                np.maximum(data, np.finfo(data.dtype).tiny),
+                np.maximum(target, np.finfo(target.dtype).tiny),
                 init_params=distrib['params'],
                 #**mle_args,
             )
@@ -603,7 +678,13 @@ class SupervisedJointDistrib(object):
 
         return log_prob
 
-    def log_prob(self, target, pred, num_neighbors=None, joint=True):
+    def log_prob(
+        self,
+        target,
+        pred,
+        num_neighbors=None,
+        return_individuals=False,
+    ):
         """Log probability density/mass function calculation for the either the
         joint probability by default or the individual random variables.
 
@@ -620,7 +701,9 @@ class SupervisedJointDistrib(object):
             used if the 2nd random variable is dependent upon 1st, meaning we
             use a stochastic transform funciton.
         joint : bool
-            If True then returns the joint log probability p(target, pred).
+            If True then returns the joint log probability p(target, pred),
+            otherwise returns a tuple/list of the two random variables
+            individual log probabilities.
 
         Returns
         -------
@@ -641,15 +724,39 @@ class SupervisedJointDistrib(object):
             ):
                 pred = np.maximum(pred, np.finfo(pred.dtype).tiny)
 
-            log_prob_pair = (
-                self.target_distrib.log_prob(target).eval(session=tf.Session()),
-                self.transform_distrib.log_prob(pred).eval(session=tf.Session()),
-            )
-            return log_prob_pair[0] * log_prob_pair[1] if joint else log_prob_pair
+            with tf.Session() as sess:
+                log_prob_pair = sess.run((
+                    self.target_distrib.log_prob(target),
+                    self.transform_distrib.log_prob(pred)
+                ))
 
-        log_prob_pair = (
-            self.target_distrib.log_prob(target).eval(session=tf.Session()),
-            self.knn_log_prob(pred, num_neighbors),
+            if return_individuals:
+                return (
+                    log_prob_pair[0] * log_prob_pair[1],
+                    log_prob_pair[0],
+                    log_prob_pair[1],
+                )
+
+            return log_prob_pair[0] * log_prob_pair[1]
+
+        log_prob_target = self.target_distrib.log_prob(target).eval(
+            session=tf.Session(),
         )
 
-        return log_prob_pair[0] * log_prob_pair[1] if joint else log_prob_pair
+        # Calculate the log prob of the stochastic transform function
+        log_prob_pred = self.tf_log_prob_sess.run(
+            self.joint_log_prob,
+            feed_dict={
+                self.log_prob_target_samples: target,
+                self.log_prob_pred_samples: pred,
+            },
+        )
+
+        if return_individuals:
+            return (
+                log_prob_target * log_prob_pred,
+                log_prob_target,
+                log_prob_pred,
+            )
+
+        return log_prob_target * log_prob_pred
