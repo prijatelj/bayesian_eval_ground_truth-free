@@ -2,12 +2,8 @@
 the supervised joint distribution with dependency between the joint random
 variables.
 """
-import argparse
-import json
 import logging
 import os
-from numbers import Number
-import sys
 
 import numpy as np
 import tensorflow as tf
@@ -30,7 +26,6 @@ def test_identical(
     sample_size=1000,
     info_criterions=['bic', 'aic', 'hqc'],
     random_seed=None,
-    repeat_mle=1,
     test_independent=True,
     mle_args=None,
 ):
@@ -76,6 +71,7 @@ def test_identical(
     src_transform_params = experiment.distrib.get_multivariate_normal_full_cov_params(
         loc,
         covariance_matrix,
+        num_classes,
     )
 
     # Combine them into a joint distribution
@@ -99,7 +95,7 @@ def test_identical(
     # Principle of Indifference distribution (the lowest baseline) No dependence
     distrib_args['principle_of_indifference'] = {
         'target_distrib': {
-            'concentration': [1] * num_classes,
+            'concentration': [1] * target.shape[1],
         },
     }
     distrib_args['principle_of_indifference']['transform_distrib'] = distrib_args['principle_of_indifference']['target_distrib']
@@ -111,7 +107,7 @@ def test_identical(
         tfp.distributions.Dirichlet(
             **distrib_args['principle_of_indifference']['transform_distrib'],
         ),
-        sample_dim=num_classes,
+        sample_dim=target.shape[1],
         independent=True,
     )
 
@@ -123,9 +119,9 @@ def test_identical(
     }
 
     # number of params = 2 * |concentration|
-    num_independent_params = 2 * num_classes
+    num_independent_params = 2 * target.shape[1]
     # number of params = |concentration| + |class means| + |covariances|
-    num_src_params = num_independent_params + num_classes * (num_classes + 1) / 2
+    num_src_params = num_independent_params + target.shape[1] * (target.shape[1] + 1) / 2
 
     # Create list of distribs to loop through in each fold.
     distribs = ['src', 'poi', 'umvu']
@@ -256,6 +252,119 @@ def test_shift(shift=1, shift_right=True):
     pass
 
 
+def add_test_sjd_args(parser):
+    """Adds the test SJD arguments to the argparser."""
+    sjd = parser.add_argument_group(
+        'sjd',
+        'Arguments pertaining to tests evaluating the'
+        + 'SupervisedJointDistribution in fitting simulated data.',
+    )
+
+    sjd.add_argument(
+        '--test_id',
+        default='identical',
+        help='The SupervisedJointDistrib test to be performed.',
+        choices=[
+            'identical',
+            'identity_transform',
+            'arg_extreme',
+        ],
+        dest='sjd.test_id',
+    )
+
+    sjd.add_argument(
+        '--sample_size',
+        default=1000,
+        type=int,
+        help='The number of samples to draw from the source distribution.',
+        dest='sjd.sample_size',
+    )
+
+    # concentration
+    sjd.add_argument(
+        '--concentration',
+        type=experiment.io.multi_typed_arg(
+            float,
+            lambda x: np.array(x.split(), dtype=float),
+        ),
+        help=' '.join([
+            'Either a positive float or a list of postive floats indicating',
+            'the concentrations for as many classes there are in ',
+        ]),
+        dest='sjd.concentration',
+        required=experiment.io.check_argv(
+            ['test_identical'],
+            '--test_id',
+        ),
+    )
+
+    sjd.add_argument(
+        '--num_classes',
+        type=int,
+        help='Number of classes in the data.',
+        dest='sjd.num_classes',
+        required=(
+            experiment.io.check_argv(
+                ['test_identical'],
+                '--test_id',
+            )
+            and experiment.io.check_argv(float, '--concentration')
+        ),
+    )
+
+
+    # loc
+    sjd.add_argument(
+        '--loc',
+        type=experiment.io.multi_typed_arg(
+            float,
+            lambda x: np.array(x.split(), dtype=float),
+        ),
+        help=' '.join([
+            'Either a positive float or a list of postive floats indicating',
+            'the means for each dimension of the Multivariate Normal. Default',
+            'value of None results in a randomly selected value for the loc.',
+        ]),
+        default=None,
+        dest='sjd.loc',
+    )
+
+    # covariance_matrix: random,
+    sjd.add_argument(
+        '--covariance_matrix',
+        type=float,
+        help=' '.join([
+            'A positive float for the value of all diagonal values in the',
+            'covariance matrix. Default value of None results in a randomly',
+            'selected covariance matrix.',
+        ]),
+        default=None,
+        dest='sjd.covariance_matrix',
+    )
+
+
+    # sjd.knn fitting size
+
+
 if __name__ == '__main__':
     # TODO write up argparse code for this (possibly repurposing older args).
-    raise NotImplementedError
+    args, random_seeds = experiment.io.parse_args(
+        'mle',
+        add_test_sjd_args,
+        description=' '.join([
+            'Perform tests via simulated data to evaluate the quality of',
+            'SupervisedJointDistribution in fitting arbitrary data.'
+        ]),
+    )
+
+    #if args.sjd.test_id == 'identical':
+    test_identical(
+        args.output_dir,
+        args.sjd.concentration,
+        args.sjd.num_classes if args.sjd.num_classes else len(args.sjd.concentration),
+        args.sjd.loc,
+        args.sjd.covariance_matrix,
+        args.kfold_cv.kfolds,
+        args.sjd.sample_size,
+        mle_args=vars(args.mle),
+    )
