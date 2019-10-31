@@ -204,7 +204,7 @@ def get_multivariate_normal_full_cov_params(
         params['covariance_matrix'] = (params['covariance_matrix'] + params['covariance_matrix'].T) / 2
 
         # Ensure positive definite matrix
-        params['covariance_matrix'] += sample_dim * np.eye(sample_dim)
+        params['covariance_matrix'] += 0.05 * np.eye(sample_dim)
     else:
         raise TypeError(
             'Wrong type for `covariance_matrix`. '
