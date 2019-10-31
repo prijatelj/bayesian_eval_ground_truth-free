@@ -125,10 +125,12 @@ def test_identical(
         'focus_folds': {},
     }
 
-    # number of params = 2 * |concentration|
-    num_independent_params = 2 * target.shape[1]
-    # number of params = |concentration| + |class means| + |covariances|
-    num_src_params = num_independent_params + target.shape[1] * (target.shape[1] + 1) / 2
+    # Concentration is number of classes
+    num_dir_params = target.shape[1]
+    # Mean is number of classes, and Covariance Matrix is a triangle matrix
+    num_mvn_params = target.shape[1] + target.shape[1] * (target.shape[1] + 1) / 2
+    num_independent_params = 2 * num_dir_params
+    num_src_params = num_dir_params + num_mvn_params
 
     # Create list of distribs to loop through in each fold.
     distribs = ['src', 'poi', 'umvu']
@@ -150,10 +152,19 @@ def test_identical(
         for distrib in distribs:
             if distrib == 'src':
                 sjd = src_joint_distrib
-                num_params = num_src_params
+                # TODO make num params a dict of joint, target, pred/transform
+                num_params = {
+                    'joint': num_src_params,
+                    'target': num_dir_params,
+                    'transform': num_mvn_params,
+                }
             elif distrib == 'poi':
                 sjd = principle_of_indifference
-                num_params = num_independent_params
+                num_params = {
+                    'joint': num_independent_params,
+                    'target': num_dir_params,
+                    'transform': num_dir_params,
+                }
             elif distrib == 'umvu':
                 sjd = SupervisedJointDistrib(
                     'Dirichlet',
@@ -161,7 +172,13 @@ def test_identical(
                     target[train_idx],
                     pred[train_idx],
                 )
-                num_params = num_src_params
+
+                num_params = {
+                    'joint': num_src_params,
+                    'target': num_dir_params,
+                    'transform': num_mvn_params,
+                }
+
                 focus_fold[distrib]['final_args'] = {
                     'target':{
                         'concentration': sjd.target_distrib._parameters['concentration'].tolist()
@@ -179,7 +196,13 @@ def test_identical(
                     pred[train_idx],
                     mle_args=mle_args,
                 )
-                num_params = num_src_params
+
+                num_params = {
+                    'joint': num_src_params,
+                    'target': num_dir_params,
+                    'transform': num_mvn_params,
+                }
+
                 focus_fold[distrib]['final_args'] = {
                     'target':{
                         'concentration': sjd.target_distrib._parameters['concentration'].tolist()
@@ -197,7 +220,13 @@ def test_identical(
                     pred[train_idx],
                     independent=True,
                 )
-                num_params = num_independent_params
+
+                num_params = {
+                    'joint': num_independent_params,
+                    'target': num_dir_params,
+                    'transform': num_dir_params,
+                }
+
                 focus_fold[distrib]['final_args'] = {
                     'target':{
                         'concentration': sjd.target_distrib._parameters['concentration'].tolist()
@@ -215,7 +244,13 @@ def test_identical(
                     mle_args=mle_args,
                     independent=True,
                 )
-                num_params = num_independent_params
+
+                num_params = {
+                    'joint': num_independent_params,
+                    'target': num_dir_params,
+                    'transform': num_dir_params,
+                }
+
                 focus_fold[distrib]['final_args'] = {
                     'target':{
                         'concentration': sjd.target_distrib._parameters['concentration'].tolist()
@@ -229,40 +264,45 @@ def test_identical(
             focus_fold[distrib]['train']['log_prob'] = sjd.log_prob(
                 target[train_idx],
                 pred[train_idx],
-            )
-            focus_fold[distrib]['train']['log_prob'] = (
-                focus_fold[distrib]['train']['log_prob'][0].sum(),
-                focus_fold[distrib]['train']['log_prob'][1].sum(),
-            )
+                return_individuals=True,
+            ).sum()
+            focus_fold[distrib]['train']['log_prob'] = {
+                'joint': focus_fold[distrib]['train']['log_prob'][0].sum(),
+                'target': focus_fold[distrib]['train']['log_prob'][1].sum(),
+                'transform': focus_fold[distrib]['train']['log_prob'][2].sum(),
+            }
             # In sample info criterions
-            # TODO need to do separately for target and pred.
-            """
-            focus_fold[distrib]['train']['info_criterion'] = distribution_tests.calc_info_criterion(
-                focus_fold[distrib]['train']['log_prob'],
-                num_params,
-                info_criterions,
-                num_samples=len(train_idx),
-            )
-            """
+            info_crit = {}
+            for rv, log_prob in focus_fold[distrib]['train']['log_prob'].items():
+                info_crit[rv] = distribution_tests.calc_info_criterion(
+                    log_prob,
+                    num_params[rv],
+                    info_criterions,
+                    num_samples=len(train_idx),
+                )
+            focus_fold[distrib]['train']['info_criterion'] = info_crit
 
             # Out sample log prob
             focus_fold[distrib]['test']['log_prob'] = sjd.log_prob(
                 target[test_idx],
                 pred[test_idx],
+                return_individuals=True,
             )
-            focus_fold[distrib]['test']['log_prob'] = (
-                focus_fold[distrib]['test']['log_prob'][0].sum(),
-                focus_fold[distrib]['test']['log_prob'][1].sum(),
-            )
+            focus_fold[distrib]['test']['log_prob'] = {
+                'joint': focus_fold[distrib]['test']['log_prob'][0].sum(),
+                'target': focus_fold[distrib]['test']['log_prob'][1].sum(),
+                'transform': focus_fold[distrib]['test']['log_prob'][2].sum(),
+            }
             # Out sample info criterions
-            """
-            focus_fold[distrib]['test']['info_criterion'] = distribution_tests.calc_info_criterion(
-                focus_fold[distrib]['test']['log_prob'],
-                num_params,
-                info_criterions,
-                num_samples=len(test_idx),
-            )
-            """
+            info_crit = {}
+            for rv, log_prob in focus_fold[distrib]['test']['log_prob'].items():
+                info_crit[rv] = distribution_tests.calc_info_criterion(
+                    log_prob,
+                    num_params[rv],
+                    info_criterions,
+                    num_samples=len(test_idx),
+                )
+            focus_fold[distrib]['test']['info_criterion'] = info_crit
 
         # Save all the results for this fold.
         results['focus_folds'][i + 1] = focus_fold
