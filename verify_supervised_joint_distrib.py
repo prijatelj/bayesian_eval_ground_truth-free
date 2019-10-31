@@ -28,6 +28,7 @@ def test_identical(
     random_seed=None,
     test_independent=True,
     mle_args=None,
+    tf_sess_config=None,
 ):
     """Creates a Dirichlet-multinomial distribution for the target's source and
     a multivariate normal distribution for the transformation function, then
@@ -87,6 +88,7 @@ def test_identical(
             **src_transform_params
         ),
         sample_dim=len(src_target_params['concentration']),
+        tf_sess_config=tf_sess_config,
     )
 
     # Create the sample data that the distribs will fit.
@@ -115,6 +117,7 @@ def test_identical(
         ),
         sample_dim=target.shape[1],
         independent=True,
+        tf_sess_config=tf_sess_config,
     )
 
     # Dict to store all info and results for this test as a JSON.
@@ -171,6 +174,7 @@ def test_identical(
                     'MultivariateNormal',
                     target[train_idx],
                     pred[train_idx],
+                    tf_sess_config=tf_sess_config,
                 )
 
                 num_params = {
@@ -195,6 +199,7 @@ def test_identical(
                     target[train_idx],
                     pred[train_idx],
                     mle_args=mle_args,
+                    tf_sess_config=tf_sess_config,
                 )
 
                 num_params = {
@@ -219,6 +224,7 @@ def test_identical(
                     target[train_idx],
                     pred[train_idx],
                     independent=True,
+                    tf_sess_config=tf_sess_config,
                 )
 
                 num_params = {
@@ -243,6 +249,7 @@ def test_identical(
                     pred[train_idx],
                     mle_args=mle_args,
                     independent=True,
+                    tf_sess_config=tf_sess_config,
                 )
 
                 num_params = {
@@ -265,7 +272,7 @@ def test_identical(
                 target[train_idx],
                 pred[train_idx],
                 return_individuals=True,
-            ).sum()
+            )
             focus_fold[distrib]['train']['log_prob'] = {
                 'joint': focus_fold[distrib]['train']['log_prob'][0].sum(),
                 'target': focus_fold[distrib]['train']['log_prob'][1].sum(),
@@ -458,4 +465,5 @@ if __name__ == '__main__':
         args.kfold_cv.kfolds,
         args.sjd.sample_size,
         mle_args=vars(args.mle),
+        # TODO tf_sess_config=args.sess_config # Add the explicit tf sess
     )
