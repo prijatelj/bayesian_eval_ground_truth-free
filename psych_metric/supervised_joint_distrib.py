@@ -58,6 +58,7 @@ class SupervisedJointDistrib(object):
         sample_dim=None,
         total_count=None,
         tf_sess_config=None,
+        mle_args=None,
     ):
         """
         Parameters
@@ -146,6 +147,7 @@ class SupervisedJointDistrib(object):
         self.target_distrib = self._fit_independent_distrib(
             target_distrib,
             target,
+            mle_args,
         )
 
         # Fit the transformation function of the target to the predictor output
@@ -153,6 +155,7 @@ class SupervisedJointDistrib(object):
             self.transform_distrib = self._fit_independent_distrib(
                 transform_distrib,
                 pred,
+                mle_args,
             )
         elif isinstance(transform_distrib, tfp.distributions.Distribution):
             # Use given distribution as the fitted dependent distribution
@@ -242,9 +245,8 @@ class SupervisedJointDistrib(object):
 
                 return  tfp.distributions.Dirichlet(np.mean(data, axis=0))
             elif distrib == 'MultivariateNormal':
+                """
                 if mle_args:
-                    raise NotImplemented('Needs added to mle_adam().')
-
                     mle_results = distribution_tests.mle_adam(
                         distrib,
                         np.maximum(data, np.finfo(data.dtype).tiny),
@@ -258,6 +260,7 @@ class SupervisedJointDistrib(object):
                     return  tfp.distributions.DirichletMultinomial(
                         **mle_results.params
                     )
+                """
 
                 return tfp.distributions.MultivariateNormalFullCovariance(
                     np.mean(data, axis=0),
@@ -570,7 +573,7 @@ class SupervisedJointDistrib(object):
                 distrib['distrib_id'],
                 np.maximum(data, np.finfo(data.dtype).tiny),
                 init_params=distrib['params'],
-                **mle_args,
+                #**mle_args,
             )
         else:
             raise TypeError('`distrib` is expected to be of type `str` or '
@@ -593,7 +596,7 @@ class SupervisedJointDistrib(object):
 
         # calculate the n-1 sphere volume being contained w/in the n-1 simplex
         n = self.transform_matrix.shape[1] - 1
-        log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) + scipy.special.gammaln(n / 2 + 1)
+        log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) - scipy.special.gammaln(n / 2 + 1)
 
         return log_prob
 
