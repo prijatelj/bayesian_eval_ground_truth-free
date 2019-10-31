@@ -555,7 +555,7 @@ def add_test_distrib_args(parser):
     """Adds arguments to the given `argparse.ArgumentParser`."""
     hypothesis_distrib = parser.add_argument_group(
         'hypothesis_distrib',
-        'Arguments pertaining to the K fold Cross Validation for evaluating '
+        'Arguments pertaining to the hypothesis distributions for evaluating '
         + ' models.',
     )
 
@@ -633,7 +633,7 @@ def add_test_distrib_args(parser):
     hypothesis_distrib.add_argument(
         '--loc',
         default=10.0,
-        type=multi_typed_arg(float, json.loads),
+        type=experiment.io.multi_typed_arg(float, json.loads),
         help='Either a float or a dict containing the keys "loc":float, '
         + '"scale":float to define a normal distribution for randomly '
         + 'selecting a float for this argument. This is the location of the '
@@ -644,7 +644,7 @@ def add_test_distrib_args(parser):
     hypothesis_distrib.add_argument(
         '--scale',
         default=5.0,
-        type=multi_typed_arg(float, json.loads),
+        type=experiment.io.multi_typed_arg(float, json.loads),
         help='Either a float or a dict containing the keys "loc":float, '
         + '"scale":float to define a normal distribution for randomly '
         + 'selecting a float for this argument. This is the scale '
@@ -655,13 +655,13 @@ def add_test_distrib_args(parser):
     # Dirichlet Multinomial params
     hypothesis_distrib.add_argument(
         '--total_count',
-        type=multi_typed_arg(int, json.loads),
+        type=experiment.io.multi_typed_arg(int, json.loads),
         help='Either a int or a dict containing the keys "loc":float, '
         + '"scale":float to define a normal distribution for randomly '
         + 'selecting a float for this argument. This is the total count '
         + 'of the source Dirichlet-Multinomial distribution.',
         dest='hypothesis_distrib.total_count',
-        required=check_argv(
+        required=experiment.io.check_argv(
             ['test_dirichlet_multinomial'],
             '--hypothesis_test',
         ),
@@ -669,11 +669,14 @@ def add_test_distrib_args(parser):
 
     hypothesis_distrib.add_argument(
         '--concentration',
-        type=multi_typed_arg(float, lambda x: np.array(x.split(), dtype=float)),
+        type=experiment.io.multi_typed_arg(
+            float,
+            lambda x: np.array(x.split(), dtype=float),
+        ),
         help='Either a positive float or a list of postive floats indicating '
         + 'the concentrations for as many classes there are in ',
         dest='hypothesis_distrib.concentration',
-        required=check_argv(
+        required=experiment.io.check_argv(
             ['test_dirichlet', 'test_dirichlet_multinomial'],
             '--hypothesis_test',
         ),
@@ -686,73 +689,13 @@ def add_test_distrib_args(parser):
         + 'the concentrations for as many classes there are in ',
         dest='hypothesis_distrib.num_classes',
         required=(
-            check_argv(
+            experiment.io.check_argv(
                 ['test_dirichlet', 'test_dirichlet_multinomial'],
                 '--hypothesis_test',
             )
-            and check_argv(float, '--concentration')
+            and experiment.io.check_argv(float, '--concentration')
         ),
     )
-
-
-def multi_typed_arg(*types):
-    """Returns a callable to check if a variable is any of the types given."""
-    def multi_type_conversion(x):
-        for t in types:
-            try:
-                return t(x)
-            except TypeError as e:
-                print('\n' + str(e) + '\n')
-                pass
-            except ValueError as e:
-                print('\n' + str(e) + f'\n{type(e)}\n')
-        raise argparse.ArgumentTypeError(
-            f'Arg of {type(x)} is not convertable to any of the types: {types}'
-        )
-    return multi_type_conversion
-
-
-def check_argv(value, arg, optional_arg=True):
-    """Checks if the arg was given and checks if its value is one in the given
-    iterable. If true to both, then the arg in question is required. This is
-    often used to check if another arg is required dependent upon the value of
-    another argument, however ifthe arg in question of being required has a
-    default value, then setting it to required is unnecessary.
-
-    Parameters
-    ----------
-    value : list() | type |object, optional
-        Value is expected to be a list of values to check as the value of the
-        given arg. If given vlaue is not iterable, then it is treated as a
-        single value to be checked. If a type is given, then its type is
-        checked.
-    arg : str, optional
-        The name of the argument whose value is being checked.
-    optional_arg : bool, optional
-        Flag indicating if the arg being checked is optional or required by
-        default. If the arg is optional and is lacking the initial '--', then
-        that is added before checking if it exists in sys.argv. Defaults to
-        True.
-    """
-    if optional_arg and arg[:2] != '--':
-        arg = '--' + arg
-
-    if arg in sys.argv:
-        idx = sys.argv.index(arg)
-        if isinstance(value, type):
-            print('\n')
-            print(f'value ({value}) is of type {type(value)}.')
-            print(f'{sys.argv[idx + 1]} is of type {type(sys.argv[idx + 1])}')
-            print('\n')
-            try:
-                value(sys.argv[idx + 1])
-                return True
-            except:
-                return False
-        if not hasattr(value, '__iter__'):
-            return value == sys.argv[idx + 1]
-        return any([x == sys.argv[idx + 1] for x in value])
-    return False
 
 
 if __name__ == '__main__':
