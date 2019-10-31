@@ -379,11 +379,11 @@ class SupervisedJointDistrib(object):
 
         # The target and predictor samples will be given.
         log_prob_target_samples = tf.placeholder(
-            tf.float32,
+            tf.float64,
             name='log_prob_target_samples',
         )
         log_prob_pred_samples = tf.placeholder(
-            tf.float32,
+            tf.float64,
             name='log_prob_pred_samples',
         )
 
@@ -409,13 +409,14 @@ class SupervisedJointDistrib(object):
         origin_adjust[0] = 1
 
         # Convert the normalized samples into the n-1 simplex basis.
+        # TODO the casts here may be unnecessrary! Check this.
         target_simplex_samples = tf.cast(
             (norm_target_samples - origin_adjust) @ self.transform_matrix.T,
-            tf.float32,
+            tf.float64,
         )
         pred_simplex_samples = tf.cast(
             (norm_pred_samples - origin_adjust) @ self.transform_matrix.T,
-            tf.float32,
+            tf.float64,
         )
 
         # Get the distances between pred and target
@@ -732,12 +733,12 @@ class SupervisedJointDistrib(object):
 
             if return_individuals:
                 return (
-                    log_prob_pair[0] * log_prob_pair[1],
+                    log_prob_pair[0] + log_prob_pair[1],
                     log_prob_pair[0],
                     log_prob_pair[1],
                 )
 
-            return log_prob_pair[0] * log_prob_pair[1]
+            return log_prob_pair[0] + log_prob_pair[1]
 
         log_prob_target = self.target_distrib.log_prob(target).eval(
             session=tf.Session(),
@@ -754,9 +755,9 @@ class SupervisedJointDistrib(object):
 
         if return_individuals:
             return (
-                log_prob_target * log_prob_pred,
+                log_prob_target + log_prob_pred,
                 log_prob_target,
                 log_prob_pred,
             )
 
-        return log_prob_target * log_prob_pred
+        return log_prob_target + log_prob_pred
