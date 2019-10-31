@@ -603,9 +603,31 @@ class SupervisedJointDistrib(object):
 
         return log_prob
 
-    def log_prob(self, target, pred, num_neighbors=None):
-        """Log probability density/mass function calculation for the individual
-        random variables."""
+    def log_prob(self, target, pred, num_neighbors=None, joint=True):
+        """Log probability density/mass function calculation for the either the
+        joint probability by default or the individual random variables.
+
+        Parameters
+        ----------
+        target : np.ndarray
+            The samples who serve as the independent random variable.
+        pred : np.ndarray
+            The samples who serve as the 2nd random variable, either dependent
+            or independent.
+        num_neighbors : int, optional
+            The number of neighbors to use in the K Nearest Neighbors density
+            estimate of the probability of the 2nd random variable's pdf. Only
+            used if the 2nd random variable is dependent upon 1st, meaning we
+            use a stochastic transform funciton.
+        joint : bool
+            If True then returns the joint log probability p(target, pred).
+
+        Returns
+        -------
+            Returns the joint log probability as a float when `joint` is True
+            or returns the individual random variables unconditional log
+            probability when `joint` is False.
+        """
         if (
             isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial)
             or isinstance(self.target_distrib, tfp.distributions.Dirichlet)
@@ -619,12 +641,15 @@ class SupervisedJointDistrib(object):
             ):
                 pred = np.maximum(pred, np.finfo(pred.dtype).tiny)
 
-            return (
+            log_prob_pair = (
                 self.target_distrib.log_prob(target).eval(session=tf.Session()),
                 self.transform_distrib.log_prob(pred).eval(session=tf.Session()),
             )
+            return log_prob_pair[0] * log_prob_pair[1] if joint else log_prob_pair
 
-        return (
+        log_prob_pair = (
             self.target_distrib.log_prob(target).eval(session=tf.Session()),
             self.knn_log_prob(pred, num_neighbors),
         )
+
+        return log_prob_pair[0] * log_prob_pair[1] if joint else log_prob_pair

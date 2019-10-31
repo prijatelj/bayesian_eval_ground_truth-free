@@ -34,6 +34,12 @@ def test_identical(
     fits those using the SupervisedJointDistrib class to ensure it is able to
     fit that. This is the most straight-forward and basic test.
 
+    What we are observing is the difference between the log probabilities
+    of the joint distribution (joint log prob), which is simply:
+
+        independent joint probabilities: p(h, a) = p(h) p(a)
+        dependent joint probabilities: p(h, a) = p(a|h) p(h)
+
     Parameters
     ----------
     output_dir : str
@@ -115,6 +121,7 @@ def test_identical(
     results = {
         'kfolds': kfolds,
         'invariant_distribs': distrib_args,
+        'sample_size': sample_size,
         'focus_folds': {},
     }
 
