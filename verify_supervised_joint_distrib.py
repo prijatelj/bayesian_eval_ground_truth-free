@@ -71,7 +71,7 @@ def test_identical(
     src_transform_params = experiment.distrib.get_multivariate_normal_full_cov_params(
         loc,
         covariance_matrix,
-        num_classes,
+        len(src_target_params['concentration']) - 1,
     )
 
     # Combine them into a joint distribution
@@ -138,7 +138,7 @@ def test_identical(
             np.random.seed(random_seed)
             tf.set_random_seed(random_seed)
 
-        focus_fold = {}
+        focus_fold = {k: {'train':{}, 'test':{}} for k in distribs}
 
         for distrib in distribs:
             if distrib == 'src':
@@ -155,6 +155,15 @@ def test_identical(
                     pred[train_idx],
                 )
                 num_params = num_src_params
+                focus_fold[distrib]['final_args'] = {
+                    'target':{
+                        'concentration': sjd.target_distrib._parameters['concentration'].tolist()
+                    },
+                    'transform':{
+                        'loc': sjd.transform_distrib._parameters['loc'].tolist(),
+                        'covariance_matrix': sjd.transform_distrib._parameters['covariance_matrix'].tolist()
+                    }
+                }
             elif distrib == 'umvu_mle':
                 sjd = SupervisedJointDistrib(
                     'Dirichlet',
@@ -164,6 +173,15 @@ def test_identical(
                     mle_args=mle_args,
                 )
                 num_params = num_src_params
+                focus_fold[distrib]['final_args'] = {
+                    'target':{
+                        'concentration': sjd.target_distrib._parameters['concentration'].tolist()
+                    },
+                    'transform':{
+                        'loc': sjd.transform_distrib._parameters['loc'].tolist(),
+                        'covariance_matrix': sjd.transform_distrib._parameters['covariance_matrix'].tolist()
+                    }
+                }
             elif distrib == 'independent_umvu':
                 sjd = SupervisedJointDistrib(
                     'Dirichlet',
@@ -173,6 +191,14 @@ def test_identical(
                     independent=True,
                 )
                 num_params = num_independent_params
+                focus_fold[distrib]['final_args'] = {
+                    'target':{
+                        'concentration': sjd.target_distrib._parameters['concentration'].tolist()
+                    },
+                    'transform':{
+                        'concentration': sjd.transform_distrib._parameters['concentration'].tolist()
+                    }
+                }
             elif distrib == 'independent_umvu_mle':
                 sjd = SupervisedJointDistrib(
                     'Dirichlet',
@@ -183,32 +209,53 @@ def test_identical(
                     independent=True,
                 )
                 num_params = num_independent_params
+                focus_fold[distrib]['final_args'] = {
+                    'target':{
+                        'concentration': sjd.target_distrib._parameters['concentration'].tolist()
+                    },
+                    'transform':{
+                        'concentration': sjd.transform_distrib._parameters['concentration'].tolist()
+                    }
+                }
 
             # In sample log prob
             focus_fold[distrib]['train']['log_prob'] = sjd.log_prob(
                 target[train_idx],
                 pred[train_idx],
             )
+            focus_fold[distrib]['train']['log_prob'] = (
+                focus_fold[distrib]['train']['log_prob'][0].sum(),
+                focus_fold[distrib]['train']['log_prob'][1].sum(),
+            )
             # In sample info criterions
+            # TODO need to do separately for target and pred.
+            """
             focus_fold[distrib]['train']['info_criterion'] = distribution_tests.calc_info_criterion(
                 focus_fold[distrib]['train']['log_prob'],
                 num_params,
                 info_criterions,
                 num_samples=len(train_idx),
             )
+            """
 
             # Out sample log prob
             focus_fold[distrib]['test']['log_prob'] = sjd.log_prob(
                 target[test_idx],
                 pred[test_idx],
             )
+            focus_fold[distrib]['test']['log_prob'] = (
+                focus_fold[distrib]['test']['log_prob'][0].sum(),
+                focus_fold[distrib]['test']['log_prob'][1].sum(),
+            )
             # Out sample info criterions
+            """
             focus_fold[distrib]['test']['info_criterion'] = distribution_tests.calc_info_criterion(
                 focus_fold[distrib]['test']['log_prob'],
                 num_params,
                 info_criterions,
                 num_samples=len(test_idx),
             )
+            """
 
         # Save all the results for this fold.
         results['focus_folds'][i + 1] = focus_fold
@@ -312,7 +359,6 @@ def add_test_sjd_args(parser):
         ),
     )
 
-
     # loc
     sjd.add_argument(
         '--loc',
@@ -342,12 +388,10 @@ def add_test_sjd_args(parser):
         dest='sjd.covariance_matrix',
     )
 
-
     # sjd.knn fitting size
 
 
 if __name__ == '__main__':
-    # TODO write up argparse code for this (possibly repurposing older args).
     args, random_seeds = experiment.io.parse_args(
         'mle',
         add_test_sjd_args,
