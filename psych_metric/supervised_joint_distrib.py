@@ -16,6 +16,41 @@ from psych_metric import distribution_tests
 
 # TODO handle continuous distrib of continuous distrib, only discrete atm.
 
+"""
+def transform_knn_log_prob_single(
+    trgt,
+    pred,
+    transform_knn_dists,
+    k,
+    _transform_from,
+    _transform_to,
+    _is_prob_distrib,
+    knn_log_prob,
+):
+    # Find valid distances from saved set: `self.transform_knn_dists`
+    # to test validity, convert target sample to simplex space.
+    simplex_trgt = _transform_to(trgt)
+
+    # add distances to target & convert back to full dimensional space.
+    dist_check = _transform_from(
+        transform_knn_dists + simplex_trgt
+    )
+
+    # Check which are valid samples. Save indices or new array
+    valid_dists = transform_knn_dists[
+        np.where(_is_prob_distrib(dist_check))[0]
+    ]
+
+    # Fit BallTree to the distances valid to the specific target.
+    knn_tree = BallTree(valid_dists)
+
+    # Get distance between actual sample pair of target and pred
+    actual_dist = _transform_to(pred) - simplex_trgt
+
+    # Estimate the log probability.
+    return knn_log_prob(actual_dist, knn_tree)
+"""
+
 class SupervisedJointDistrib(object):
     """Bayesian distribution fitting of a joint probability distribution whose
     values correspond to the supervised learning context with target data and
@@ -175,6 +210,9 @@ class SupervisedJointDistrib(object):
         )
         #self._create_empirical_predictor_pdf(independent=self.independent)
 
+        # TODO create the transform log_prob knn
+        self._create_knn_transform_pdf(self.independent)
+
     def __copy__(self):
         cls = self.__class__
         new = cls.__new__(cls)
@@ -236,6 +274,11 @@ class SupervisedJointDistrib(object):
                         init_params={'concentration': np.mean(data, axis=0)},
                         **mle_args,
                     )
+
+                    if mle_args['alt_distrib']:
+                        return  tfp.distributions.Dirichlet(
+                            mle_results[0].params['mean'] * mle_results[0].params['precision']
+                        )
 
                     return  tfp.distributions.Dirichlet(
                         **mle_results[0].params
@@ -464,6 +507,28 @@ class SupervisedJointDistrib(object):
             self.knn_tree = BallTree(pred_samples)
             self.knn_pdf_num_samples = num_samples
 
+    def _create_knn_transform_pdf(
+        self,
+        independent=False,
+        num_samples=int(1e6),
+    ):
+        """KNN density estimate for the transform distribution whose space is
+        that of the distances of valid points within the probability simplex.
+
+        The Tensorflow Probability log prob for the transform will extremely
+        under estimate the log probability when the gaussian (or any distrib
+        for the transform) has a significant amount of its density outside of
+        the bounds of the simplex. As such it is necessary to calculate the log
+        prob another way, hence this KNN density estimate approach.
+        """
+        if independent:
+            # TODO Set the necessary attributes to None, so they exist but are empty.
+            self.knn_pdf_num_samples = None
+            self.transform_knn_dists = None
+        else:
+            self.knn_pdf_num_samples = num_samples
+            self.transform_knn_dists = self.transform_distrib.sample(num_samples).eval(session=tf.Session())
+
     def _is_prob_distrib(
         self,
         vector,
@@ -658,7 +723,7 @@ class SupervisedJointDistrib(object):
             raise TypeError('`distrib` is expected to be of type `str` or '
                 + f'`dict` not `{type(distrib)}`')
 
-    def knn_log_prob(self, pred, k=None):
+    def knn_log_prob(self, pred, knn_tree, k=None):
         """Empirically estimates the predictor log probability using K Nearest
         Neighbords.
         """
@@ -668,7 +733,8 @@ class SupervisedJointDistrib(object):
             # single sample
             pred = pred.reshape(1, -1)
 
-        radius = self.knn_tree.query(pred, k)[0][:, -1]
+        #radius = self.knn_tree.query(pred, k)[0][:, -1]
+        radius = knn_tree.query(pred, k)[0][:, -1]
 
         # log(k) - log(n) - log(volume)
         log_prob = np.log(k) - np.log(self.knn_pdf_num_samples)
@@ -678,6 +744,35 @@ class SupervisedJointDistrib(object):
         log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) - scipy.special.gammaln(n / 2 + 1)
 
         return log_prob
+
+    def transform_knn_log_prob(self, target, pred, k=None):
+        # NOTE this is highly parallizable across samples.
+        log_prob = []
+        for i, trgt in enumerate(target):
+            # Find valid distances from saved set: `self.transform_knn_dists`
+            # to test validity, convert target sample to simplex space.
+            simplex_trgt = self._transform_to(trgt)
+
+            # add distances to target & convert back to full dimensional space.
+            dist_check = self._transform_from(
+                self.transform_knn_dists + simplex_trgt
+            )
+
+            # Check which are valid samples. Save indices or new array
+            valid_dists = self.transform_knn_dists[
+                np.where(self._is_prob_distrib(dist_check))[0]
+            ]
+
+            # Fit BallTree to the distances valid to the specific target.
+            knn_tree = BallTree(valid_dists)
+
+            # Get distance between actual sample pair of target and pred
+            actual_dist = self._transform_to(pred[i]) - simplex_trgt
+
+            # Estimate the log probability.
+            log_prob.append(self.knn_log_prob(actual_dist, knn_tree))
+
+        return np.array(log_prob)
 
     def log_prob(
         self,
@@ -745,13 +840,15 @@ class SupervisedJointDistrib(object):
         )
 
         # Calculate the log prob of the stochastic transform function
-        log_prob_pred = self.tf_log_prob_sess.run(
-            self.joint_log_prob,
-            feed_dict={
-                self.log_prob_target_samples: target,
-                self.log_prob_pred_samples: pred,
-            },
-        )
+        #log_prob_pred = self.tf_log_prob_sess.run(
+        #    self.joint_log_prob,
+        #    feed_dict={
+        #        self.log_prob_target_samples: target,
+        #        self.log_prob_pred_samples: pred,
+        #    },
+        #)
+
+        log_prob_pred = self.transform_knn_log_prob(target, pred)
 
         if return_individuals:
             return (
