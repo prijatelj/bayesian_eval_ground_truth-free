@@ -172,6 +172,8 @@ def mle_adam(
     sess_config=None,
     tf_optimizer='adam',
     tol_chain=1,
+    alt_distrib=False,
+    constraint_multiplier=1e5,
 ):
     """Uses tensorflow's ADAM optimizer to search the parameter space for MLE.
 
@@ -193,6 +195,12 @@ def mle_adam(
         directory path to save TensorBoard summaries.
     name : str
         Name prefixed to Ops created by this class.
+    alt_distrib : bool
+        whether to use the alternate version of parameterization of the given
+        distribution.
+    constraint_multiplier : float, optional
+        The multiplier to use to enforce constraints on the params in the loss.
+        Typically a large positive value.
 
     Returns
     -------
@@ -222,14 +230,22 @@ def mle_adam(
             distrib_id,
             init_params,
             const_params,
+            alt_distrib=alt_distrib,
         )
 
-        # TODO why negative? is this necessary? should it be a user passed flag?
-        # because ths is the minimized loss, and we want the Maximumg Likelihood
+        # Calc neg log likelihood to find minimum of (aka maximize log likelihood)
         neg_log_likelihood = -1.0 * tf.reduce_sum(
             distrib.log_prob(value=data),
-            name='log_likelihood_sum',
+            name='neg_log_likelihood_sum',
         )
+
+        # Add Relu to enforce positive values for param constraints:
+        if distrib_id.lower() == 'dirichlet' and alt_distrib:
+            if 'precision' not in const_params:
+                loss = neg_log_likelihood +  constraint_multiplier \
+                    * tf.nn.relu(-params['precision'] + 1e-3)
+        else:
+            loss = neg_log_likelihood
 
         # Create optimizer
         if tf_optimizer == 'adam':
@@ -243,12 +259,12 @@ def mle_adam(
 
         if const_params:
             grad = optimizer.compute_gradients(
-                neg_log_likelihood,
+                loss,
                 [v for k, v in params.items() if k not in const_params],
             )
         else:
             grad = optimizer.compute_gradients(
-                neg_log_likelihood,
+                loss,
                 list(params.values()),
             )
         train_op = optimizer.apply_gradients(grad, global_step)
@@ -293,6 +309,7 @@ def mle_adam(
             # TODO could remove const params from this for calc efficiency. Need to recognize those constants will be missing in returned params though.
             results_dict = {
                 'train_op': train_op,
+                'loss': loss,
                 'neg_log_likelihood': neg_log_likelihood,
                 'params': params,
                 'grad': grad,
@@ -303,7 +320,7 @@ def mle_adam(
 
             iter_results = sess.run(results_dict, {tf_data: data})
 
-            if not top_likelihoods or iter_results['neg_log_likelihood'] < top_likelihoods[-1].neg_log_likelihood:
+            if iter_results['params']['precision'] > 0 and (not top_likelihoods or iter_results['loss'] < top_likelihoods[-1].neg_log_likelihood):
                 # update top likelihoods and their respective params
                 if num_top_likelihoods == 1:
                     top_likelihoods = [MLEResults(
@@ -390,6 +407,7 @@ def get_distrib_param_vars(
     const_params=None,
     num_class=None,
     random_seed=None,
+    alt_distrib=False
 ):
     """Creates tfp.distribution and tf.Variables for the distribution's
     parameters.
@@ -423,7 +441,7 @@ def get_distrib_param_vars(
             tfp.distributions.DirichletMultinomial(**params),
             params,
         )
-    elif distrib_id.lower() == 'dirichlet':
+    elif distrib_id.lower() == 'dirichlet' and not alt_distrib:
         params = get_dirichlet_param_vars(
             random_seed=random_seed,
             const_params=const_params,
@@ -431,6 +449,29 @@ def get_distrib_param_vars(
         )
         return (
             tfp.distributions.Dirichlet(**params),
+            params,
+        )
+    elif distrib_id.lower() == 'dirichlet' and alt_distrib:
+        if 'concentration' in init_params:
+            precision = np.sum(init_params['concentration'])
+            if precision <= 1:
+                precision = len(init_params['concentration'])
+            mean = init_params['concentration'] / precision
+
+            params = get_dirichlet_alt_param_vars(
+                random_seed=random_seed,
+                const_params=const_params,
+                mean=mean,
+                precision=precision,
+            )
+        else:
+            params = get_dirichlet_alt_param_vars(
+                random_seed=random_seed,
+                const_params=const_params,
+                **init_params,
+            )
+        return (
+            tfp.distributions.Dirichlet(params['mean'] * params['precision']),
             params,
         )
     elif distrib_id.lower() == 'normal':
@@ -459,7 +500,6 @@ def get_dirichlet_param_vars(
     name='dirichlet_params',
 ):
     """Create tf.Variable parameters for the Dirichlet distribution."""
-    # TODO
     with tf.name_scope(name):
         if num_classes and max_concentration:
             return {
@@ -489,6 +529,64 @@ def get_dirichlet_param_vars(
             raise ValueError(' '.join([
                 'Must pass either both and `concentration` xor pass',
                 '`num_classes`, and `max_concentration`',
+            ]))
+
+
+def get_dirichlet_alt_param_vars(
+    num_classes=None,
+    mean=None,
+    max_precision=None,
+    precision=None,
+    const_params=None,
+    random_seed=None,
+    name='dirichlet_mean_precision_params',
+):
+    """Create tf.Variable parameters for the Dirichlet distribution using mean
+    and precision.
+    """
+    with tf.name_scope(name):
+        if num_classes and max_precision:
+            return {
+                'mean': tf.Variable(
+                    initial_value=np.random.uniform(0, 1, num_classes),
+                    dtype=tf.float32,
+                    name='mean',
+                ),
+                'precision': tf.Variable(
+                    initial_value=np.random.uniform(
+                        0,
+                        max_precision,
+                        num_classes,
+                    ),
+                    dtype=tf.float32,
+                    name='precision',
+                ),
+            }
+        elif mean is not None and precision is not None:
+            return {
+                'mean': tf.constant(
+                    value=mean,
+                    dtype=tf.float32,
+                    name='mean',
+                ) if const_params and 'mean' in const_params else tf.Variable(
+                    initial_value=mean,
+                    dtype=tf.float32,
+                    name='mean',
+                ),
+                'precision': tf.constant(
+                    value=precision,
+                    dtype=tf.float32,
+                    name='precision',
+                ) if const_params and 'precision' in const_params else tf.Variable(
+                    initial_value=precision,
+                    dtype=tf.float32,
+                    name='precision',
+                ),
+            }
+        else:
+            raise ValueError(' '.join([
+                'Must pass either both `mean` and `precision` xor pass',
+                '`num_classes`, and `max_precision`',
             ]))
 
 
