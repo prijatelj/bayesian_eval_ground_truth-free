@@ -242,6 +242,17 @@ def add_mle_args(parser):
         dest='mle.const_params'
     )
 
+    mle.add_argument(
+        '--alt_distrib',
+        action='store_true',
+        help=' '.join([
+            'Whether to use the alternate parameterization of the given',
+            'distribution, if it exists (ie. mean and precision for the',
+            'Dirichlet)',
+        ]),
+        dest='mle.alt_distrib',
+    )
+
     # Tolerances
     mle.add_argument(
         '--tol_param',
