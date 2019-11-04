@@ -121,6 +121,10 @@ def save_json(
 
 def add_hardware_args(parser):
     """Adds the arguments detailing the hardware to be used."""
+    # TODO consider packaging as a dict/NestedNamespace
+    # TODO consider a boolean or something to indicate when to pass a
+    # tensorflow session or to use it as default
+
     parser.add_argument(
         '--cpu',
         default=1,
@@ -168,6 +172,8 @@ def add_data_args(parser):
     data = parser.add_argument_group('data', 'Arguments pertaining to the '
         + 'data loading and handling.')
 
+    # TODO add dataset id here, and have code expect that.
+
     data.add_argument(
         '-d',
         '--dataset_id',
@@ -192,7 +198,6 @@ def add_data_args(parser):
         choices=['majority_vote', 'frequency', 'ground_truth', 'annotations'],
         #dest='data.label_src',
     )
-
 
 
 def add_output_args(parser):
@@ -607,7 +612,7 @@ def parse_args(arg_set=None, custom_args=None, description=None):
     if arg_set and 'mle' in arg_set:
         add_mle_args(parser)
 
-    # Add custom
+    # Add custom args
     if custom_args and callable(custom_args):
         custom_args(parser)
 
