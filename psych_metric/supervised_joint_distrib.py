@@ -94,6 +94,7 @@ class SupervisedJointDistrib(object):
         total_count=None,
         tf_sess_config=None,
         mle_args=None,
+        knn_num_samples=int(1e6),
     ):
         """
         Parameters
@@ -129,6 +130,9 @@ class SupervisedJointDistrib(object):
         total_count : int
             Non-zero, positive integer of total count for the
             Dirichlet-multinomial target distribution.
+        knn_samples : int
+            number of samples to draw for the KNN density estimate. Defaults to
+            int(1e6).
         """
         self.independent = independent
         self.num_neighbors = num_neighbors
@@ -211,7 +215,7 @@ class SupervisedJointDistrib(object):
         #self._create_empirical_predictor_pdf(independent=self.independent)
 
         # TODO create the transform log_prob knn
-        self._create_knn_transform_pdf(self.independent)
+        self._create_knn_transform_pdf(self.independent, knn_num_samples)
 
     def __copy__(self):
         cls = self.__class__
