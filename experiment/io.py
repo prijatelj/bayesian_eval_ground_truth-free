@@ -515,6 +515,101 @@ def multi_typed_arg(*types):
     return multi_type_conversion
 
 
+def add_sjd_args(parser):
+    """Adds the test SJD arguments to the argparser."""
+    sjd = parser.add_argument_group(
+        'sjd',
+        'Arguments pertaining to tests evaluating the'
+        + 'SupervisedJointDistribution in fitting simulated data.',
+    )
+
+    # concentration
+    sjd.add_argument(
+        '--concentration',
+        type=experiment.io.multi_typed_arg(
+            float,
+            lambda x: np.array(x.split(), dtype=float),
+        ),
+        help=' '.join([
+            'Either a positive float or a list of postive floats indicating',
+            'the concentrations for as many classes there are in ',
+        ]),
+        dest='sjd.concentration',
+        required=experiment.io.check_argv(
+            ['test_identical'],
+            '--test_id',
+        ),
+    )
+
+    sjd.add_argument(
+        '--num_classes',
+        type=int,
+        help='Number of classes in the data.',
+        dest='sjd.num_classes',
+        required=(
+            experiment.io.check_argv(
+                ['test_identical'],
+                '--test_id',
+            )
+            and experiment.io.check_argv(float, '--concentration')
+        ),
+    )
+
+    # loc
+    sjd.add_argument(
+        '--loc',
+        type=experiment.io.multi_typed_arg(
+            float,
+            lambda x: np.array(x.split(), dtype=float),
+        ),
+        help=' '.join([
+            'Either a positive float or a list of postive floats indicating',
+            'the means for each dimension of the Multivariate Normal. Default',
+            'value of None results in a randomly selected value for the loc.',
+        ]),
+        default=None,
+        dest='sjd.loc',
+    )
+
+    # covariance_matrix: random,
+    sjd.add_argument(
+        '--covariance_matrix',
+        type=float,
+        help=' '.join([
+            'A positive float for the value of all diagonal values in the',
+            'covariance matrix. Default value of None results in a randomly',
+            'selected covariance matrix.',
+        ]),
+        default=None,
+        dest='sjd.covariance_matrix',
+    )
+
+    # KNN desnity estimate parameters
+    sjd.add_argument(
+        '--num_neighbors',
+        type=float,
+        help=' '.join([
+            'A positive float for the value of all diagonal values in the',
+            'covariance matrix. Default value of None results in a randomly',
+            'selected covariance matrix.',
+        ]),
+        default=10,
+        dest='sjd.num_neighbors',
+    )
+
+    sjd.add_argument(
+        '--knn_num_samples',
+        type=int,
+        help=' '.join([
+            'A positive float for the value of all diagonal values in the',
+            'covariance matrix. Default value of None results in a randomly',
+            'selected covariance matrix.',
+        ]),
+        default=int(1e6),
+        dest='sjd.knn_num_samples',
+    )
+
+
 def check_argv(value, arg, optional_arg=True):
     """Checks if the arg was given and checks if its value is one in the given
     iterable. If true to both, then the arg in question is required. This is
@@ -611,6 +706,9 @@ def parse_args(arg_set=None, custom_args=None, description=None):
 
     if arg_set and 'mle' in arg_set:
         add_mle_args(parser)
+
+    if arg_set and 'sjd' in arg_set:
+        add_sjd_args(parser)
 
     # Add custom args
     if custom_args and callable(custom_args):
