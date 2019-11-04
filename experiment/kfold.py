@@ -53,3 +53,26 @@ def kfold_generator(
             yield focus_fold, other_folds
         else:
             yield other_folds, focus_fold
+
+def get_kfold_idx(
+    focus_fold,
+    kfolds,
+    features,
+    labels=None,
+    shuffle=True,
+    stratified=False,
+    train_focus_fold=False,
+    random_seed=None,
+):
+    """Gets a specific set of indices from a setup of kfold cv."""
+    for i, (train_idx, test_idx) in enumerate(kfold_generator(
+        kfolds,
+        features,
+        labels,
+        shuffle,
+        stratified,
+        train_focus_fold,
+        random_seed,
+    )):
+        if i + 1 == focus_fold:
+            return train_idx, test_idx
