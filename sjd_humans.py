@@ -11,12 +11,13 @@ from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import KFold, StratifiedKFold
 
 import experiment.io
-from experiment.kfold import kfold_generator, get_kfold
+from experiment.kfold import kfold_generator, get_kfold_idx
 from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
+import predictors
 
 def load_summary(summary_file):
     """Recreates the variables for the experiment from the summary JSON file."""
-    with open(summary_file, 'r'_ as fp:
+    with open(summary_file, 'r') as fp:
         summary = json.load(fp)
 
         dataset_id = 'LabelMe' if 'LabelMe' in summary else 'FacialBeauty'
@@ -42,6 +43,7 @@ def load_eval_fold(
     label_src,
     summary_name='summary.json',
     data=None,
+    load_model=True,
 ):
     """Uses the information contained within the summary file to recreate the
     predictor model and load the data with its kfold indices.
@@ -63,15 +65,22 @@ def load_eval_fold(
         If provided, then the data (information) to be used for getting Kfold
         indices. This is to avoid having to reload and prep the data if it can
         be already loaded and prepped beforehand.
+    load_model : bool, optional
+        Currently a placeholder var indicating the possibilty of simply loading
+        a predictions file instead of the model weights. Thus returning the
+        predictions and the labels for the kfold split.
 
     Returns
     -------
     tuple
         The trained model and the label data split into train and test sets.
     """
+    if not load_model:
+        NotImplementedError('loading the predictions directly is not supported at the moment.')
+
     # Load summary json & obtain experiment variables for loading main objects.
     dataset_id, data_args, model_args, kfold_cv_args = load_summary(
-        os.path.join(dir_oath, summary_name)
+        os.path.join(dir_path, summary_name)
     )
 
     # load the data, if necessary
@@ -82,9 +91,9 @@ def load_eval_fold(
         # Only load data if need to run to get predictions
         features, labels, label_bin = predictors.load_prep_data(
             dataset_id,
-            data_config,
+            data_args,
             label_src,
-            model_config['parts'],
+            model_args['parts'],
         )
 
     # Support for summaries written with older version of code
@@ -107,15 +116,15 @@ def load_eval_fold(
 
     # Recereate the model
     model = predictors.load_model(
-        model_config['model_id'],
-        model_config['crowd_layer'],
-        model_config['parts'],
+        model_args['model_id'],
+        model_args['crowd_layer'],
+        model_args['parts'],
         os.path.join(dir_path, weights_file),
-        **model_config['init'],
+        **model_args['init'],
     )
 
     # TODO perhaps return something to indicate #folds or the focusfold #
-    return model, labels[train_idx], labels[test_idx]
+    return model, features[test_idx], labels[train_idx], labels[test_idx]
 
 
 def sjd_kfold_log_prob(
@@ -125,6 +134,7 @@ def sjd_kfold_log_prob(
     label_src,
     summary_name='summary.json',
     data=None,
+    load_model=True,
 ):
     """Performs SJD log prob test on kfold experiment by loading the model
     predictions form each fold and averages the results, saves error bars, and
@@ -135,7 +145,8 @@ def sjd_kfold_log_prob(
     Parameters
     ----------
     sjd_args : dict
-
+        The arguments to be used for fitting the SupervisedJointDistrib to the
+        data.
     dir_path : str
         The filepath to the eval fold directory.
     weight_file : str
@@ -154,48 +165,69 @@ def sjd_kfold_log_prob(
     """
     # load data if given dict
     if isinstance(data, dict):
-        data = predictors.load_prep_data(
-            dataset_id,
-            data_config,
-            label_src,
-            model_config['parts'],
-        )
+        data = predictors.load_prep_data(**data)
     #elif isinstance(data, tuple):
     #    # Unpack the variables from the tuple
     #    data, labels, label_bin = data
 
     # Use data if given tuple, etc...
 
+    log_prob_results = []
     for ls_item in os.listdir(dir_path):
         dir_p = os.path.join(dir_path, ls_item)
 
         # Skip file if not a directory
-        if not os.isdir(dir_p):
+        if not os.path.isdir(dir_p):
             continue
 
-        model, labels = load_eval_fold(
+        model, features, labels = load_eval_fold(
             dir_p,
             weights_file,
-            data,
+            label_src,
+            summary_name,
+            data=data,
+            load_model=load_model,
         )
 
         # TODO generate predictions XOR if made it so already given preds, use them
-        pred = model.predict(features)
+        if load_model:
+            train_pred = model.predict(features[0])
+            test_pred = model.predict(features[1])
+        else:
+            pred = model
+            del model
 
         # fit SJD to train data.
-        sjd = SupervisedJointDistrib(target=labels, pred=pred, **sjd_args)
+        sjd = SupervisedJointDistrib(
+            target=labels[0],
+            pred=train_pred,
+            **sjd_args,
+        )
 
         # perform Log Prob test on test/eval set.
-        log_prob_results = test_human_sjd(sjd)
+        log_prob_results.append(log_prob_test_human_sjd(
+            sjd,
+            labels[1],
+            test_pred,
+            sjd_args,
+        ))
 
         # save em results
 
-    # TODO aggregate the results, ie. average
+    # TODO aggregate the results, ie. average (outside of this class)
+    return log_prob_results
 
-    return results
 
-
-def multiple_sjd_kfold_log_prob(dir_paths, sjd_args):
+def multiple_sjd_kfold_log_prob(
+    dir_paths,
+    sjd_args,
+    dir_path,
+    weights_file,
+    label_src,
+    summary_name='summary.json',
+    data=None,
+    load_model=True,
+):
     """Performs SJD test on multiple kfold experiments and returns the
     aggregated result information.
     """
@@ -204,7 +236,18 @@ def multiple_sjd_kfold_log_prob(dir_paths, sjd_args):
 
     log_prob_results = []
     for dir_p in dir_paths:
-        log_prob_results.append(sjd_kfold_log_prob(sjd_args, ))
+        if not os.path.isdir(dir_p):
+            # TODO log this and skip
+            continue
+        log_prob_results.append(sjd_kfold_log_prob(
+            sjd_args,
+            dir_p,
+            weights_file,
+            label_src,
+            summary_name,
+            data,
+            load_model,
+        ))
 
     return results
 
@@ -231,13 +274,40 @@ def sjd_metric_cred():
     raise NotImplementedError()
 
 
+def log_prob_test_human_sjd(fit_sjd, target, pred, sjd_args):
+    """Compares the log probability of the fitted SupervisedJointDistrib to
+    other baselines.
+    """
+    log_probs = {}
+
+    # TODO create baseline sjds
+
+    # calculate log prob of all sjds
+
+    return log_probs
+
+
 def add_sjd_human_test_args(parser):
     # TODO add the str id for the target to compare to: 'frequency', 'ground_truth'
     # Can add other annotator aggregation methods as necessary, ie. D&S.
+    return
 
 if __name__ == '__main__':
     args, random_seeds = experiment.io.parse_args(['mle', 'sjd'])
 
     # TODO first, load in entirety a single eval fold
+    sjd_kfold_log_prob(
+        sjd_args=vars(args.sjd),
+        dir_path=args.human_sjd.dir_path,
+        weights_file=args.human_sjd.weights_file,
+        label_src=args.label_src,
+        summary_name=args.human_sjd.summary_nam,
+        #data=None,
+        #load_model=True,
+    )
+
+    # TODO then try with load data ONCE
+
+    # TODO then do a single kfold experiment
 
     # TODO then, recursively load many and save the SJD general results (ie. mean log_prob comparisons with error bars).
