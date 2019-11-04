@@ -12,6 +12,7 @@ from sklearn.model_selection import KFold, StratifiedKFold
 
 import experiment.io
 from experiment.kfold import kfold_generator, get_kfold
+from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
 
 def load_summary(summary_file):
     """Recreates the variables for the experiment from the summary JSON file."""
@@ -116,14 +117,39 @@ def load_eval_fold(
     )
 
     # TODO perhaps return something to indicate #folds or the focusfold #
-    return model, data[train_idx], data[test_idx]
+    #return model, data[train_idx], data[test_idx]
+    return model, features[test_idx], labels[test_idx]
 
 
-def sjd_kfold_exp():
+def sjd_kfold_exp(
+    dir_path,
+    weights_file,
+    label_src,
+    summary_name='summary.json',
+    data=None,
+):
     """Performs SJD test on kfold experiment by loading the model predictions
     form each fold and averages the results, saves error bars, and other
     distribution information useful from kfold cross validation.
     """
+
+    # load data if given dict
+
+    for dir_p in os.listdir(dir_path):
+        model, features, labels = load_eval_fold(dir_p, data)
+
+        # TODO generate predictions
+        pred = model.predict(features)
+
+        # fit SJD to train data.
+        sjd = SupervisedJointDistrib(labels, )
+
+        # perform Log Prob test on test/eval set.
+        log_prob_results = test_human_sjd(sjd)
+
+        # save em results
+
+    # TODO aggregate the results, ie. average
 
     return results
 
