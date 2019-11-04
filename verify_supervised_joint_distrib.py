@@ -355,13 +355,13 @@ def test_shift(shift=1, shift_right=True):
 
 def add_test_sjd_args(parser):
     """Adds the test SJD arguments to the argparser."""
-    sjd = parser.add_argument_group(
+    verify_sjd = parser.add_argument_group(
         'sjd',
         'Arguments pertaining to tests evaluating the'
         + 'SupervisedJointDistribution in fitting simulated data.',
     )
 
-    sjd.add_argument(
+    verify_sjd.add_argument(
         '--test_id',
         default='identical',
         help='The SupervisedJointDistrib test to be performed.',
@@ -370,84 +370,21 @@ def add_test_sjd_args(parser):
             'identity_transform',
             'arg_extreme',
         ],
-        dest='sjd.test_id',
+        dest='verify_sjd.test_id',
     )
 
-    sjd.add_argument(
+    verify_sjd.add_argument(
         '--sample_size',
         default=1000,
         type=int,
         help='The number of samples to draw from the source distribution.',
-        dest='sjd.sample_size',
+        dest='verify_sjd.sample_size',
     )
-
-    # concentration
-    sjd.add_argument(
-        '--concentration',
-        type=experiment.io.multi_typed_arg(
-            float,
-            lambda x: np.array(x.split(), dtype=float),
-        ),
-        help=' '.join([
-            'Either a positive float or a list of postive floats indicating',
-            'the concentrations for as many classes there are in ',
-        ]),
-        dest='sjd.concentration',
-        required=experiment.io.check_argv(
-            ['test_identical'],
-            '--test_id',
-        ),
-    )
-
-    sjd.add_argument(
-        '--num_classes',
-        type=int,
-        help='Number of classes in the data.',
-        dest='sjd.num_classes',
-        required=(
-            experiment.io.check_argv(
-                ['test_identical'],
-                '--test_id',
-            )
-            and experiment.io.check_argv(float, '--concentration')
-        ),
-    )
-
-    # loc
-    sjd.add_argument(
-        '--loc',
-        type=experiment.io.multi_typed_arg(
-            float,
-            lambda x: np.array(x.split(), dtype=float),
-        ),
-        help=' '.join([
-            'Either a positive float or a list of postive floats indicating',
-            'the means for each dimension of the Multivariate Normal. Default',
-            'value of None results in a randomly selected value for the loc.',
-        ]),
-        default=None,
-        dest='sjd.loc',
-    )
-
-    # covariance_matrix: random,
-    sjd.add_argument(
-        '--covariance_matrix',
-        type=float,
-        help=' '.join([
-            'A positive float for the value of all diagonal values in the',
-            'covariance matrix. Default value of None results in a randomly',
-            'selected covariance matrix.',
-        ]),
-        default=None,
-        dest='sjd.covariance_matrix',
-    )
-
-    # sjd.knn fitting size
 
 
 if __name__ == '__main__':
     args, random_seeds = experiment.io.parse_args(
-        'mle',
+        ['mle', 'sjd'],
         add_test_sjd_args,
         description=' '.join([
             'Perform tests via simulated data to evaluate the quality of',
@@ -455,7 +392,7 @@ if __name__ == '__main__':
         ]),
     )
 
-    #if args.sjd.test_id == 'identical':
+    #if args.verify_sjd.test_id == 'identical':
     test_identical(
         args.output_dir,
         args.sjd.concentration,
@@ -463,7 +400,7 @@ if __name__ == '__main__':
         args.sjd.loc,
         args.sjd.covariance_matrix,
         args.kfold_cv.kfolds,
-        args.sjd.sample_size,
+        args.verify_sjd.sample_size,
         mle_args=vars(args.mle),
         # TODO tf_sess_config=args.sess_config # Add the explicit tf sess
     )
