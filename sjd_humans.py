@@ -63,16 +63,11 @@ def load_eval_fold(
         If provided, then the data (information) to be used for getting Kfold
         indices. This is to avoid having to reload and prep the data if it can
         be already loaded and prepped beforehand.
-    test_focus_fold : bool, optional
-        If True, then expects that in kfold_cv_args, instead of
-        `train_focus_fold` it willbe the inverse, `test_focus_fold` as the key.
-        This is for support of an older version of the code. By default this is
-        False.
 
     Returns
     -------
-        the trained model
-        the data
+    tuple
+        The trained model and the label data split into train and test sets.
     """
     # Load summary json & obtain experiment variables for loading main objects.
     dataset_id, data_args, model_args, kfold_cv_args = load_summary(
@@ -80,9 +75,12 @@ def load_eval_fold(
     )
 
     # load the data, if necessary
-    if data is None:
+    if isinstance(data, tuple):
+        # Unpack the variables from the tuple
+        data, labels, label_bin = data
+    else:
         # Only load data if need to run to get predictions
-        data, labels, label_bin = predictors.load_prep_data(
+        features, labels, label_bin = predictors.load_prep_data(
             dataset_id,
             data_config,
             label_src,
@@ -99,7 +97,7 @@ def load_eval_fold(
     train_idx, test_idx = get_kfold_idx(
         kfold_cv_args['focus_fold'],
         kfold_cv_args['kfolds'],
-        data,
+        features,
         # only pass labels if stratified, fine w/o for now
         shuffle=kfold_cv_args['shuffle'],
         stratified=kfold_cv_args['stratified'],
@@ -117,32 +115,75 @@ def load_eval_fold(
     )
 
     # TODO perhaps return something to indicate #folds or the focusfold #
-    #return model, data[train_idx], data[test_idx]
-    return model, features[test_idx], labels[test_idx]
+    return model, labels[train_idx], labels[test_idx]
 
 
-def sjd_kfold_exp(
+def sjd_kfold_log_prob(
+    sjd_args,
     dir_path,
     weights_file,
     label_src,
     summary_name='summary.json',
     data=None,
 ):
-    """Performs SJD test on kfold experiment by loading the model predictions
-    form each fold and averages the results, saves error bars, and other
-    distribution information useful from kfold cross validation.
+    """Performs SJD log prob test on kfold experiment by loading the model
+    predictions form each fold and averages the results, saves error bars, and
+    other distribution information useful from kfold cross validation.
+
+    This checks if the SJD is performing as expected on the human data.
+
+    Parameters
+    ----------
+    sjd_args : dict
+
+    dir_path : str
+        The filepath to the eval fold directory.
+    weight_file : str
+        The relative filepath from the eval fold directory to the weights file
+        to be used to load the model.
+    label_src : str
+        The label_src expected to be used by the loaded model. Must be provided
+        as the summary does not contain this.
+    summary_name : str, optional
+        The relative filepath from the eval fold directory to the summary JSON
+        file.
+    data : tuple, dict, optional
+        If provided, then this is the to be used for getting Kfold
+        indices. This is to avoid having to reload and prep the data if it can
+        be already loaded and prepped beforehand.
     """
-
     # load data if given dict
+    if isinstance(data, dict):
+        data = predictors.load_prep_data(
+            dataset_id,
+            data_config,
+            label_src,
+            model_config['parts'],
+        )
+    #elif isinstance(data, tuple):
+    #    # Unpack the variables from the tuple
+    #    data, labels, label_bin = data
 
-    for dir_p in os.listdir(dir_path):
-        model, features, labels = load_eval_fold(dir_p, data)
+    # Use data if given tuple, etc...
 
-        # TODO generate predictions
+    for ls_item in os.listdir(dir_path):
+        dir_p = os.path.join(dir_path, ls_item)
+
+        # Skip file if not a directory
+        if not os.isdir(dir_p):
+            continue
+
+        model, labels = load_eval_fold(
+            dir_p,
+            weights_file,
+            data,
+        )
+
+        # TODO generate predictions XOR if made it so already given preds, use them
         pred = model.predict(features)
 
         # fit SJD to train data.
-        sjd = SupervisedJointDistrib(labels, )
+        sjd = SupervisedJointDistrib(target=labels, pred=pred, **sjd_args)
 
         # perform Log Prob test on test/eval set.
         log_prob_results = test_human_sjd(sjd)
@@ -154,19 +195,48 @@ def sjd_kfold_exp(
     return results
 
 
-def multiple_sjd_kfold_exp():
+def multiple_sjd_kfold_log_prob(dir_paths, sjd_args):
     """Performs SJD test on multiple kfold experiments and returns the
     aggregated result information.
     """
+    # Recursively walk a root directory and get the applicable directories,
+    # OR be given the filepaths to the different kfold experiments.
+
+    log_prob_results = []
+    for dir_p in dir_paths:
+        log_prob_results.append(sjd_kfold_log_prob(sjd_args, ))
 
     return results
+
+
+def sjd_metric_cred():
+    """Get a single model trained on all data, and create many samples to
+    obtain the credible interval of the predictor output, joint distribution,
+    and metrics calculated on that joint distribution.
+    """
+    # Fit SJD to human & preds if not already available.
+
+    # sample many times from that SJD (1e6)
+
+    # optionally save those samples to file.
+
+    # Calculate credible interval given alpha for Joint Distrib samples
+
+    # compare how that corresponds to the actual data human & pred.
+
+    # save all this and visualize it.
+
+    # Also, able to quantify % of data points outside of credible interval
+
+    raise NotImplementedError()
+
 
 def add_sjd_human_test_args(parser):
     # TODO add the str id for the target to compare to: 'frequency', 'ground_truth'
     # Can add other annotator aggregation methods as necessary, ie. D&S.
 
 if __name__ == '__main__':
-    args, random_seeds = experiment.io.parse_args('mle', 'sjd')
+    args, random_seeds = experiment.io.parse_args(['mle', 'sjd'])
 
     # TODO first, load in entirety a single eval fold
 
