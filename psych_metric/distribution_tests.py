@@ -241,7 +241,7 @@ def mle_adam(
 
         # Add Relu to enforce positive values for param constraints:
         if distrib_id.lower() == 'dirichlet' and alt_distrib:
-            if 'precision' not in const_params:
+            if const_params is None or 'precision' not in const_params:
                 loss = neg_log_likelihood +  constraint_multiplier \
                     * tf.nn.relu(-params['precision'] + 1e-3)
         else:
@@ -319,6 +319,11 @@ def mle_adam(
                 results_dict['summary_op'] = summary_op
 
             iter_results = sess.run(results_dict, {tf_data: data})
+
+            print(iter_results['params']['precision'])
+            for param, value in iter_results['params'].items():
+                if np.isnan(value).any():
+                    raise ValueError(f'{param} is NaN!')
 
             if iter_results['params']['precision'] > 0 and (not top_likelihoods or iter_results['loss'] < top_likelihoods[-1].neg_log_likelihood):
                 # update top likelihoods and their respective params
