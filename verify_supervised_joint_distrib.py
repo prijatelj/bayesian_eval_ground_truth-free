@@ -384,7 +384,7 @@ def add_test_sjd_args(parser):
     # concentration
     verify_sjd.add_argument(
         '--concentration',
-        type=multi_typed_arg(
+        type=experiment.io.multi_typed_arg(
             float,
             lambda x: np.array(x.split(), dtype=float),
         ),
@@ -393,7 +393,7 @@ def add_test_sjd_args(parser):
             'the concentrations for as many classes there are in ',
         ]),
         dest='verify_sjd.concentration',
-        required=check_argv(
+        required=experiment.io.check_argv(
             ['test_identical'],
             '--test_id',
         ),
@@ -405,18 +405,18 @@ def add_test_sjd_args(parser):
         help='Number of classes in the data.',
         dest='verify_sjd.num_classes',
         required=(
-            check_argv(
+            experiment.io.check_argv(
                 ['test_identical'],
                 '--test_id',
             )
-            and check_argv(float, '--concentration')
+            and experiment.io.check_argv(float, '--concentration')
         ),
     )
 
     # loc
     verify_sjd.add_argument(
         '--loc',
-        type=multi_typed_arg(
+        type=experiment.io.multi_typed_arg(
             float,
             lambda x: np.array(x.split(), dtype=float),
         ),
