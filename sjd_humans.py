@@ -9,11 +9,16 @@ import h5py
 import numpy as np
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import KFold, StratifiedKFold
+import tensorflow as tf
+import tensorflow_probability as tfp
 
 import experiment.io
+import experiment.distrib
 from experiment.kfold import kfold_generator, get_kfold_idx
+from psych_metric import distribution_tests
 from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
 import predictors
+
 
 def load_summary(summary_file):
     """Recreates the variables for the experiment from the summary JSON file."""
@@ -126,7 +131,8 @@ def load_eval_fold(
     return (
         model,
         (features[train_idx], features[test_idx]),
-        (labels[train_idx], features[test_idx]),
+        (labels[train_idx], labels[test_idx]),
+        #kfold_cv_args['focus_fold'],
     )
 
 
@@ -191,8 +197,7 @@ def sjd_kfold_log_prob(
 
         # TODO generate predictions XOR if made it so already given preds, use them
         if load_model:
-            train_pred = model.predict(features[0])
-            test_pred = model.predict(features[1])
+            pred = (model.predict(features[0]), model.predict(features[1]))
         else:
             pred = model
             del model
@@ -200,19 +205,34 @@ def sjd_kfold_log_prob(
         # fit SJD to train data.
         sjd = SupervisedJointDistrib(
             target=labels[0],
-            pred=train_pred,
+            pred=pred[0],
             **sjd_args,
         )
-        """
+
         # perform Log Prob test on test/eval set.
         log_prob_results.append(log_prob_test_human_sjd(
             sjd,
-            labels[1],
-            test_pred,
+            labels,
+            pred,
             sjd_args,
         ))
-        """
+
         log_prob_results.append(sjd)
+
+    # TODO ? average the results?
+    # log prob
+    """
+    mean_log_prob = {}
+    mean_ic = {ic: {} for ic in info_criterions}
+    for distrib, res in log_prob_results[0].items():
+        mean_log_prob[distrib] = [log_prob_results[distrib]['log_prob'] for i in log_prob_results]
+        for ic in info_criterons:
+            mean_ic[ic] =
+
+    mean_log_prob = np.mean(mean_log_prob)
+
+    #"""
+    # info criterions
 
     return log_prob_results
 
@@ -273,17 +293,154 @@ def sjd_metric_cred():
     raise NotImplementedError()
 
 
-def log_prob_test_human_sjd(fit_sjd, target, pred, sjd_args):
+def log_prob_test_human_sjd(
+    fit_sjd,
+    target,
+    pred,
+    sjd_args,
+    info_criterions=['bic','aic','hqc'],
+    distribs=['poi', 'independent_umvu', 'independent_umvu_mle', 'umvu', 'fit_sjd'],
+    tf_sess_config=None,
+):
     """Compares the log probability of the fitted SupervisedJointDistrib to
     other baselines.
     """
     log_probs = {}
 
-    # TODO create baseline sjds
+    # Dict to store all info and results for this test as a JSON.
+    results = {
+        'principle_of_indifference': {
+            'target_distrib': {'concentration': [1] * target[0].shape[1]},
+            'transform_distrib': {'concentration': [1] * target[0].shape[1]},
+        },
+        'fit_sjd': {'train':{}, 'test':{}},
+        'umvu': {'train':{}, 'test':{}},
+        'independent_umvu': {'train':{}, 'test':{}},
+        'independent_umvu_mle': {'train':{}, 'test':{}},
+    }
+
+    # Concentration is number of classes
+    num_dir_params = target[0].shape[1]
+    # Mean is number of classes, and Covariance Matrix is a triangle matrix
+    num_mvn_params = target[0].shape[1] + target[0].shape[1] * (target[0].shape[1] + 1) / 2
+
+    num_params_dependent = {
+        'joint': num_dir_params + num_mvn_params,
+        'target': num_dir_params,
+        'transform': num_mvn_params,
+    }
+    num_params_independent = {
+        'joint': 2 * num_dir_params,
+        'target': num_dir_params,
+        'transform': num_dir_params,
+    }
+
+    for distrib in distribs:
+        # Create each distrib being tested.
+        if distrib == 'poi':
+            sjd = SupervisedJointDistrib(
+                tfp.distributions.Dirichlet(
+                    **results['principle_of_indifference']['target_distrib'],
+                ),
+                tfp.distributions.Dirichlet(
+                    **results['principle_of_indifference']['transform_distrib'],
+                ),
+                sample_dim=target[0].shape[1],
+                independent=True,
+                tf_sess_config=tf_sess_config,
+            )
+            num_params = num_params_independent
+        elif 'independent' in distrib:
+            sjd = SupervisedJointDistrib(
+                'Dirichlet',
+                'Dirichlet',
+                target[0],
+                pred[0],
+                mle_args=None if distrib == 'independent_umvu' else sjd_args['mle_args'],
+                independent=True,
+                tf_sess_config=tf_sess_config,
+            )
+
+            num_params = num_params_independent
+
+            results[distrib]['final_args'] = {
+                'target':{
+                    'concentration': sjd.target_distrib._parameters['concentration'].tolist()
+                },
+                'transform':{
+                    'concentration': sjd.transform_distrib._parameters['concentration'].tolist()
+                }
+            }
+        else:
+            if distrib == 'umvu':
+                sjd = SupervisedJointDistrib(
+                    'Dirichlet',
+                    'MultivariateNormal',
+                    target[0],
+                    pred[0],
+                    tf_sess_config=tf_sess_config,
+                )
+            else:
+                sjd = fit_sjd
+
+            num_params = num_params_independent
+
+            results[distrib]['final_args'] = {
+                'target':{
+                    'concentration': sjd.target_distrib._parameters['concentration'].tolist()
+                },
+                'transform':{
+                    'loc': sjd.transform_distrib._parameters['loc'].tolist(),
+                    'covariance_matrix': sjd.transform_distrib._parameters['covariance_matrix'].tolist()
+                }
+            }
 
     # calculate log prob of all sjds
+    # In sample log prob
+    results[distrib]['train']['log_prob'] = sjd.log_prob(
+        target[0],
+        pred[0],
+        return_individuals=True,
+    )
+    results[distrib]['train']['log_prob'] = {
+        'joint': results[distrib]['train']['log_prob'][0].sum(),
+        'target': results[distrib]['train']['log_prob'][1].sum(),
+        'transform': results[distrib]['train']['log_prob'][2].sum(),
+    }
+    # In sample info criterions
+    info_crit = {}
+    for rv, log_prob in results[distrib]['train']['log_prob'].items():
+        info_crit[rv] = distribution_tests.calc_info_criterion(
+            log_prob,
+            num_params[rv],
+            info_criterions,
+            num_samples=len(target[0]),
+        )
+    results[distrib]['train']['info_criterion'] = info_crit
 
-    return log_probs
+    # Out sample log prob
+    results[distrib]['test']['log_prob'] = sjd.log_prob(
+        target[1],
+        pred[1],
+        return_individuals=True,
+    )
+    results[distrib]['test']['log_prob'] = {
+        'joint': results[distrib]['test']['log_prob'][0].sum(),
+        'target': results[distrib]['test']['log_prob'][1].sum(),
+        'transform': results[distrib]['test']['log_prob'][2].sum(),
+    }
+    # Out sample info criterions
+    info_crit = {}
+    for rv, log_prob in results[distrib]['test']['log_prob'].items():
+        info_crit[rv] = distribution_tests.calc_info_criterion(
+            log_prob,
+            num_params[rv],
+            info_criterions,
+            num_samples=len(target[1]),
+        )
+    results[distrib]['test']['info_criterion'] = info_crit
+
+    return results
 
 
 def add_human_sjd_args(parser):
