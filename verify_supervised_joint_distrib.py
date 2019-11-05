@@ -381,6 +381,67 @@ def add_test_sjd_args(parser):
         dest='verify_sjd.sample_size',
     )
 
+    # concentration
+    verify_sjd.add_argument(
+        '--concentration',
+        type=multi_typed_arg(
+            float,
+            lambda x: np.array(x.split(), dtype=float),
+        ),
+        help=' '.join([
+            'Either a positive float or a list of postive floats indicating',
+            'the concentrations for as many classes there are in ',
+        ]),
+        dest='verify_sjd.concentration',
+        required=check_argv(
+            ['test_identical'],
+            '--test_id',
+        ),
+    )
+
+    verify_sjd.add_argument(
+        '--num_classes',
+        type=int,
+        help='Number of classes in the data.',
+        dest='verify_sjd.num_classes',
+        required=(
+            check_argv(
+                ['test_identical'],
+                '--test_id',
+            )
+            and check_argv(float, '--concentration')
+        ),
+    )
+
+    # loc
+    verify_sjd.add_argument(
+        '--loc',
+        type=multi_typed_arg(
+            float,
+            lambda x: np.array(x.split(), dtype=float),
+        ),
+        help=' '.join([
+            'Either a positive float or a list of postive floats indicating',
+            'the means for each dimension of the Multivariate Normal. Default',
+            'value of None results in a randomly selected value for the loc.',
+        ]),
+        default=None,
+        dest='verify_sjd.loc',
+    )
+
+    # covariance_matrix: random,
+    verify_sjd.add_argument(
+        '--covariance_matrix',
+        type=float,
+        help=' '.join([
+            'A positive float for the value of all diagonal values in the',
+            'covariance matrix. Default value of None results in a randomly',
+            'selected covariance matrix.',
+        ]),
+        default=None,
+        dest='verify_sjd.covariance_matrix',
+    )
+
 
 if __name__ == '__main__':
     args, random_seeds = experiment.io.parse_args(
@@ -395,10 +456,10 @@ if __name__ == '__main__':
     #if args.verify_sjd.test_id == 'identical':
     test_identical(
         args.output_dir,
-        args.sjd.concentration,
-        args.sjd.num_classes if args.sjd.num_classes else len(args.sjd.concentration),
-        args.sjd.loc,
-        args.sjd.covariance_matrix,
+        args.verify_sjd.concentration,
+        args.verify_sjd.num_classes if args.verify_sjd.num_classes else len(args.verify_sjd.concentration),
+        args.verify_sjd.loc,
+        args.verify_sjd.covariance_matrix,
         args.kfold_cv.kfolds,
         args.verify_sjd.sample_size,
         mle_args=vars(args.mle),
