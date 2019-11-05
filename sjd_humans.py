@@ -117,14 +117,17 @@ def load_eval_fold(
     # Recereate the model
     model = predictors.load_model(
         model_args['model_id'],
-        model_args['crowd_layer'],
-        model_args['parts'],
-        os.path.join(dir_path, weights_file),
+        parts=model_args['parts'],
+        weights_file=os.path.join(dir_path, weights_file),
         **model_args['init'],
     )
 
     # TODO perhaps return something to indicate #folds or the focusfold #
-    return model, features[test_idx], labels[train_idx], labels[test_idx]
+    return (
+        model,
+        (features[train_idx], features[test_idx]),
+        (labels[train_idx], features[test_idx]),
+    )
 
 
 def sjd_kfold_log_prob(
