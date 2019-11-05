@@ -99,11 +99,11 @@ class SupervisedJointDistrib(object):
         """
         Parameters
         ----------
-        target_distrib : dict | tfp.distribution.Distribution
+        target_distrib : str | dict | tfp.distribution.Distribution
             Either the parameters to a  distribution to be used as the fitted
             distribution the target data, or the actual distribution to be
             used.
-        transform_distrib : dict | tfp.distribution.Distribution
+        transform_distrib : str | dict | tfp.distribution.Distribution
             Either the parameters to a  distribution to be used as the fitted
             distribution the target data, or the actual distribution to be
             used.
