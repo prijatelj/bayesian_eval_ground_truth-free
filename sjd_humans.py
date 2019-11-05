@@ -86,7 +86,7 @@ def load_eval_fold(
     # load the data, if necessary
     if isinstance(data, tuple):
         # Unpack the variables from the tuple
-        data, labels, label_bin = data
+        features, labels, label_bin = data
     else:
         # Only load data if need to run to get predictions
         features, labels, label_bin = predictors.load_prep_data(
@@ -169,11 +169,8 @@ def sjd_kfold_log_prob(
     # load data if given dict
     if isinstance(data, dict):
         data = predictors.load_prep_data(**data)
-    #elif isinstance(data, tuple):
-    #    # Unpack the variables from the tuple
-    #    data, labels, label_bin = data
 
-    # Use data if given tuple, etc...
+    # Use data if given tuple, otherwise load each time.
 
     log_prob_results = []
     for ls_item in os.listdir(dir_path):
@@ -206,7 +203,7 @@ def sjd_kfold_log_prob(
             pred=train_pred,
             **sjd_args,
         )
-
+        """
         # perform Log Prob test on test/eval set.
         log_prob_results.append(log_prob_test_human_sjd(
             sjd,
@@ -214,10 +211,9 @@ def sjd_kfold_log_prob(
             test_pred,
             sjd_args,
         ))
+        """
+        log_prob_results.append(sjd)
 
-        # save em results
-
-    # TODO aggregate the results, ie. average (outside of this class)
     return log_prob_results
 
 
@@ -252,7 +248,7 @@ def multiple_sjd_kfold_log_prob(
             load_model,
         ))
 
-    return results
+    return log_prob_results
 
 
 def sjd_metric_cred():
@@ -290,26 +286,66 @@ def log_prob_test_human_sjd(fit_sjd, target, pred, sjd_args):
     return log_probs
 
 
-def add_sjd_human_test_args(parser):
+def add_human_sjd_args(parser):
     # TODO add the str id for the target to compare to: 'frequency', 'ground_truth'
     # Can add other annotator aggregation methods as necessary, ie. D&S.
-    return
+    human_sjd = parser.add_argument_group(
+        'human_sjd',
+        'Arguments pertaining to log prob tests evaluating the'
+        + 'SupervisedJointDistribution in fitting human data.',
+    )
+
+    human_sjd.add_argument(
+        '--dir_path',
+        help=' '.join([
+            'The filepath to the directory containing either the separate',
+            'results directories of a kfold experiment, or the root directory',
+            'containing all kfold experiments to be loaded.',
+        ]),
+        default='./',
+        dest='human_sjd.dir_path',
+    )
+
+    human_sjd.add_argument(
+        '--weights_file',
+        help=' '.join([
+            'The relative filepath from the eval fold directory to the',
+            'model weights HDF5 file.',
+        ]),
+        default='weights.hdf5',
+        dest='human_sjd.weights_file',
+    )
+
+    human_sjd.add_argument(
+        '--summary_name',
+        help=' '.join([
+            'The relative filepath from the eval fold directory to the',
+            'summary JSON file.',
+        ]),
+        default='summary.json',
+        dest='human_sjd.summary_name',
+    )
+
 
 if __name__ == '__main__':
-    args, random_seeds = experiment.io.parse_args(['mle', 'sjd'])
+    args, random_seeds = experiment.io.parse_args(
+        ['mle', 'sjd'],
+        add_human_sjd_args,
+    )
 
     # TODO first, load in entirety a single eval fold
-    sjd_kfold_log_prob(
+    uh = sjd_kfold_log_prob(
         sjd_args=vars(args.sjd),
         dir_path=args.human_sjd.dir_path,
         weights_file=args.human_sjd.weights_file,
         label_src=args.label_src,
-        summary_name=args.human_sjd.summary_nam,
+        summary_name=args.human_sjd.summary_name,
         #data=None,
         #load_model=True,
     )
 
-    # TODO then try with load data ONCE
+    # TODO then try with load data ONCE, load one summary of a kfold. use data for all.
+    data=args.human_sjd.dir_path,
 
     # TODO then do a single kfold experiment
 
