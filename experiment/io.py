@@ -733,4 +733,7 @@ def parse_args(arg_set=None, custom_args=None, description=None):
     if arg_set and 'mle' in arg_set:
         expand_mle_optimizer_args(args)
 
+        if arg_set and 'sjd' in arg_set:
+            args.sjd.mle_args = vars(args.mle)
+
     return args, random_seeds
