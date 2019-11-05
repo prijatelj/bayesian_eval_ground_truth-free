@@ -523,65 +523,50 @@ def add_sjd_args(parser):
         + 'SupervisedJointDistribution in fitting simulated data.',
     )
 
-    # concentration
     sjd.add_argument(
-        '--concentration',
-        type=experiment.io.multi_typed_arg(
-            float,
-            lambda x: np.array(x.split(), dtype=float),
+        '--target_distrib',
+        type=multi_typed_arg(
+            str,
+            json.loads,
         ),
         help=' '.join([
-            'Either a positive float or a list of postive floats indicating',
-            'the concentrations for as many classes there are in ',
+            'Either a str identifer of a distribution or a dict with',
+            '"distirb_id" as a key and the parameters of that distribution',
+            'that serves as the target distribution.',
         ]),
-        dest='sjd.concentration',
-        required=experiment.io.check_argv(
-            ['test_identical'],
-            '--test_id',
-        ),
+        dest='sjd.target_distrib',
     )
 
     sjd.add_argument(
-        '--num_classes',
-        type=int,
-        help='Number of classes in the data.',
-        dest='sjd.num_classes',
-        required=(
-            experiment.io.check_argv(
-                ['test_identical'],
-                '--test_id',
-            )
-            and experiment.io.check_argv(float, '--concentration')
-        ),
-    )
-
-    # loc
-    sjd.add_argument(
-        '--loc',
-        type=experiment.io.multi_typed_arg(
-            float,
-            lambda x: np.array(x.split(), dtype=float),
+        '--transform_distrib',
+        type=multi_typed_arg(
+            str,
+            json.loads,
         ),
         help=' '.join([
-            'Either a positive float or a list of postive floats indicating',
-            'the means for each dimension of the Multivariate Normal. Default',
-            'value of None results in a randomly selected value for the loc.',
+            'Either a str identifer of a distribution or a dict with',
+            '"distirb_id" as a key and the parameters of that distribution',
+            'that serves as the transform distribution.',
         ]),
-        default=None,
-        dest='sjd.loc',
+        dest='sjd.transform_distrib',
     )
 
-    # covariance_matrix: random,
     sjd.add_argument(
-        '--covariance_matrix',
-        type=float,
+        '--data_type',
+        help='Str identifier of the type of data.',
+        dest='sjd.data_type',
+        default='nominal',
+        choices=['nominal', 'ordinal', 'continuous'],
+    )
+
+    sjd.add_argument(
+        '--independent',
+        action='store_true',
         help=' '.join([
-            'A positive float for the value of all diagonal values in the',
-            'covariance matrix. Default value of None results in a randomly',
-            'selected covariance matrix.',
+            'Indicates if the Supervised Joint Distribution\'s second random',
+            'variable is independent of the first. Defaults to False.',
         ]),
-        default=None,
-        dest='sjd.covariance_matrix',
+        dest='sjd.independent',
     )
 
     # KNN desnity estimate parameters
@@ -589,9 +574,8 @@ def add_sjd_args(parser):
         '--num_neighbors',
         type=float,
         help=' '.join([
-            'A positive float for the value of all diagonal values in the',
-            'covariance matrix. Default value of None results in a randomly',
-            'selected covariance matrix.',
+            'A positive int for the number of neighbors to use in the K',
+            'Nearest Neighbors density estimate of the transform pdf.',
         ]),
         default=10,
         dest='sjd.num_neighbors',
@@ -601,9 +585,8 @@ def add_sjd_args(parser):
         '--knn_num_samples',
         type=int,
         help=' '.join([
-            'A positive float for the value of all diagonal values in the',
-            'covariance matrix. Default value of None results in a randomly',
-            'selected covariance matrix.',
+            'Number of samples to draw to approximate the transform pdf for ',
+            'the K Nearest Neighbors density estimation.',
         ]),
         default=int(1e6),
         dest='sjd.knn_num_samples',
