@@ -299,7 +299,7 @@ def log_prob_test_human_sjd(
     pred,
     sjd_args,
     info_criterions=['bic','aic','hqc'],
-    distribs=['poi', 'independent_umvu', 'independent_umvu_mle', 'umvu', 'fit_sjd'],
+    distribs=['uniform', 'independent_umvu', 'independent_umvu_mle', 'umvu', 'fit_sjd'],
     tf_sess_config=None,
 ):
     """Compares the log probability of the fitted SupervisedJointDistrib to
@@ -309,7 +309,7 @@ def log_prob_test_human_sjd(
 
     # Dict to store all info and results for this test as a JSON.
     results = {
-        'principle_of_indifference': {
+        'uniform': {
             'target_distrib': {'concentration': [1] * target[0].shape[1]},
             'transform_distrib': {'concentration': [1] * target[0].shape[1]},
         },
@@ -337,13 +337,13 @@ def log_prob_test_human_sjd(
 
     for distrib in distribs:
         # Create each distrib being tested.
-        if distrib == 'poi':
+        if distrib == 'uniform':
             sjd = SupervisedJointDistrib(
                 tfp.distributions.Dirichlet(
-                    **results['principle_of_indifference']['target_distrib'],
+                    **results['uniform']['target_distrib'],
                 ),
                 tfp.distributions.Dirichlet(
-                    **results['principle_of_indifference']['transform_distrib'],
+                    **results['uniform']['transform_distrib'],
                 ),
                 sample_dim=target[0].shape[1],
                 independent=True,
