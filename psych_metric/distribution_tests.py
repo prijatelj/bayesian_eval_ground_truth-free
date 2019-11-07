@@ -223,7 +223,7 @@ def mle_adam(
         dataset = dataset.repeat(max_iter)
         dataset = dataset.batch(batch_size)
         iterator = dataset.make_one_shot_iterator()
-        tf_data = iterator.get_next()
+        tf_data = tf.cast(iterator.get_next(), tf.float32)
 
         # create distribution and dict of the distribution's parameters
         distrib, params = get_distrib_param_vars(
@@ -233,9 +233,12 @@ def mle_adam(
             alt_distrib=alt_distrib,
         )
 
+        #log_prob = distrib.log_prob(value=data)
+        log_prob = distrib.log_prob(value=tf_data)
+
         # Calc neg log likelihood to find minimum of (aka maximize log likelihood)
         neg_log_likelihood = -1.0 * tf.reduce_sum(
-            distrib.log_prob(value=data),
+            log_prob,
             name='neg_log_likelihood_sum',
         )
 
@@ -311,6 +314,8 @@ def mle_adam(
                 'train_op': train_op,
                 'loss': loss,
                 'neg_log_likelihood': neg_log_likelihood,
+                #'log_prob': log_prob,
+                #'tf_data': tf_data,
                 'params': params,
                 'grad': grad,
             }
@@ -320,7 +325,6 @@ def mle_adam(
 
             iter_results = sess.run(results_dict, {tf_data: data})
 
-            print(iter_results['params']['precision'])
             for param, value in iter_results['params'].items():
                 if np.isnan(value).any():
                     raise ValueError(f'{param} is NaN!')
@@ -459,9 +463,23 @@ def get_distrib_param_vars(
     elif distrib_id.lower() == 'dirichlet' and alt_distrib:
         if 'concentration' in init_params:
             precision = np.sum(init_params['concentration'])
-            if precision <= 1:
+            # mean needs to be the discrete probability distrib.
+            if np.isclose(precision, 1):
                 precision = len(init_params['concentration'])
-            mean = init_params['concentration'] / precision
+                mean = init_params['concentration']
+            elif precision > 1:
+                # Make mean be the normalized mean so all elements within [0,1]
+                mean = init_params['concentration'] / precision
+            else:
+                # If precision is less than 1, that's a problem
+                # TODO normalize the mean when it sums to less than 1.
+                raise ValueError(' '.join([
+                    '`precision`, the sum of the values in `concentration`,',
+                    'is less than 1. This means that `mean`\'s values will',
+                    'need normalized to fit within the range [0,1] and the',
+                    'precision will be set to the sum of the uniform vector',
+                    'of ones, which is the number dimensions.',
+                ]))
 
             params = get_dirichlet_alt_param_vars(
                 random_seed=random_seed,
