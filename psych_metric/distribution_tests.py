@@ -174,6 +174,7 @@ def mle_adam(
     tol_chain=1,
     alt_distrib=False,
     constraint_multiplier=1e5,
+    dtype=tf.float32,
 ):
     """Uses tensorflow's ADAM optimizer to search the parameter space for MLE.
 
@@ -223,7 +224,7 @@ def mle_adam(
         dataset = dataset.repeat(max_iter)
         dataset = dataset.batch(batch_size)
         iterator = dataset.make_one_shot_iterator()
-        tf_data = tf.cast(iterator.get_next(), tf.float32)
+        tf_data = tf.cast(iterator.get_next(), dtype)
 
         # create distribution and dict of the distribution's parameters
         distrib, params = get_distrib_param_vars(
@@ -521,6 +522,7 @@ def get_dirichlet_param_vars(
     const_params=None,
     random_seed=None,
     name='dirichlet_params',
+    dtype=tf.float32,
 ):
     """Create tf.Variable parameters for the Dirichlet distribution."""
     with tf.name_scope(name):
@@ -532,7 +534,7 @@ def get_dirichlet_param_vars(
                         max_concentration,
                         num_classes,
                     ),
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='concentration',
                 ),
             }
@@ -540,11 +542,11 @@ def get_dirichlet_param_vars(
             return {
                 'concentration': tf.constant(
                     value=concentration,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='concentration',
                 ) if const_params and 'concentration' in const_params else tf.Variable(
                     initial_value=concentration,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='concentration',
                 ),
             }
@@ -563,6 +565,7 @@ def get_dirichlet_alt_param_vars(
     const_params=None,
     random_seed=None,
     name='dirichlet_mean_precision_params',
+    dtype=tf.float32,
 ):
     """Create tf.Variable parameters for the Dirichlet distribution using mean
     and precision.
@@ -572,7 +575,7 @@ def get_dirichlet_alt_param_vars(
             return {
                 'mean': tf.Variable(
                     initial_value=np.random.uniform(0, 1, num_classes),
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='mean',
                 ),
                 'precision': tf.Variable(
@@ -581,7 +584,7 @@ def get_dirichlet_alt_param_vars(
                         max_precision,
                         num_classes,
                     ),
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='precision',
                 ),
             }
@@ -589,20 +592,20 @@ def get_dirichlet_alt_param_vars(
             return {
                 'mean': tf.constant(
                     value=mean,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='mean',
                 ) if const_params and 'mean' in const_params else tf.Variable(
                     initial_value=mean,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='mean',
                 ),
                 'precision': tf.constant(
                     value=precision,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='precision',
                 ) if const_params and 'precision' in const_params else tf.Variable(
                     initial_value=precision,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='precision',
                 ),
             }
@@ -622,6 +625,7 @@ def get_dirichlet_multinomial_param_vars(
     const_params=None,
     random_seed=None,
     name='dirichlet_multinomial_params',
+    dtype=tf.float32,
 ):
     """Create tf.Variable parameters for the Dirichlet distribution."""
     with tf.name_scope(name):
@@ -633,7 +637,7 @@ def get_dirichlet_multinomial_param_vars(
                         max_total_count,
                         num_classes,
                     ),
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='total_count',
                 ),
                 'concentration': tf.Variable(
@@ -642,7 +646,7 @@ def get_dirichlet_multinomial_param_vars(
                         max_concentration,
                         num_classes,
                     ),
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='concentration',
                 ),
             }
@@ -650,20 +654,20 @@ def get_dirichlet_multinomial_param_vars(
             return {
                 'total_count': tf.constant(
                     value=total_count,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='total_count',
                 ) if const_params and 'total_count' in const_params else tf.Variable(
                     initial_value=total_count,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='total_count',
                 ),
                 'concentration': tf.constant(
                     value=concentration,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='concentration',
                 ) if const_params and 'concentration' in const_params else tf.Variable(
                     initial_value=concentration,
-                    dtype=tf.float32,
+                    dtype=dtype,
                     name='concentration',
                 ),
             }
@@ -680,6 +684,7 @@ def get_normal_param_vars(
     random_seed=None,
     const_params=None,
     name='normal_params',
+    dtype=tf.float32,
 ):
     """Create tf.Variable parameters for the normal distribution.
 
@@ -701,21 +706,21 @@ def get_normal_param_vars(
         if isinstance(loc, dict):
             params['loc'] = (tf.constant(
                 value=np.random.normal(**loc),
-                dtype=tf.float32,
+                dtype=dtype,
                 name='loc',
             ) if const_params and 'loc' in const_params else tf.Variable(
                 initial_value=np.random.normal(**loc),
-                dtype=tf.float32,
+                dtype=dtype,
                 name='loc',
             ))
         elif isinstance(loc, float):
             params['loc'] = (tf.constant(
                 value=loc,
-                dtype=tf.float32,
+                dtype=dtype,
                 name='loc',
             ) if const_params and 'loc' in const_params else tf.Variable(
                 initial_value=loc,
-                dtype=tf.float32,
+                dtype=dtype,
                 name='loc',
             ))
         else:
@@ -729,21 +734,21 @@ def get_normal_param_vars(
         if isinstance(scale, dict):
             params['scale'] = (tf.constant(
                 value=np.random.normal(**scale),
-                dtype=tf.float32,
+                dtype=dtype,
                 name='scale',
             ) if const_params and 'scale' in const_params else tf.Variable(
                 initial_value=np.random.normal(**scale),
-                dtype=tf.float32,
+                dtype=dtype,
                 name='scale',
             ))
         elif isinstance(scale, float):
             params['scale'] = (tf.constant(
                 value=scale,
-                dtype=tf.float32,
+                dtype=dtype,
                 name='scale',
             ) if const_params and 'scale' in const_params else tf.Variable(
                 initial_value=scale,
-                dtype=tf.float32,
+                dtype=dtype,
                 name='scale',
             ))
         else:
