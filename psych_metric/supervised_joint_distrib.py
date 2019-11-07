@@ -272,6 +272,9 @@ class SupervisedJointDistrib(object):
                 )
             elif distrib == 'Dirichlet':
                 if mle_args:
+                    # TODO need to 1) be given a dtype, 2) enforce that in all
+                    # data and tensors.
+                    data = data.astype(np.float32)
                     mle_results = distribution_tests.mle_adam(
                         distrib,
                         np.maximum(data, np.finfo(data.dtype).tiny),
