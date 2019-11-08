@@ -308,15 +308,10 @@ def log_prob_test_human_sjd(
     log_probs = {}
 
     # Dict to store all info and results for this test as a JSON.
-    results = {
-        'uniform': {
-            'target_distrib': {'concentration': [1] * target[0].shape[1]},
-            'transform_distrib': {'concentration': [1] * target[0].shape[1]},
-        },
-        'fit_sjd': {'train':{}, 'test':{}},
-        'umvu': {'train':{}, 'test':{}},
-        'independent_umvu': {'train':{}, 'test':{}},
-        'independent_umvu_mle': {'train':{}, 'test':{}},
+    results = {distrib: {'train':{}, 'test':{}} for distrib in distribs}
+    results['uniform']['params'] = {
+        'target_distrib': {'concentration': [1] * target[0].shape[1]},
+        'transform_distrib': {'concentration': [1] * target[0].shape[1]},
     }
 
     # Concentration is number of classes
@@ -340,10 +335,10 @@ def log_prob_test_human_sjd(
         if distrib == 'uniform':
             sjd = SupervisedJointDistrib(
                 tfp.distributions.Dirichlet(
-                    **results['uniform']['target_distrib'],
+                    **results['uniform']['params']['target_distrib'],
                 ),
                 tfp.distributions.Dirichlet(
-                    **results['uniform']['transform_distrib'],
+                    **results['uniform']['params']['transform_distrib'],
                 ),
                 sample_dim=target[0].shape[1],
                 independent=True,
@@ -363,7 +358,7 @@ def log_prob_test_human_sjd(
 
             num_params = num_params_independent
 
-            results[distrib]['final_args'] = {
+            results[distrib]['params'] = {
                 'target':{
                     'concentration': sjd.target_distrib._parameters['concentration'].tolist()
                 },
@@ -385,7 +380,7 @@ def log_prob_test_human_sjd(
 
             num_params = num_params_independent
 
-            results[distrib]['final_args'] = {
+            results[distrib]['params'] = {
                 'target':{
                     'concentration': sjd.target_distrib._parameters['concentration'].tolist()
                 },
@@ -395,50 +390,50 @@ def log_prob_test_human_sjd(
                 }
             }
 
-    # calculate log prob of all sjds
-    # In sample log prob
-    results[distrib]['train']['log_prob'] = sjd.log_prob(
-        target[0],
-        pred[0],
-        return_individuals=True,
-    )
-    results[distrib]['train']['log_prob'] = {
-        'joint': results[distrib]['train']['log_prob'][0].sum(),
-        'target': results[distrib]['train']['log_prob'][1].sum(),
-        'transform': results[distrib]['train']['log_prob'][2].sum(),
-    }
-    # In sample info criterions
-    info_crit = {}
-    for rv, log_prob in results[distrib]['train']['log_prob'].items():
-        info_crit[rv] = distribution_tests.calc_info_criterion(
-            log_prob,
-            num_params[rv],
-            info_criterions,
-            num_samples=len(target[0]),
+        # calculate log prob of all sjds
+        # In sample log prob
+        results[distrib]['train']['log_prob'] = sjd.log_prob(
+            target[0],
+            pred[0],
+            return_individuals=True,
         )
-    results[distrib]['train']['info_criterion'] = info_crit
+        results[distrib]['train']['log_prob'] = {
+            'joint': results[distrib]['train']['log_prob'][0].sum(),
+            'target': results[distrib]['train']['log_prob'][1].sum(),
+            'transform': results[distrib]['train']['log_prob'][2].sum(),
+        }
+        # In sample info criterions
+        info_crit = {}
+        for rv, log_prob in results[distrib]['train']['log_prob'].items():
+            info_crit[rv] = distribution_tests.calc_info_criterion(
+                log_prob,
+                num_params[rv],
+                info_criterions,
+                num_samples=len(target[0]),
+            )
+        results[distrib]['train']['info_criterion'] = info_crit
 
-    # Out sample log prob
-    results[distrib]['test']['log_prob'] = sjd.log_prob(
-        target[1],
-        pred[1],
-        return_individuals=True,
-    )
-    results[distrib]['test']['log_prob'] = {
-        'joint': results[distrib]['test']['log_prob'][0].sum(),
-        'target': results[distrib]['test']['log_prob'][1].sum(),
-        'transform': results[distrib]['test']['log_prob'][2].sum(),
-    }
-    # Out sample info criterions
-    info_crit = {}
-    for rv, log_prob in results[distrib]['test']['log_prob'].items():
-        info_crit[rv] = distribution_tests.calc_info_criterion(
-            log_prob,
-            num_params[rv],
-            info_criterions,
-            num_samples=len(target[1]),
+        # Out sample log prob
+        results[distrib]['test']['log_prob'] = sjd.log_prob(
+            target[1],
+            pred[1],
+            return_individuals=True,
         )
-    results[distrib]['test']['info_criterion'] = info_crit
+        results[distrib]['test']['log_prob'] = {
+            'joint': results[distrib]['test']['log_prob'][0].sum(),
+            'target': results[distrib]['test']['log_prob'][1].sum(),
+            'transform': results[distrib]['test']['log_prob'][2].sum(),
+        }
+        # Out sample info criterions
+        info_crit = {}
+        for rv, log_prob in results[distrib]['test']['log_prob'].items():
+            info_crit[rv] = distribution_tests.calc_info_criterion(
+                log_prob,
+                num_params[rv],
+                info_criterions,
+                num_samples=len(target[1]),
+            )
+        results[distrib]['test']['info_criterion'] = info_crit
 
     return results
 
