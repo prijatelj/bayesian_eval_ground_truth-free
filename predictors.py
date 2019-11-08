@@ -378,7 +378,16 @@ def kfold_cv(
 
         logging.info(f'{i + 1}/{kfolds} fold cross validation: Training')
 
-        if period_save_pred:
+        if period <= 0 and early_stopping:
+            model, init_times, train_times = prepare_model(
+                model_config,
+                features[train_idx],
+                labels[train_idx],
+                output_dir_eval_fold,
+                callbacks=callbacks,
+                validation_data=(features[test_idx], labels[test_idx]),
+            )
+        elif period_save_pred:
             # TODO properly handle filling in Y True for validation data.
             model, init_times, train_times = prepare_model(
                 model_config,
@@ -433,7 +442,8 @@ def kfold_cv(
         )
 
 
-def prepare_model(model_config,
+def prepare_model(
+    model_config,
     features,
     labels,
     output_dir=None,
@@ -508,7 +518,6 @@ def prepare_model(model_config,
                 labels,
                 validation_data=validation_data,
                 callbacks=callbacks,
-                **model_config['train']
             )
         else:
             model.fit(features, labels, callbacks=callbacks)
