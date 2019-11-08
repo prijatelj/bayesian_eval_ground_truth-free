@@ -387,12 +387,14 @@ def add_model_args(parser):
     )
 
     # TODO consider adding into model or putting into general (non-grouped) args
+    # allow to be given a str
     parser.add_argument(
         '-r',
         '--random_seeds',
         default=None,
         nargs='+',
-        type=int,
+        #type=int,
+        #type=multi_typed_arg(int, str),
         help='The random seed to use for initialization of the model.',
     )
 
@@ -772,14 +774,32 @@ def parse_args(arg_set=None, custom_args=None, description=None):
         } if args.gpu >= 0 else {'CPU': args.cpu},
     )))
 
+    # TODO LOAD the randomseeds from file if it is of type str!!!
+    if isinstance(args.random_seeds, list) and len(args.random_seeds) <= 1:
+        if os.path.isfile(args.random_seeds[0]):
+            raise NotImplementedError('Load the random seeds from file.')
+        else:
+            args.random_seeds[0] = int(args.random_seeds[0])
+    elif isinstance(args.random_seeds, list):
+        args.random_seeds = [int(r) for r in args.random_seeds]
+
     # TODO fix this mess here and its usage in `predictors.py`
-    if args.random_seeds and len(args.random_seeds) == 1:
-        args.kfold_cv.random_seed = args.random_seeds[0]
-        random_seeds = None
-    else:
-        random_seeds = args.random_seeds
+    #if args.random_seeds and len(args.random_seeds) == 1:
+    #    args.kfold_cv.random_seed = args.random_seeds[0]
+    #    random_seeds = None
+    #else:
+    #    random_seeds = args.random_seeds
+
+    #if args is not an int, draw from file.
+    #if type(args.random_seeds, str) and os.path.isfile(args.random_seeds):
+
+    #if type(args.random_seeds, list):
+    #    print('random_seeds is a list!')
 
     expand_model_args(args)
+
+    # expand early stopping args:
+    args.kfold_cv.early_stopping = vars(args.kfold_cv.early_stopping)
 
     if arg_set and 'mle' in arg_set:
         expand_mle_optimizer_args(args)
@@ -787,4 +807,5 @@ def parse_args(arg_set=None, custom_args=None, description=None):
         if arg_set and 'sjd' in arg_set:
             args.sjd.mle_args = vars(args.mle)
 
-    return args, random_seeds
+    #return args, random_seeds
+    return args

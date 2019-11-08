@@ -205,6 +205,9 @@ def run_experiment(
         'label_binarizer': bin_classes
     }
 
+    if isinstance(random_seeds, int):
+        random_seeds = [random_seeds]
+
     if random_seeds:
         output_dir = os.path.join(
             output_dir,
@@ -695,8 +698,19 @@ def resnext50_model(
 
 if __name__ == '__main__':
     #args, data_config, model_config, kfold_cv_args, random_seeds = experiment.io.parse_args()
-    args, random_seeds = experiment.io.parse_args()
+    #args, random_seeds = experiment.io.parse_args()
+    args = experiment.io.parse_args()
 
+    # Undo need for parse_args to return random_seeds
+    # TODO fix this mess here and its usage in predictors.py`
+    #if args.random_seeds and len(args.random_seeds) == 1:
+    #    args.kfold_cv.random_seed = args.random_seeds[0]
+    #    random_seeds = None
+    #else:
+    #    random_seeds = args.random_seeds
+
+    #kfold_cv_dict = vars(kfold_cv)
+    #kfold_cv_dict['random_seed'] = [args.random_seeds] if (args.random_seeds, int) else args.random_seeds
 
     # TODO implement testing of a specific model and data partition from summary.json
     # TODO then implement that on wide scale for all 'checkpoints' missing predictions.
@@ -713,5 +727,5 @@ if __name__ == '__main__':
             vars(args.model),
             vars(kfold_cv),
             focus_fold=args.focus_fold,
-            random_seeds=random_seeds,
+            random_seeds=args.random_seeds,
         )
