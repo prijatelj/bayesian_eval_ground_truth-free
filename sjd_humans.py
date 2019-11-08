@@ -216,12 +216,22 @@ def sjd_kfold_log_prob(
             pred,
             sjd_args,
         ))
-
-        log_prob_results.append(sjd)
+        #log_prob_results.append(sjd)
 
     # TODO ? average the results?
     # log prob
     """
+    mean_log_prob = {k: np.mean([i[k]['test']['log_prob']['transform'] for i in log_prob_results]) for k in log_prob_results.keys()}
+    mean_bic = {k: np.mean([i[k]['test']['info_criterions']['transform']['bic'] for i in log_prob_results]) for k in log_prob_results.keys()}
+
+    mean_results = {}
+    for k in log_prob_results[0].keys():
+        mean_results[k]['train'] = {
+            'log_prob':
+        }
+        mean_results[k]['test']
+            'log_prob':
+
     mean_log_prob = {}
     mean_ic = {ic: {} for ic in info_criterions}
     for distrib, res in log_prob_results[0].items():
@@ -310,8 +320,8 @@ def log_prob_test_human_sjd(
     # Dict to store all info and results for this test as a JSON.
     results = {distrib: {'train':{}, 'test':{}} for distrib in distribs}
     results['uniform']['params'] = {
-        'target_distrib': {'concentration': [1] * target[0].shape[1]},
-        'transform_distrib': {'concentration': [1] * target[0].shape[1]},
+        'target': {'concentration': [1] * target[0].shape[1]},
+        'transform': {'concentration': [1] * target[0].shape[1]},
     }
 
     # Concentration is number of classes
@@ -335,10 +345,10 @@ def log_prob_test_human_sjd(
         if distrib == 'uniform':
             sjd = SupervisedJointDistrib(
                 tfp.distributions.Dirichlet(
-                    **results['uniform']['params']['target_distrib'],
+                    **results['uniform']['params']['target'],
                 ),
                 tfp.distributions.Dirichlet(
-                    **results['uniform']['params']['transform_distrib'],
+                    **results['uniform']['params']['transform'],
                 ),
                 sample_dim=target[0].shape[1],
                 independent=True,
