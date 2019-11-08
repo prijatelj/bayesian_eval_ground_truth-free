@@ -277,6 +277,7 @@ def kfold_cv(
     period=0,
     period_save_pred=False,
     #focus_fold=None,
+    early_stopping=None,
 ):
     """Performs kfold cross validation on the model and saves the results.
 
@@ -370,6 +371,8 @@ def kfold_cv(
                     os.path.join(checkpoint_dir, 'pred'),
                     period=period,
                 ))
+        elif early_stopping:
+            callbacks = [keras.callbacks.EarlyStopping(**early_stopping)]
         else:
             callbacks = None
 

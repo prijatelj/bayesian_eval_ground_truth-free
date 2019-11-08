@@ -497,6 +497,57 @@ def add_kfold_cv_args(parser):
         dest='kfold_cv.period_save_pred',
     )
 
+    # Early Stopping keras checkpoint args:
+    # NOTE, this will make early stopping used if period is not given.
+    early_stop = parser.add_argument_group(
+        'early_stop',
+        'Arguments pertaining to the Keras Early Stopping callback. Used for model evaluatio.',
+    )
+
+    early_stop.add_argument(
+        '--monitor',
+        default='val_loss',
+        help='Quantity to be monitored.',
+        dest='kfold_cv.early_stopping.monitor',
+    )
+
+    early_stop.add_argument(
+        '--min_delta',
+        default='0',
+        type=float,
+        help=' '.join([
+            'Miminimum change in the monitored quantity to qualify as an',
+            'improvement, i.e. an absolute change of less than min_delta,',
+            'will count as no improvement.'
+        ]),
+        dest='kfold_cv.early_stopping.min_delta',
+    )
+
+    early_stop.add_argument(
+        '--patience',
+        default='0',
+        type=int,
+        help=' '.join([
+            'number of epochs that produced the monitored quantity with no',
+            'improvement after which training will be stopped. Validation',
+            'quantities may not be produced for every epoch, if the',
+            'validation frequency (model.fit(validation_freq=5)) is greater',
+            'than one.'
+        ]),
+        dest='kfold_cv.early_stopping.patience',
+    )
+
+    early_stop.add_argument(
+        '--restore_best_weights',
+        action='store_true',
+        help=' '.join([
+            'whether to restore model weights from the epoch with the best',
+            'value of the monitored quantity. If False, the model weights',
+            'obtained at the last step of training are used.',
+        ]),
+        dest='kfold_cv.early_stopping.restore_best_weights',
+    )
+
 
 def multi_typed_arg(*types):
     """Returns a callable to check if a variable is any of the types given."""
