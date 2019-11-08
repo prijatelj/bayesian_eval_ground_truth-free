@@ -5,6 +5,7 @@ a transformation function of the target distribution.
 """
 from copy import deepcopy
 import math
+from multiprocessing import Pool
 
 import numpy as np
 import scipy
@@ -16,40 +17,98 @@ from psych_metric import distribution_tests
 
 # TODO handle continuous distrib of continuous distrib, only discrete atm.
 
-"""
+
+def transform_to(sample, transform_matrix, origin_adjust=None):
+    """Transforms the sample from discrete distribtuion space into the
+    probability simplex space of one dimension less. The orgin adjustment
+    is used to move to the correct origin of the probability simplex space.
+    """
+    if origin_adjust is None:
+        origin_adjust = np.zeros(transform_matrix.shape[1])
+        origin_adjust[0] = 1
+    return transform_matrix @ (sample - origin_adjust)
+
+
+def transform_from(sample, transform_matrix, origin_adjust=None):
+    if origin_adjust is None:
+        origin_adjust = np.zeros(transform_matrix.shape[1])
+        origin_adjust[0] = 1
+    return (sample @ transform_matrix) + origin_adjust
+
+
+def is_prob_distrib(
+    vector,
+    rtol=1e-09,
+    atol=0.0,
+    equal_nan=False,
+    axis=1,
+):
+    """Checks if the vector is a valid discrete probability distribution."""
+    # check if each row sums to 1
+    sums_to_one = np.isclose(vector.sum(axis), 1, rtol, atol, equal_nan)
+
+    # check if all values are w/in range
+    in_range = (vector >= 0).all(axis) == (vector <= 1).all(axis)
+
+    return sums_to_one == in_range
+
+
+def knn_log_prob(pred, num_classes, knn_tree, k, knn_pdf_num_samples=int(1e6)):
+    """Empirically estimates the predictor log probability using K Nearest
+    Neighbords.
+    """
+    if len(pred.shape) == 1:
+        # single sample
+        pred = pred.reshape(1, -1)
+
+    #radius = self.knn_tree.query(pred, k)[0][:, -1]
+    radius = knn_tree.query(pred, k)[0][:, -1]
+
+    # log(k) - log(n) - log(volume)
+    log_prob = np.log(k) - np.log(knn_pdf_num_samples)
+
+    # calculate the n-1 sphere volume being contained w/in the n-1 simplex
+    n = num_classes - 1
+    log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) - scipy.special.gammaln(n / 2 + 1)
+
+    return log_prob
+
+
+#"""
 def transform_knn_log_prob_single(
     trgt,
     pred,
     transform_knn_dists,
     k,
-    _transform_from,
-    _transform_to,
-    _is_prob_distrib,
-    knn_log_prob,
+    origin_adjust,
+    transform_matrix,
 ):
     # Find valid distances from saved set: `self.transform_knn_dists`
     # to test validity, convert target sample to simplex space.
-    simplex_trgt = _transform_to(trgt)
+    simplex_trgt = transform_to(trgt, transform_matrix, origin_adjust)
 
     # add distances to target & convert back to full dimensional space.
-    dist_check = _transform_from(
-        transform_knn_dists + simplex_trgt
+    dist_check = transform_from(
+        transform_knn_dists + simplex_trgt,
+        transform_matrix,
+        origin_adjust,
     )
 
     # Check which are valid samples. Save indices or new array
     valid_dists = transform_knn_dists[
-        np.where(_is_prob_distrib(dist_check))[0]
+        np.where(is_prob_distrib(dist_check))[0]
     ]
 
     # Fit BallTree to the distances valid to the specific target.
     knn_tree = BallTree(valid_dists)
 
     # Get distance between actual sample pair of target and pred
-    actual_dist = _transform_to(pred) - simplex_trgt
+    actual_dist = transform_to(pred, transform_matrix, origin_adjust) - simplex_trgt
 
     # Estimate the log probability.
-    return knn_log_prob(actual_dist, knn_tree)
-"""
+    return knn_log_prob(actual_dist, transform_matrix.shape[1], knn_tree, k)
+#"""
+
 
 class SupervisedJointDistrib(object):
     """Bayesian distribution fitting of a joint probability distribution whose
@@ -95,6 +154,7 @@ class SupervisedJointDistrib(object):
         tf_sess_config=None,
         mle_args=None,
         knn_num_samples=int(1e6),
+        dtype=np.float32,
     ):
         """
         Parameters
@@ -133,9 +193,13 @@ class SupervisedJointDistrib(object):
         knn_samples : int
             number of samples to draw for the KNN density estimate. Defaults to
             int(1e6).
+        dtype : type, optional
+            The data type of the data. If a single type, all data is assumed to
+            be of that type. Defaults to np.float32
         """
         self.independent = independent
         self.num_neighbors = num_neighbors
+        self.dtype = dtype
 
         if not isinstance(total_count, int):
             # Check if any distribs are DirMult()s. They need total_counts
@@ -251,6 +315,7 @@ class SupervisedJointDistrib(object):
                 total_count = np.sum(data, axis=1).max(0)
 
                 if mle_args:
+                    data = data.astype(np.float32)
                     mle_results = distribution_tests.mle_adam(
                         distrib,
                         np.maximum(data, np.finfo(data.dtype).tiny),
@@ -322,6 +387,7 @@ class SupervisedJointDistrib(object):
                 ]))
         elif isinstance(distrib, dict):
             # If given a dict, use as initial parameters and fit with MLE
+            data = data.astype(np.float32)
             if (
                 distrib['distrib_id'] == 'DirichletMultinomial'
                 or distrib['distrib_id'] == 'Dirichlet'
@@ -754,6 +820,27 @@ class SupervisedJointDistrib(object):
 
     def transform_knn_log_prob(self, target, pred, k=None):
         # NOTE this is highly parallizable across samples.
+        origin_adjust = np.zeros(self.transform_matrix.shape[1])
+        origin_adjust[0] = 1
+
+        if k is None:
+            k = self.num_neighbors
+
+        with Pool(processes=16) as pool:
+            #log_prob = pool.starmap_async(
+            log_prob = pool.starmap(
+                transform_knn_log_prob_single,
+                zip(
+                    target,
+                    pred,
+                    [self.transform_knn_dists] * len(target),
+                    [k] * len(target),
+                    [origin_adjust] * len(target),
+                    [self.transform_matrix] * len(target),
+                ),
+            )
+
+        """
         log_prob = []
         for i, trgt in enumerate(target):
             # Find valid distances from saved set: `self.transform_knn_dists`
@@ -778,8 +865,10 @@ class SupervisedJointDistrib(object):
 
             # Estimate the log probability.
             log_prob.append(self.knn_log_prob(actual_dist, knn_tree))
+        #"""
 
         return np.array(log_prob)
+        #return np.array(list(log_prob))
 
     def log_prob(
         self,
@@ -818,6 +907,7 @@ class SupervisedJointDistrib(object):
             isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial)
             or isinstance(self.target_distrib, tfp.distributions.Dirichlet)
         ):
+            target = target.astype(self.dtype)
             target = np.maximum(target, np.finfo(target.dtype).tiny)
 
         if self.independent:
@@ -825,6 +915,7 @@ class SupervisedJointDistrib(object):
                 isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial)
                 or isinstance(self.transform_distrib, tfp.distributions.Dirichlet)
             ):
+                pred = pred.astype(self.dtype)
                 pred = np.maximum(pred, np.finfo(pred.dtype).tiny)
 
             with tf.Session() as sess:
