@@ -155,6 +155,7 @@ class SupervisedJointDistrib(object):
         mle_args=None,
         knn_num_samples=int(1e6),
         dtype=np.float32,
+        processes=16,
     ):
         """
         Parameters
@@ -200,6 +201,7 @@ class SupervisedJointDistrib(object):
         self.independent = independent
         self.num_neighbors = num_neighbors
         self.dtype = dtype
+        self.processes = processes
 
         if not isinstance(total_count, int):
             # Check if any distribs are DirMult()s. They need total_counts
@@ -826,7 +828,7 @@ class SupervisedJointDistrib(object):
         if k is None:
             k = self.num_neighbors
 
-        with Pool(processes=16) as pool:
+        with Pool(processes=self.processes) as pool:
             #log_prob = pool.starmap_async(
             log_prob = pool.starmap(
                 transform_knn_log_prob_single,
