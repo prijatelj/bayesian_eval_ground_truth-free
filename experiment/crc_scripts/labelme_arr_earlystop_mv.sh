@@ -23,7 +23,7 @@ python3 "$BASE_PATH/predictors.py" \
     --cpu_cores 4 \
     --gpu 1 \
     --log_level INFO \
-    --log_file 'logs/label_me/mv/$SEED-vgg16.log' \
+    --log_file "logs/label_me/mv/$SEED-vgg16.log" \
     --output_dir "$BASE_PATH/results/predictors/early_stop/mv/" \
     --random_seeds "$SEED" \
     --epochs 50 \
