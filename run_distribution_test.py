@@ -700,7 +700,7 @@ def add_test_distrib_args(parser):
 
 if __name__ == '__main__':
     #args, data_args, model_args, kfold_cv_args, random_seeds = experiment.io.parse_args('mle')
-    args, random_seeds = experiment.io.parse_args(
+    args = experiment.io.parse_args(
         'mle',
         add_test_distrib_args,
         description='Perform hypothesis tests on which distribution is the '
@@ -711,7 +711,7 @@ if __name__ == '__main__':
     if args.hypothesis_distrib.hypothesis_test == 'human':
         test_human_data(
             args,
-            random_seeds,
+            args.random_seeds,
             info_criterions=args.hypothesis_distrib.info_criterions,
         )
     elif args.hypothesis_distrib.hypothesis_test == 'model':

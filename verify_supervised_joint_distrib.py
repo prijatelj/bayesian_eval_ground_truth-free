@@ -444,7 +444,7 @@ def add_test_sjd_args(parser):
 
 
 if __name__ == '__main__':
-    args, random_seeds = experiment.io.parse_args(
+    args = experiment.io.parse_args(
         ['mle', 'sjd'],
         add_test_sjd_args,
         description=' '.join([
