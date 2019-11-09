@@ -390,6 +390,10 @@ def kfold_cv(
                 callbacks=callbacks,
                 validation_data=(features[test_idx], labels[test_idx]),
             )
+
+            kfold_summary['early_stopped_epoch'] = callbacks[-1].stopped_epoch
+            logging.info('Early stopping at epoch: %d', callbacks[-1].stopped_epoch)
+
         elif period_save_pred:
             # TODO properly handle filling in Y True for validation data.
             model, init_times, train_times = prepare_model(
@@ -725,7 +729,7 @@ if __name__ == '__main__':
             args.dataset_id,
             vars(args.data),
             vars(args.model),
-            vars(kfold_cv),
+            vars(args.kfold_cv),
             focus_fold=args.focus_fold,
             random_seeds=args.random_seeds,
         )
