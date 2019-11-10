@@ -210,8 +210,10 @@ def mle_adam(
         in decending order.
     """
     if optimizer_args is None:
+        # Ensure that opt args is a dict for use with **
         optimizer_args = {}
     if random_seed:
+        # Set random seed if given.
         np.random.seed(random_seed)
         tf.set_random_seed(random_seed)
 
@@ -220,9 +222,11 @@ def mle_adam(
         # tensorflow prep data
         dataset = tf.data.Dataset.from_tensor_slices(data)
         if shuffle_data:
+            # NOTE batchsize is default to 1, is this acceptable?
             dataset = dataset.shuffle(batch_size, seed=random_seed)
         dataset = dataset.repeat(max_iter)
-        dataset = dataset.batch(batch_size)
+        # TODO No batching of this process... Decide if batching is okay
+        #dataset = dataset.batch(batch_size)
         iterator = dataset.make_one_shot_iterator()
         tf_data = tf.cast(iterator.get_next(), dtype)
 
@@ -243,21 +247,17 @@ def mle_adam(
             name='neg_log_likelihood_sum',
         )
 
-        # Add Relu to enforce positive values for param constraints:
+        # Apply param constraints. Add Relu to enforce positive values
         if distrib_id.lower() == 'dirichlet' and alt_distrib:
             if const_params is None or 'precision' not in const_params:
                 loss = neg_log_likelihood +  constraint_multiplier \
                     * tf.nn.relu(-params['precision'] + 1e-3)
         elif distrib_id.lower() == 'multivariatestudentt':
+            if const_params is None or 'df' not in const_params:
+                # If opt Student T, mean is const and Sigma got from df & cov
+                # thus enforce df > 2, ow. cov is undefined.
                 loss = neg_log_likelihood +  constraint_multiplier \
                     * tf.nn.relu(-params['df'] + 2 + 1e-3)
-            if const_params is None or 'df' not in const_params:
-                if 'mean' in const_params:
-                    loss = neg_log_likelihood +  constraint_multiplier \
-                        * tf.nn.relu(-params['df'] + 2 + 1e-3)
-                else:
-                    loss = neg_log_likelihood +  constraint_multiplier \
-                        * tf.nn.relu(-params['df'] + 1e-3)
         else:
             loss = neg_log_likelihood
 
@@ -336,11 +336,37 @@ def mle_adam(
 
             iter_results = sess.run(results_dict, {tf_data: data})
 
+            if tb_summary_dir:
+                # Write summary update
+                summary_writer.add_summary(iter_results['summary_op'], i)
+                summary_writer.flush()
+
+            # Check if any of the params are NaN. Fail if so.
             for param, value in iter_results['params'].items():
                 if np.isnan(value).any():
                     raise ValueError(f'{param} is NaN!')
 
-            if iter_results['params']['precision'] > 0 and (not top_likelihoods or iter_results['loss'] < top_likelihoods[-1].neg_log_likelihood):
+            # param value check if breaks constraints: Skip to next if so.
+            if (
+                'precision' in iter_results['params']
+                and iter_results['params']['precision'] <= 0
+                ) or (
+                    'df' in iter_results['params']
+                    and iter_results['params']['df'] <= 0
+            ):
+                # This still counts as an iteration, just nothing to save.
+                if i >= max_iter:
+                    logging.info(
+                        'Maimum iterations (%d) reached without convergence.',
+                        max_iter,
+                    )
+                    continue_loop = False
+
+                i += 1
+                continue
+
+            # Assess if necessary to save the valid likelihoods
+            if not top_likelihoods or iter_results['loss'] < top_likelihoods[-1].neg_log_likelihood:
                 # update top likelihoods and their respective params
                 if num_top_likelihoods == 1:
                     top_likelihoods = [MLEResults(
@@ -357,11 +383,6 @@ def mle_adam(
 
                     if len(top_likelihoods) > num_top_likelihoods:
                         del top_likelihoods[-1]
-
-            if tb_summary_dir:
-                # Write summary update
-                summary_writer.add_summary(iter_results['summary_op'], i)
-                summary_writer.flush()
 
             # Calculate Termination Conditions
             # TODO Does the values need sorted by keys first?
@@ -395,6 +416,7 @@ def mle_adam(
                 logging.info('Maimum iterations (%d) reached without convergence.', max_iter)
                 continue_loop = False
 
+            # TODO should we save invalid params and results in the history?
             # Save observed vars of interest
             if num_top_likelihoods <= 0 or not params_history and not loss_history:
                 # return the history of all likelihoods and params.
@@ -451,7 +473,9 @@ def get_distrib_param_vars(
     (tfp.distribution.Distribution, dict('param': tf.Variables))
         the distribution and tf.Variables as its parameters.
     """
-    if distrib_id.lower() == 'dirichletmultinomial'or distrib_id == 'dirichlet_multinomial':
+    distrib_id = distrib_id.lower()
+
+    if distrib_id == 'dirichletmultinomial'or distrib_id == 'dirichlet_multinomial':
         params = get_dirichlet_multinomial_param_vars(
             random_seed=random_seed,
             const_params=const_params,
@@ -461,7 +485,7 @@ def get_distrib_param_vars(
             tfp.distributions.DirichletMultinomial(**params),
             params,
         )
-    elif distrib_id.lower() == 'dirichlet' and not alt_distrib:
+    elif distrib_id == 'dirichlet' and not alt_distrib:
         params = get_dirichlet_param_vars(
             random_seed=random_seed,
             const_params=const_params,
@@ -471,7 +495,7 @@ def get_distrib_param_vars(
             tfp.distributions.Dirichlet(**params),
             params,
         )
-    elif distrib_id.lower() == 'dirichlet' and alt_distrib:
+    elif distrib_id == 'dirichlet' and alt_distrib:
         if 'concentration' in init_params:
             precision = np.sum(init_params['concentration'])
             # mean needs to be the discrete probability distrib.
@@ -508,7 +532,7 @@ def get_distrib_param_vars(
             tfp.distributions.Dirichlet(params['mean'] * params['precision']),
             params,
         )
-    elif distrib_id.lower() == 'normal':
+    elif distrib_id == 'normal':
         params = get_normal_param_vars(
             random_seed=random_seed,
             const_params=const_params,
@@ -516,6 +540,16 @@ def get_distrib_param_vars(
         )
         return (
             tfp.distributions.Normal(**params),
+            params,
+        )
+    elif distrib_id == 'multivariatestudentt':
+        params = get_mvst_param_vars(
+            random_seed=random_seed,
+            const_params=const_params,
+            **init_params,
+        )
+        return (
+            tfp.distributions.MultivariateStudentTLinearOperator(**params),
             params,
         )
     else:
@@ -771,32 +805,41 @@ def get_normal_param_vars(
         return params
 
 
-def get_t_param_vars(
+def get_mvst_param_vars(
     df,
     loc,
-    scale,
+    covariance_matrix,
     const_params=None,
-    name='normal_params',
+    name='multivariate_student_t_params',
     dtype=tf.float32,
 ):
-    """Create tf.Variable parameters for the normal distribution.
+    """Create tf.Variable parameters for the Multivariate Student distribution.
 
     Parameters
     ----------
-    loc : float | dict
-        either a float as the initial value of the loc, or a dict containing
-        the loc and standard deviation of a normal distribution which this
-        loc is drawn from randomly.
-    scale : float | dict
-        either a float as the initial value of the scale, or a dict
-        containing the loc and standard deviation of a normal distribution
-        which this loc is drawn from randomly.
+    df : float
+        Positive non-zero float for degrees of freedom.
+    loc : np.ndarray(float)
+        Vector of floats for the locations or means.
+    scale : np.ndarray(floats), optional
+        Symmetric positive definite matrix of floats for Sigma matrix.
+        Expects Covariance Matrix that is held constant and is used along with
+        df to calculate the scale.
+    covariance_matrix : np.ndarray(floats), optional
+        Symmetric positive definite matrix of floats for covariance matrix.
+        Expects Covariance Matrix that is held constant and is used along with
+        df to calculate the scale.
     """
+
+    raise NotImplementedError(
+        'Cannot do this as is. Cov = Sigma*df/(df-2). Sigma = scale @ scale.T'
+    )
+
     with tf.name_scope(name):
         params = {}
 
         # Get df
-        if isinstance(df, float):
+        if isinstance(df, float) and df > 2:
             params['df'] = (tf.constant(
                 value=df,
                 dtype=dtype,
@@ -808,7 +851,7 @@ def get_t_param_vars(
             ))
         else:
             raise TypeError(
-                '`df` must be either a positve float.'
+                '`df` must be either a positve float greater than 2.'
                 + f'But recieved type: {type(df)}'
             )
 
@@ -829,25 +872,16 @@ def get_t_param_vars(
                 + f'initial values. But recieved type: {type(loc)}'
             )
 
-
         # TODO make scale dependent on df and data covariance:
         # scale = (df-2) / df * cov(data) when df > 2.
+        cov = tf.constant(
+            value=covariance_matrix,
+            dtype=dtype,
+            name='covariance',
+        )
 
-        # Get scale
-        if isinstance(scale, np.ndarray):
-            params['scale'] = (tf.constant(
-                value=scale,
-                dtype=dtype,
-                name='scale',
-            ) if const_params and 'scale' in const_params else tf.Variable(
-                initial_value=scale,
-                dtype=dtype,
-                name='scale',
-            ))
-        else:
-            raise TypeError(
-                '`scale` must be a symmetric positive definite matrix of '
-                + f'floats. But recieved type: {type(scale)}'
-            )
+        params['scale'] = tf.linalg.LinearOperatorLowerTriangular(
+            (df - 2 / df) * cov,
+        )
 
         return params
