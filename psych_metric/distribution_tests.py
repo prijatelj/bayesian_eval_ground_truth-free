@@ -152,6 +152,23 @@ def calc_info_criterion(mle, num_params, criterions, num_samples=None):
     return info_criterion
 
 
+def mvst_tf_log_prob(self, x, df, loc, sigma):
+    dims = loc.shape[1]
+
+    # TODO Ensure this is broadcastable
+    return (
+        tf.math.lgamma((df + dims) / 2)
+        - (df + dims) / 2 * (
+            1 + (1 / df) * (x - loc) * tf.linalg.inv(sigma) * (x - loc)
+        ) - (
+            tf.math.lgamma(df / 2)
+            + .5 * (dims * (tf.log(df) + tf.log(np.pi))
+                + tf.log(tf.linalg.norm(sigma))
+            )
+        )
+    )
+
+
 # NOTE MLE search over params  could be done in SHADHO instead
 def mle_adam(
     distrib_id,
@@ -238,8 +255,12 @@ def mle_adam(
             alt_distrib=alt_distrib,
         )
 
-        #log_prob = distrib.log_prob(value=data)
-        log_prob = distrib.log_prob(value=tf_data)
+        # Get the log prob of data when distrib has the existing.
+        if distrib_id.lower() == 'multivariatestudentt':
+            log_prob = mvst_tf_log_prob(tf_data, **params)
+        else:
+            #log_prob = distrib.log_prob(value=data)
+            log_prob = distrib.log_prob(value=tf_data)
 
         # Calc neg log likelihood to find minimum of (aka maximize log likelihood)
         neg_log_likelihood = -1.0 * tf.reduce_sum(
@@ -549,7 +570,8 @@ def get_distrib_param_vars(
             **init_params,
         )
         return (
-            tfp.distributions.MultivariateStudentTLinearOperator(**params),
+            #tfp.distributions.MultivariateStudentTLinearOperator(**params),
+            None,
             params,
         )
     else:
@@ -876,15 +898,16 @@ def get_mvst_param_vars(
                 + f'initial values. But recieved type: {type(loc)}'
             )
 
+        # Get Sigma matrix
         # TODO make scale dependent on df and data covariance:
-        # scale = (df-2) / df * cov(data) when df > 2.
+        # sigma = (df-2) / df * cov(data) when df > 2.
         cov = tf.constant(
             value=covariance_matrix,
             dtype=dtype,
             name='covariance',
         )
 
-        params['scale'] = tf.linalg.LinearOperatorLowerTriangular(
+        params['sigma'] = tf.linalg.LinearOperatorLowerTriangular(
             (df - 2 / df) * cov,
         )
 
