@@ -1,6 +1,5 @@
 import numpy as np
 import scipy
-from pymc3.distributions.multivariate import MvStudentT
 
 
 class MultivariateStudentT(object):
@@ -52,27 +51,34 @@ class MultivariateStudentT(object):
             )
         )
 
-    def mvst_neg_log_prob(self, x, data):
+    def mvst_neg_log_prob(self, x, data, constraint_multiplier=1e5):
         """the Log probability density function of multivariate
+
+        mean is kept constant to the datas column means.
         """
         dims = data.shape[0]
 
         # expand the params into their proper forms
         df = x[0]
-        loc = x[1 : dims + 1]
-        scale = np.reshape(x[dims + 1:], [dims, dims])
+        #loc = x[1 : dims + 1]
+        loc = data.mean(0)
+        #scale = np.reshape(x[dims + 1:], [dims, dims])
+        scale = np.reshape(x[1:], [dims, dims])
+
+        scale = (scale + scale.T) / 2
+
+        neg_log_prob = -self.log_probability(data, df, loc, scale).sum()
 
         param_constraints = 0
 
         # apply constraints to variables
         if df <= 0:
-            param_constraints += (-df + 1e-3) * 1e5
-            df + 1e5
-        if (loc <= 0).any:
-            return loc.min() + 1e5
-        # TODO How to add a constraint to the positive definite matrix `scale`?
+            param_constraints += (-df + 1e-3) * constraint_multiplier
 
-        return -self.log_probability(data, df, loc, scale).sum()
+        # TODO How to add a constraint to the positive definite matrix `scale`?
+        # could apply the same constraint to the different diagonal values.
+
+        return neg_log_prob + param_constraints
 
     def nelder_mead_mvstudent(
         self,
@@ -81,7 +87,7 @@ class MultivariateStudentT(object):
         loc=None,
         scale=None,
         const=None,
-        max_iter=10000,
+        max_iter=20000,
         nelder_mead_args=None,
         random_seed=None,
         name='nelder_mead_multivarite_student_t',
@@ -103,9 +109,9 @@ class MultivariateStudentT(object):
         init_data = np.concatenate([[df], loc, scale.flatten()])
 
         opt_result = scipy.optimize.minimize(
-            self.mvst_neg_log_prob,
-            init_data,
-            args=[scale.shape[0]],
+            lambda x: self.mvst_neg_log_prob(x, data),
+            # TODO init_data,
+            args=[data],
             method='Nelder-Mead',
             maxiter=max_iter,
         )
