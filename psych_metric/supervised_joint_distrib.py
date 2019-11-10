@@ -4,7 +4,6 @@ distribution and that the prediction output can be obtained with some error by
 a transformation function of the target distribution.
 """
 from copy import deepcopy
-import math
 from multiprocessing import Pool
 
 import numpy as np
@@ -14,6 +13,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from psych_metric import distribution_tests
+from psych_metric import mvst
 
 # TODO handle continuous distrib of continuous distrib, only discrete atm.
 
@@ -69,7 +69,8 @@ def knn_log_prob(pred, num_classes, knn_tree, k, knn_pdf_num_samples=int(1e6)):
 
     # calculate the n-1 sphere volume being contained w/in the n-1 simplex
     n = num_classes - 1
-    log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) - scipy.special.gammaln(n / 2 + 1)
+    log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) \
+        - scipy.special.gammaln(n / 2 + 1)
 
     return log_prob
 
@@ -367,7 +368,6 @@ class SupervisedJointDistrib(object):
                     np.cov(data, bias=False, rowvar=False),
                 )
             elif distrib == 'multivariatestudentt':
-                raise NotImplementedError('Needs to use Nelder-Mead method')
 
                 # initial df is 3
                 # initial random scale is cov * (df -2) / df / 2
@@ -381,14 +381,19 @@ class SupervisedJointDistrib(object):
                         init_params={
                             'df': 3.0,
                             'loc': np.mean(data, axis=0),
-                            'scale': np.cov(data, bias=False, rowvar=False) / (3 * 2),
+                            'covariance_matrix': np.cov(data, bias=False, rowvar=False),
                         },
                         **mle_args,
                     )
 
-                    return  tfp.distributions.MultivariateStudentTLinearOperator(
-                        **mle_results[0].params
-                    )
+                    # TODO handle returning a NON tfp distrib, as MVSTLinOp
+                    # relies on scale, rather than Sigma.
+                    #return  tfp.distributions.MultivariateStudentTLinearOperator(
+                    #    **mle_results[0].params
+                    #)
+                    raise NotImplementedError('Need to return a non tfp distrib')
+
+                    return  mvst.MultivariateStudentT(**mle_results[0].params)
             else:
                 raise ValueError(' '.join([
                     'Currently only "Dirichlet", "DirichletMultinomial",',
@@ -816,8 +821,6 @@ class SupervisedJointDistrib(object):
         if len(pred.shape) == 1:
             # single sample
             pred = pred.reshape(1, -1)
-
-        #radius = self.knn_tree.query(pred, k)[0][:, -1]
         radius = knn_tree.query(pred, k)[0][:, -1]
 
         # log(k) - log(n) - log(volume)
@@ -825,7 +828,8 @@ class SupervisedJointDistrib(object):
 
         # calculate the n-1 sphere volume being contained w/in the n-1 simplex
         n = self.transform_matrix.shape[1] - 1
-        log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) - scipy.special.gammaln(n / 2 + 1)
+        log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) \
+            - scipy.special.gammaln(n / 2 + 1)
 
         return log_prob
 
