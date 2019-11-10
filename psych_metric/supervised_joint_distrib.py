@@ -308,12 +308,14 @@ class SupervisedJointDistrib(object):
             # Use given distribution as the fitted distribution.
             return distrib
         elif isinstance(distrib, str):
+            distrib = distrib.lower()
+
             # By default, use UMVUE of params of given data. No MLE fitting.
             if data is None:
                 raise ValueError('`data` must be provided when `distrib` '
                     + 'is of type `str`')
 
-            if distrib == 'DirichletMultinomial':
+            if distrib == 'dirichletmultinomial':
                 total_count = np.sum(data, axis=1).max(0)
 
                 if mle_args:
@@ -337,7 +339,7 @@ class SupervisedJointDistrib(object):
                     total_count,
                     np.mean(data, axis=0), #/ total_count,
                 )
-            elif distrib == 'Dirichlet':
+            elif distrib == 'dirichlet':
                 if mle_args:
                     # TODO need to 1) be given a dtype, 2) enforce that in all
                     # data and tensors.
@@ -359,33 +361,40 @@ class SupervisedJointDistrib(object):
                     )
 
                 return  tfp.distributions.Dirichlet(np.mean(data, axis=0))
-            elif distrib == 'MultivariateNormal':
-                """
-                if mle_args:
-                    mle_results = distribution_tests.mle_adam(
-                        distrib,
-                        np.maximum(data, np.finfo(data.dtype).tiny),
-                        init_params={
-                            'loc': np.mean(data, axis=0),
-                            'covariance_matrix': np.cov(data, bias=False, rowvar=False),
-                        },
-                        **mle_args,
-                    )
-
-                    return  tfp.distributions.DirichletMultinomial(
-                        **mle_results[0].params
-                    )
-                """
-
+            elif distrib == 'multivariatenormal':
                 return tfp.distributions.MultivariateNormalFullCovariance(
                     np.mean(data, axis=0),
                     np.cov(data, bias=False, rowvar=False),
                 )
+            elif distrib == 'multivariatestudentt':
+                raise NotImplementedError('Needs to use Nelder-Mead method')
+
+                # initial df is 3
+                # initial random scale is cov * (df -2) / df / 2
+                # as a poor attempt to ge a matrix in the proper range of
+                # values of scale.
+
+                if mle_args:
+                    mle_results = distribution_tests.mle_adam(
+                        distrib,
+                        data,
+                        init_params={
+                            'df': 3.0,
+                            'loc': np.mean(data, axis=0),
+                            'scale': np.cov(data, bias=False, rowvar=False) / (3 * 2),
+                        },
+                        **mle_args,
+                    )
+
+                    return  tfp.distributions.MultivariateStudentTLinearOperator(
+                        **mle_results[0].params
+                    )
             else:
                 raise ValueError(' '.join([
-                    'Currently only "Dirichlet", "DirichletMultinomial" or',
-                    '"MultivariateNormal" for ' 'independent distributions ',
-                    'are supported as proof of concept.',
+                    'Currently only "Dirichlet", "DirichletMultinomial",',
+                    '"MultivariateNormal", or "MultivariateStudentT" for,',
+                    'independent distributions are supported as proof of',
+                    'concept.',
                 ]))
         elif isinstance(distrib, dict):
             # If given a dict, use as initial parameters and fit with MLE
