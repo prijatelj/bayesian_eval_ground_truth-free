@@ -831,9 +831,13 @@ def get_mvst_param_vars(
         df to calculate the scale.
     """
 
-    raise NotImplementedError(
-        'Cannot do this as is. Cov = Sigma*df/(df-2). Sigma = scale @ scale.T'
-    )
+    raise NotImplementedError(' '.join([
+        'Cannot do this as is. Cov = Sigma*df/(df-2). Sigma = scale @ scale.T',
+        'However, this is only because the',
+        'tfp.MultivariateStudentTLinearOperator uses `scale`. If it were to',
+        'use Sigma, this would be doable via the MLE method estimating only',
+        '`df`.',
+    ]))
 
     with tf.name_scope(name):
         params = {}

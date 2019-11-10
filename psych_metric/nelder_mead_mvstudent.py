@@ -12,9 +12,9 @@ class MultivariateStudentT(object):
     loc : np.ndarray(float)
         The means of the different dimensions experessed as a vector of postive
         floats.
-    scale : np.ndarray(float)
-        The scale matrix (shape matrix Sigma) of the multivariate student T
-        distribution.
+    sigma : np.ndarray(float)
+        The sigma matrix of the multivariate student T distribution. This is
+        NOT the scale matrix! This is equal to scale @ scale.T
     """
 
     def __init__(self, df, loc, scale):
@@ -39,6 +39,8 @@ class MultivariateStudentT(object):
 
     def log_probability(self, x, df, loc, scale):
         dims = len(loc)
+
+        # TODO Ensure this is broadcastable
         return (
             scipy.special.gammaln((df + dims) / 2)
             - (df + dims) / 2 * (
@@ -51,7 +53,13 @@ class MultivariateStudentT(object):
             )
         )
 
-    def mvst_neg_log_prob(self, x, data, constraint_multiplier=1e5):
+    def mvst_neg_log_prob(
+        self,
+        x,
+        data,
+        estimate_loc=False,
+        constraint_multiplier=1e5,
+    ):
         """the Log probability density function of multivariate
 
         mean is kept constant to the datas column means.
@@ -60,30 +68,43 @@ class MultivariateStudentT(object):
 
         # expand the params into their proper forms
         df = x[0]
-        #loc = x[1 : dims + 1]
-        loc = data.mean(0)
-        #scale = np.reshape(x[dims + 1:], [dims, dims])
-        scale = np.reshape(x[1:], [dims, dims])
+        if estimate_loc:
+            # Estimating loc means it is part of x and needs restructured
+            loc = x[1 : dims + 1]
+            scale = np.reshape(x[dims + 1:], [dims, dims])
+        else:
+            # Derive loc as a constant from the data
+            loc = data.mean(0)
+            scale = np.reshape(x[1:], [dims, dims])
 
+        # Make scale symmetric, at least.
         scale = (scale + scale.T) / 2
 
-        neg_log_prob = -self.log_probability(data, df, loc, scale).sum()
-
-        param_constraints = 0
+        loss = -self.log_probability(data, df, loc, scale).sum()
 
         # apply constraints to variables
-        if df <= 0:
-            param_constraints += (-df + 1e-3) * constraint_multiplier
+        if df <= 2:
+            loss += (-df + 2 + 1e-3) * constraint_multiplier
 
-        # TODO How to add a constraint to the positive definite matrix `scale`?
-        # could apply the same constraint to the different diagonal values.
+        # Check if scale is a valid positive definite matrix
+        try:
+            np.linalg.cholesky(scale)
+        except:
+            # TODO How to add a constraint to the positive definite matrix `scale`?
+            # could apply the same constraint to the different diagonal values.
 
-        return neg_log_prob + param_constraints
+            # it is a boolean state afaik, so if not positive definite, then return
+            # high value for loss
+
+            # TODO ensure the use of absolute value is fine.
+            loss += loss**2 * constraint_multiplier
+
+        return loss
 
     def nelder_mead_mvstudent(
         self,
         data,
-        df=None,
+        df=3,
         loc=None,
         scale=None,
         const=None,
@@ -104,7 +125,8 @@ class MultivariateStudentT(object):
         if loc is None:
             loc = data.mean(0)
         if scale is None:
-            scale = np.cov(data)
+            # NOTE, this is actually Sigma...
+            scale = np.cov(data) * (df - 2) / df
 
         init_data = np.concatenate([[df], loc, scale.flatten()])
 
