@@ -248,6 +248,16 @@ def mle_adam(
             if const_params is None or 'precision' not in const_params:
                 loss = neg_log_likelihood +  constraint_multiplier \
                     * tf.nn.relu(-params['precision'] + 1e-3)
+        elif distrib_id.lower() == 'multivariatestudentt':
+                loss = neg_log_likelihood +  constraint_multiplier \
+                    * tf.nn.relu(-params['df'] + 2 + 1e-3)
+            if const_params is None or 'df' not in const_params:
+                if 'mean' in const_params:
+                    loss = neg_log_likelihood +  constraint_multiplier \
+                        * tf.nn.relu(-params['df'] + 2 + 1e-3)
+                else:
+                    loss = neg_log_likelihood +  constraint_multiplier \
+                        * tf.nn.relu(-params['df'] + 1e-3)
         else:
             loss = neg_log_likelihood
 
@@ -756,6 +766,88 @@ def get_normal_param_vars(
                 '`scale` must be either a float xor dict containing a scale and '
                 + 'scale for sampling from a normal distribution to select the '
                 + f'initial values. But recieved type: {type(scale)}'
+            )
+
+        return params
+
+
+def get_t_param_vars(
+    df,
+    loc,
+    scale,
+    const_params=None,
+    name='normal_params',
+    dtype=tf.float32,
+):
+    """Create tf.Variable parameters for the normal distribution.
+
+    Parameters
+    ----------
+    loc : float | dict
+        either a float as the initial value of the loc, or a dict containing
+        the loc and standard deviation of a normal distribution which this
+        loc is drawn from randomly.
+    scale : float | dict
+        either a float as the initial value of the scale, or a dict
+        containing the loc and standard deviation of a normal distribution
+        which this loc is drawn from randomly.
+    """
+    with tf.name_scope(name):
+        params = {}
+
+        # Get df
+        if isinstance(df, float):
+            params['df'] = (tf.constant(
+                value=df,
+                dtype=dtype,
+                name='df',
+            ) if const_params and 'df' in const_params else tf.Variable(
+                initial_value=df,
+                dtype=dtype,
+                name='df',
+            ))
+        else:
+            raise TypeError(
+                '`df` must be either a positve float.'
+                + f'But recieved type: {type(df)}'
+            )
+
+        # Get loc
+        if isinstance(loc, float) or isinstance(loc, list) or isinstance(loc, np.ndarray):
+            params['loc'] = (tf.constant(
+                value=loc,
+                dtype=dtype,
+                name='loc',
+            ) if const_params and 'loc' in const_params else tf.Variable(
+                initial_value=loc,
+                dtype=dtype,
+                name='loc',
+            ))
+        else:
+            raise TypeError(
+                '`loc` must be either a float xor vector of floats '
+                + f'initial values. But recieved type: {type(loc)}'
+            )
+
+
+        # TODO make scale dependent on df and data covariance:
+        # scale = (df-2) / df * cov(data) when df > 2.
+
+        # Get scale
+        if isinstance(scale, np.ndarray):
+            params['scale'] = (tf.constant(
+                value=scale,
+                dtype=dtype,
+                name='scale',
+            ) if const_params and 'scale' in const_params else tf.Variable(
+                initial_value=scale,
+                dtype=dtype,
+                name='scale',
+            ))
+        else:
+            raise TypeError(
+                '`scale` must be a symmetric positive definite matrix of '
+                + f'floats. But recieved type: {type(scale)}'
             )
 
         return params
