@@ -39,7 +39,7 @@ def many_jointplots(df, suptitle=None):
     fig.subplots_adjust(top=0.93, wspace=0.3)
 
     if isinstance(suptitle, str):
-        t=f.suptitle(suptitle, fontsize=14)
+        t=fig.suptitle(suptitle, fontsize=14)
 
     plt.show()
 
