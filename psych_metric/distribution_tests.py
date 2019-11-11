@@ -152,21 +152,22 @@ def calc_info_criterion(mle, num_params, criterions, num_samples=None):
     return info_criterion
 
 
-def mvst_tf_log_prob(self, x, df, loc, sigma):
-    dims = loc.shape[1]
+def mvst_tf_log_prob(x, df, loc, sigma):
+    with tf.name_scope('multivariate_student_t_log_prob') as scope:
+        dims = tf.cast(loc.shape[0], tf.float32)
 
-    # TODO Ensure this is broadcastable
-    return (
-        tf.math.lgamma((df + dims) / 2)
-        - (df + dims) / 2 * (
-            1 + (1 / df) * (x - loc) * tf.linalg.inv(sigma) * (x - loc)
-        ) - (
-            tf.math.lgamma(df / 2)
-            + .5 * (dims * (tf.log(df) + tf.log(np.pi))
-                + tf.log(tf.linalg.norm(sigma))
+        # TODO Ensure this is broadcastable
+        return (
+            tf.math.lgamma((df + dims) / 2.0)
+            - (df + dims) / 2.0 * (
+                1.0 + (1.0 / df) * (x - loc) @ tf.linalg.inv(sigma) @ tf.transpose(x - loc)
+            ) - (
+                tf.math.lgamma(df / 2.0)
+                + .5 * (dims * (tf.log(df) + tf.log(np.pi))
+                    + tf.log(tf.linalg.norm(sigma))
+                )
             )
         )
-    )
 
 
 # NOTE MLE search over params  could be done in SHADHO instead
@@ -243,7 +244,7 @@ def mle_adam(
             dataset = dataset.shuffle(batch_size, seed=random_seed)
         dataset = dataset.repeat(max_iter)
         # TODO No batching of this process... Decide if batching is okay
-        #dataset = dataset.batch(batch_size)
+        dataset = dataset.batch(batch_size)
         iterator = dataset.make_one_shot_iterator()
         tf_data = tf.cast(iterator.get_next(), dtype)
 
@@ -277,6 +278,8 @@ def mle_adam(
             if const_params is None or 'df' not in const_params:
                 # If opt Student T, mean is const and Sigma got from df & cov
                 # thus enforce df > 2, ow. cov is undefined.
+
+                # NOTE cannot handle df < 2, ie. cannot learn Multivariate Cauchy
                 loss = neg_log_likelihood +  constraint_multiplier \
                     * tf.nn.relu(-params['df'] + 2 + 1e-3)
         else:
@@ -373,7 +376,7 @@ def mle_adam(
                 and iter_results['params']['precision'] <= 0
                 ) or (
                     'df' in iter_results['params']
-                    and iter_results['params']['df'] <= 0
+                    and iter_results['params']['df'] <= 2
             ):
                 # This still counts as an iteration, just nothing to save.
                 if i >= max_iter:
@@ -382,6 +385,11 @@ def mle_adam(
                         max_iter,
                     )
                     continue_loop = False
+
+                logging.info(
+                    'Invalid param value encountered: (%d)',
+                    iter_results['params']['df'],
+                )
 
                 i += 1
                 continue
@@ -409,8 +417,19 @@ def mle_adam(
             # TODO Does the values need sorted by keys first?
             if params_history:
                 # NOTE beware possibility: hstack not generalizing, & may need squeeze()
-                new_params = np.hstack(list(iter_results['params'].values()))
-                prior_params = np.hstack(list(params_history[-1].values()))
+                #new_params = np.hstack(list(iter_results['params'].values()))
+
+                if distrib_id == 'MultivariateStudentT':
+                    new_params = np.hstack([v for k, v in iter_results['params'].items() if k != 'sigma'])
+                    new_params = np.hstack([new_params, iter_results['params']['sigma'].flatten()])
+
+                    prior_params = np.hstack([v for k, v in params_history[-1].items() if k != 'sigma'])
+                    prior_params = np.hstack([prior_params, params_history[-1]['sigma'].flatten()])
+
+                else:
+                    new_params = np.hstack(list(iter_results['params'].values()))
+                    prior_params = np.hstack(list(params_history[-1].values()))
+
                 param_diff = np.subtract(new_params, prior_params)
 
                 if np.linalg.norm(param_diff) < tol_param:
@@ -565,7 +584,6 @@ def get_distrib_param_vars(
         )
     elif distrib_id == 'multivariatestudentt':
         params = get_mvst_param_vars(
-            random_seed=random_seed,
             const_params=const_params,
             **init_params,
         )
@@ -853,6 +871,7 @@ def get_mvst_param_vars(
         df to calculate the scale.
     """
 
+    """
     raise NotImplementedError(' '.join([
         'Cannot do this as is. Cov = Sigma*df/(df-2). Sigma = scale @ scale.T',
         'However, this is only because the',
@@ -860,6 +879,7 @@ def get_mvst_param_vars(
         'use Sigma, this would be doable via the MLE method estimating only',
         '`df`.',
     ]))
+    #"""
 
     with tf.name_scope(name):
         params = {}
@@ -904,11 +924,10 @@ def get_mvst_param_vars(
         cov = tf.constant(
             value=covariance_matrix,
             dtype=dtype,
-            name='covariance',
+            name='covariance_matrix',
         )
 
-        params['sigma'] = tf.linalg.LinearOperatorLowerTriangular(
-            (df - 2 / df) * cov,
-        )
+        #params['sigma'] = tf.linalg.LinearOperatorLowerTriangular(
+        params['sigma'] = (df - 2) / df * cov
 
         return params
