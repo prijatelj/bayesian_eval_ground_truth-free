@@ -886,6 +886,7 @@ class SupervisedJointDistrib(object):
             target = np.maximum(target, np.finfo(target.dtype).tiny)
 
         if self.independent:
+            # If independent, then just measure the MLE of the distribs separately.
             if (
                 isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial)
                 or isinstance(self.transform_distrib, tfp.distributions.Dirichlet)
