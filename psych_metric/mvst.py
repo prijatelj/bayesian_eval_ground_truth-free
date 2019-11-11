@@ -54,7 +54,8 @@ class MultivariateStudentT(object):
                 1 + (1 / df) * (x - loc) @ np.linalg.inv(sigma) @ (x - loc).T
             ) - (
                 scipy.special.gammaln(df / 2)
-                + .5 * (dims * (np.log(df) + np.log(np.pi))
+                + .5 * (
+                    dims * (np.log(df) + np.log(np.pi))
                     + np.log(np.linalg.norm(sigma))
                 )
             )
@@ -95,6 +96,7 @@ class MultivariateStudentT(object):
         if df <= 0:
             loss += (-df + 1e-4) * constraint_multiplier
 
+        """
         # Check if scale is a valid positive definite matrix
         try:
             np.linalg.cholesky(scale)
@@ -107,6 +109,7 @@ class MultivariateStudentT(object):
 
             # TODO ensure the use of absolute value is fine.
             loss += loss**2 * constraint_multiplier
+        """
 
         return loss
 
@@ -114,7 +117,7 @@ class MultivariateStudentT(object):
         self,
         data,
         #const=None,
-        max_iter=20000,
+        max_iter=10000,
         nelder_mead_args=None,
         name='nelder_mead_multivarite_student_t',
         constraint_multiplier=1e5,
@@ -127,17 +130,16 @@ class MultivariateStudentT(object):
 
         init_data = np.concatenate([[self.df], self.loc, self.sigma.flatten()])
 
-        #opt_result = scipy.optimize.fmin(
+        #opt_result = scipy.optimize.minimize(
         return scipy.optimize.minimize(
             lambda x: self.mvst_neg_log_prob(x, data),
             init_data,
             method='Nelder-Mead',
             options={'maxiter': max_iter},
-            #maxiter=max_iter,
         )
 
         #assert(opt_result.success)
-        #opt_x = opt_result.x
+        opt_x = opt_result.x
 
         self.df = opt_x[0]
         self.loc = opt_x[1 : data.shape[1] + 1]
@@ -146,4 +148,4 @@ class MultivariateStudentT(object):
             [data.shape[1], data.shape[1]],
         )
 
-        #return df, loc, scale
+        return df, loc, scale
