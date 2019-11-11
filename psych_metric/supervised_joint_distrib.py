@@ -247,6 +247,10 @@ class SupervisedJointDistrib(object):
                 'an already defined distribution each.',
             ]))
 
+        # Create the origin adjustment for going to and from n-1 simplex.
+        self.origin_adjust = np.zeros(self.transform_matrix.shape[1])
+        self.origin_adjust[0] = 1
+
         # TODO parallelize the fitting of the target and predictor distribs
 
         # Fit the target data
@@ -454,15 +458,9 @@ class SupervisedJointDistrib(object):
             else:
                 norm_target_samples = self.tf_target_samples
 
-            # Create the origin adjustment for going to and from n-1 simplex.
-            origin_adjust = np.zeros(self.transform_matrix.shape[1])
-            origin_adjust[0] = 1
-
             # Convert the normalized target samples into the n-1 simplex basis.
-            #target_simplex_samples = self.transform_matrix @ \
-            #    (norm_target_samples - origin_adjust)
             target_simplex_samples = tf.cast(
-                (norm_target_samples - origin_adjust) @ self.transform_matrix.T,
+                (norm_target_samples - self.origin_adjust) @ self.transform_matrix.T,
                 tf.float32,
             )
 
@@ -476,10 +474,8 @@ class SupervisedJointDistrib(object):
             pred_simplex_samples = transform_dists + target_simplex_samples
 
             # Convert the predictor sample back into correct distrib space.
-            #self.tf_pred_samples = ((pred_simplex_samples
-            #    @ self.transform_matrix) + origin_adjust) * self.total_count
             self.tf_pred_samples = ((pred_simplex_samples
-                @ self.transform_matrix) + origin_adjust)
+                @ self.transform_matrix) + self.origin_adjust)
 
             if isinstance(
                 self.target_distrib,
@@ -536,18 +532,15 @@ class SupervisedJointDistrib(object):
         else:
             norm_pred_samples = log_prob_pred_samples
 
-        # Create the origin adjustment for going to and from n-1 simplex.
-        origin_adjust = np.zeros(self.transform_matrix.shape[1])
-        origin_adjust[0] = 1
 
         # Convert the normalized samples into the n-1 simplex basis.
         # TODO the casts here may be unnecessrary! Check this.
         target_simplex_samples = tf.cast(
-            (norm_target_samples - origin_adjust) @ self.transform_matrix.T,
+            (norm_target_samples - self.origin_adjust) @ self.transform_matrix.T,
             tf.float64,
         )
         pred_simplex_samples = tf.cast(
-            (norm_pred_samples - origin_adjust) @ self.transform_matrix.T,
+            (norm_pred_samples - self.origin_adjust) @ self.transform_matrix.T,
             tf.float64,
         )
 
@@ -618,23 +611,6 @@ class SupervisedJointDistrib(object):
             self.knn_pdf_num_samples = num_samples
             self.transform_knn_dists = self.transform_distrib.sample(num_samples).eval(session=tf.Session())
 
-    def _is_prob_distrib(
-        self,
-        vector,
-        rtol=1e-09,
-        atol=0.0,
-        equal_nan=False,
-        axis=1,
-    ):
-        """Checks if the vector is a valid discrete probability distribution."""
-        # check if each row sums to 1
-        sums_to_one = np.isclose(vector.sum(axis), 1, rtol, atol, equal_nan)
-
-        # check if all values are w/in range
-        in_range = (vector >= 0).all(axis) == (vector <= 1).all(axis)
-
-        return sums_to_one == in_range
-
     def _get_change_of_basis_matrix(self, input_dim):
         """Creates a matrix that transforms from an `input_dim` space
         representation of a `input_dim` - 1 discrete probability simplex to
@@ -675,9 +651,7 @@ class SupervisedJointDistrib(object):
         probability simplex space of one dimension less. The orgin adjustment
         is used to move to the correct origin of the probability simplex space.
         """
-        origin_adjust = np.zeros(self.transform_matrix.shape[1])
-        origin_adjust[0] = 1
-        return self.transform_matrix @ (sample - origin_adjust)
+        return self.transform_matrix @ (sample - self.origin_adjust)
 
     def _transform_from(self, sample):
         """Transforms the sample from probability simplex space into the
@@ -685,9 +659,7 @@ class SupervisedJointDistrib(object):
         is used to move to the correct origin of the discrete distribtuion space.
         """
         # NOTE tensroflow optimization instead here.
-        origin_adjust = np.zeros(self.transform_matrix.shape[1])
-        origin_adjust[0] = 1
-        return (sample @ self.transform_matrix) + origin_adjust
+        return (sample @ self.transform_matrix) + self.origin_adjust
 
     def sample(self, num_samples, normalize=False):
         """Sample from the estimated joint probability distribution.
@@ -732,7 +704,7 @@ class SupervisedJointDistrib(object):
 
         # Get any and all indices of non-probability distrib samples
         bad_sample_idx = np.argwhere(np.logical_not(
-            self._is_prob_distrib(pred_samples),
+            is_prob_distrib(pred_samples),
         ))
         if len(bad_sample_idx) > 1:
             bad_sample_idx = np.squeeze(bad_sample_idx)
@@ -752,7 +724,7 @@ class SupervisedJointDistrib(object):
             pred_samples[bad_sample_idx] = new_pred
 
             bad_sample_idx = np.argwhere(np.logical_not(
-                self._is_prob_distrib(pred_samples),
+                is_prob_distrib(pred_samples),
             ))
             if len(bad_sample_idx) > 1:
                 bad_sample_idx = np.squeeze(bad_sample_idx)
@@ -812,32 +784,20 @@ class SupervisedJointDistrib(object):
             raise TypeError('`distrib` is expected to be of type `str` or '
                 + f'`dict` not `{type(distrib)}`')
 
-    def knn_log_prob(self, pred, knn_tree, k=None):
-        """Empirically estimates the predictor log probability using K Nearest
-        Neighbords.
-        """
+    def _knn_log_prob(self, pred, knn_tree, k=None):
         if k is None:
             k = self.num_neighbors
-        if len(pred.shape) == 1:
-            # single sample
-            pred = pred.reshape(1, -1)
-        radius = knn_tree.query(pred, k)[0][:, -1]
 
-        # log(k) - log(n) - log(volume)
-        log_prob = np.log(k) - np.log(self.knn_pdf_num_samples)
-
-        # calculate the n-1 sphere volume being contained w/in the n-1 simplex
-        n = self.transform_matrix.shape[1] - 1
-        log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) \
-            - scipy.special.gammaln(n / 2 + 1)
-
-        return log_prob
+        return knn_log_prob(
+            pred,
+            self.transform_matrix.shape[1],
+            knn_tree,
+            k,
+            self.knn_pdf_num_samples,
+        )
 
     def transform_knn_log_prob(self, target, pred, k=None):
         # NOTE this is highly parallizable across samples.
-        origin_adjust = np.zeros(self.transform_matrix.shape[1])
-        origin_adjust[0] = 1
-
         if k is None:
             k = self.num_neighbors
 
@@ -850,7 +810,7 @@ class SupervisedJointDistrib(object):
                     pred,
                     [self.transform_knn_dists] * len(target),
                     [k] * len(target),
-                    [origin_adjust] * len(target),
+                    [self.origin_adjust] * len(target),
                     [self.transform_matrix] * len(target),
                 ),
             )
@@ -869,7 +829,7 @@ class SupervisedJointDistrib(object):
 
             # Check which are valid samples. Save indices or new array
             valid_dists = self.transform_knn_dists[
-                np.where(self._is_prob_distrib(dist_check))[0]
+                np.where(is_prob_distrib(dist_check))[0]
             ]
 
             # Fit BallTree to the distances valid to the specific target.
@@ -879,7 +839,7 @@ class SupervisedJointDistrib(object):
             actual_dist = self._transform_to(pred[i]) - simplex_trgt
 
             # Estimate the log probability.
-            log_prob.append(self.knn_log_prob(actual_dist, knn_tree))
+            log_prob.append(self._knn_log_prob(actual_dist, knn_tree))
         #"""
 
         return np.array(log_prob)
