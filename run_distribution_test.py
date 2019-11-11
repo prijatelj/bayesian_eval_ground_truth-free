@@ -467,7 +467,7 @@ def test_dirichlet(
     init_concentration=None,
     repeat_mle=1,
 ):
-    """Creates a Dirichlet-Multinomial distribution and fits it using the given
+    """Creates a Dirichlet distribution and fits it using the given
     MLE method.
 
     Parameters
