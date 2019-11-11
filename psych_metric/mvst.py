@@ -18,9 +18,9 @@ class MultivariateStudentT(object):
         NOT the scale matrix! This is equal to scale @ scale.T
     """
 
-    def __init__(self, df, loc, sigma, scale=False):
-        if not isinstance(df, int):
-            raise TypeError(f'`df` must be of type integer, not{type(df)}')
+    def __init__(self, df, loc, sigma, scale=True):
+        if not isinstance(df, float):
+            raise TypeError(f'`df` must be of type float, not{type(df)}')
         if not isinstance(loc, np.ndarray):
             raise TypeError(f'`loc` must be of type np.ndarray, not {type(loc)}')
         if loc.dtype != np.float:
@@ -35,6 +35,12 @@ class MultivariateStudentT(object):
         self.loc = loc
         self.sigma = sigma @ sigma.T if scale else sigma
 
+    def fit(self, data, method='nelder_mead', *args, **kwargs):
+        if method == 'nelder_mead':
+            return self.nelder_mead(data, *args, **kwargs)
+
+        raise ValueError(f'Only the Nedler-Mead method is supported, not `{method}`.')
+
     def log_prob(self, x):
         return self.log_probability(x, self.df, self.loc, self.sigma)
 
@@ -45,7 +51,7 @@ class MultivariateStudentT(object):
         return (
             scipy.special.gammaln((df + dims) / 2)
             - (df + dims) / 2 * (
-                1 + (1 / df) * (x - loc) * np.linalg.inv(sigma) * (x - loc)
+                1 + (1 / df) * (x - loc) @ np.linalg.inv(sigma) @ (x - loc).T
             ) - (
                 scipy.special.gammaln(df / 2)
                 + .5 * (dims * (np.log(df) + np.log(np.pi))
@@ -67,15 +73,15 @@ class MultivariateStudentT(object):
         self,
         x,
         data,
-        estimate_loc=False,
-        estimate_scale=False,
+        estimate_loc=True,
+        estimate_scale=True,
         constraint_multiplier=1e5,
     ):
         """the Log probability density function of multivariate
 
         mean is kept constant to the datas column means.
         """
-        dims = data.shape[0]
+        dims = data.shape[1]
 
         # expand the params into their proper forms
         if isinstance(x, np.ndarray):
@@ -88,7 +94,7 @@ class MultivariateStudentT(object):
             loc = x[1 : dims + 1]
 
             if estimate_scale:
-                scale = np.reshape(x[dims + 1:], [dims, dims])
+                scale = np.reshape(x[dims + 1: 2 * dims + 1], [dims, dims])
                 sigma = scale @ scale.T
             else:
                 sigma = np.cov(data) * (df - 2) / df
@@ -105,8 +111,8 @@ class MultivariateStudentT(object):
         loss = - self.log_probability(data, df, loc, sigma).sum()
 
         # apply constraints to variables
-        if df <= 2:
-            loss += (-df + 2 + 1e-3) * constraint_multiplier
+        if df <= 0:
+            loss += (-df + 1e-3) * constraint_multiplier
 
         if estimate_scale:
             # Check if scale is a valid positive definite matrix
@@ -124,16 +130,12 @@ class MultivariateStudentT(object):
 
         return loss
 
-    def nelder_mead_mvstudent(
+    def nelder_mead(
         self,
         data,
-        df=3,
-        loc=None,
-        sigma=None,
         const=None,
         max_iter=20000,
         nelder_mead_args=None,
-        random_seed=None,
         name='nelder_mead_multivarite_student_t',
         constraint_multiplier=1e5,
     ):
@@ -142,9 +144,8 @@ class MultivariateStudentT(object):
         """
         if nelder_mead_args is None:
             optimizer_args = {}
-        if random_seed:
-            np.random.seed(random_seed)
 
+        """
         if loc is None:
             loc = data.mean(0)
             estimate_loc = False
@@ -161,11 +162,13 @@ class MultivariateStudentT(object):
             init_data = df
         else:
             init_data = np.concatenate([[df], loc, sigma.flatten()])
+        #"""
+        init_data = np.concatenate([[self.df], self.loc, self.sigma.flatten()])
 
         opt_result = scipy.optimize.minimize(
             lambda x: self.mvst_neg_log_prob(x, data),
             init_data,
-            args=[data],
+            #args=[data],
             method='Nelder-Mead',
             options={'maxiter': max_iter},
         )
@@ -175,8 +178,8 @@ class MultivariateStudentT(object):
         opt_x = opt_result.x
 
         # unpackage the parameters
-        if not (estimate_loc or estimate_scale):
-            return opt_x[0]
+        #if not (estimate_loc or estimate_scale):
+        #    return opt_x[0]
 
         df = opt_x[0]
         loc = opt_x[1 : data.shape[1] + 1]
