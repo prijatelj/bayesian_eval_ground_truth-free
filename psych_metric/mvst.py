@@ -73,8 +73,6 @@ class MultivariateStudentT(object):
         self,
         x,
         data,
-        estimate_loc=True,
-        estimate_scale=True,
         constraint_multiplier=1e5,
     ):
         """the Log probability density function of multivariate
@@ -84,56 +82,38 @@ class MultivariateStudentT(object):
         dims = data.shape[1]
 
         # expand the params into their proper forms
-        if isinstance(x, np.ndarray):
-            df = x[0]
-        else:
-            df = x
-
-        if estimate_loc:
-            # Estimating loc means it is part of x and needs restructured
-            loc = x[1 : dims + 1]
-
-            if estimate_scale:
-                scale = np.reshape(x[dims + 1: 2 * dims + 1], [dims, dims])
-                sigma = scale @ scale.T
-            else:
-                sigma = np.cov(data) * (df - 2) / df
-        else:
-            # Derive loc as a constant from the data
-            loc = data.mean(0)
-            if estimate_scale:
-                scale = np.reshape(x[1:], [dims, dims])
-                sigma = scale @ scale.T
-            else:
-                sigma = np.cov(data) * (df - 2) / df
+        df = x[0]
+        loc = x[1 : dims + 1]
+        #scale = np.reshape(x[dims + 1: 2 * dims + 1], [dims, dims])
+        scale = np.reshape(x[dims + 1:], [dims, dims])
+        sigma = scale @ scale.T
 
         # Get the negative log probability of the data
         loss = - self.log_probability(data, df, loc, sigma).sum()
 
         # apply constraints to variables
         if df <= 0:
-            loss += (-df + 1e-3) * constraint_multiplier
+            loss += (-df + 1e-4) * constraint_multiplier
 
-        if estimate_scale:
-            # Check if scale is a valid positive definite matrix
-            try:
-                np.linalg.cholesky(scale)
-            except:
-                # TODO How to add a constraint to the positive definite matrix `scale`?
-                # could apply the same constraint to the different diagonal values.
+        # Check if scale is a valid positive definite matrix
+        try:
+            np.linalg.cholesky(scale)
+        except:
+            # TODO How to add a constraint to the positive definite matrix `scale`?
+            # could apply the same constraint to the different diagonal values.
 
-                # it is a boolean state afaik, so if not positive definite, then return
-                # high value for loss
+            # it is a boolean state afaik, so if not positive definite, then return
+            # high value for loss
 
-                # TODO ensure the use of absolute value is fine.
-                loss += loss**2 * constraint_multiplier
+            # TODO ensure the use of absolute value is fine.
+            loss += loss**2 * constraint_multiplier
 
         return loss
 
     def nelder_mead(
         self,
         data,
-        const=None,
+        #const=None,
         max_iter=20000,
         nelder_mead_args=None,
         name='nelder_mead_multivarite_student_t',
@@ -145,47 +125,25 @@ class MultivariateStudentT(object):
         if nelder_mead_args is None:
             optimizer_args = {}
 
-        """
-        if loc is None:
-            loc = data.mean(0)
-            estimate_loc = False
-        else:
-            estimate_loc = True
-
-        if sigma is None:
-            sigma = np.cov(data) * (df - 2) / df
-            estimate_scale = True
-        else:
-            estimate_scale = True
-
-        if loc is None and sigma is None:
-            init_data = df
-        else:
-            init_data = np.concatenate([[df], loc, sigma.flatten()])
-        #"""
         init_data = np.concatenate([[self.df], self.loc, self.sigma.flatten()])
 
-        opt_result = scipy.optimize.minimize(
+        #opt_result = scipy.optimize.fmin(
+        return scipy.optimize.minimize(
             lambda x: self.mvst_neg_log_prob(x, data),
             init_data,
-            #args=[data],
             method='Nelder-Mead',
             options={'maxiter': max_iter},
+            #maxiter=max_iter,
         )
 
-        assert(opt_result.success)
+        #assert(opt_result.success)
+        #opt_x = opt_result.x
 
-        opt_x = opt_result.x
-
-        # unpackage the parameters
-        #if not (estimate_loc or estimate_scale):
-        #    return opt_x[0]
-
-        df = opt_x[0]
-        loc = opt_x[1 : data.shape[1] + 1]
-        scale = np.reshape(
+        self.df = opt_x[0]
+        self.loc = opt_x[1 : data.shape[1] + 1]
+        self.scale = np.reshape(
             opt_x[data.shape[1] + 1:],
             [data.shape[1], data.shape[1]],
         )
 
-        return df, loc, scale
+        #return df, loc, scale
