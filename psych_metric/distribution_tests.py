@@ -386,11 +386,6 @@ def mle_adam(
                     )
                     continue_loop = False
 
-                logging.info(
-                    'Invalid param value encountered: (%d)',
-                    iter_results['params']['df'],
-                )
-
                 i += 1
                 continue
 
