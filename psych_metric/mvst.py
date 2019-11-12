@@ -75,6 +75,7 @@ class MultivariateStudentT(object):
         x,
         data,
         constraint_multiplier=1e5,
+        df=None,
     ):
         """the Log probability density function of multivariate
 
@@ -83,10 +84,18 @@ class MultivariateStudentT(object):
         dims = data.shape[1]
 
         # expand the params into their proper forms
-        df = x[0]
-        loc = x[1 : dims + 1]
-        #scale = np.reshape(x[dims + 1: 2 * dims + 1], [dims, dims])
-        scale = np.reshape(x[dims + 1:], [dims, dims])
+        if df is None:
+            df = x[0]
+            loc = x[1 : dims + 1]
+            #scale = np.reshape(x[dims + 1: 2 * dims + 1], [dims, dims])
+            scale = np.reshape(x[dims + 1:], [dims, dims])
+            sigma = scale @ scale.T
+        else:
+            loc = x[: dims]
+            #scale = np.reshape(x[dims + 1: 2 * dims + 1], [dims, dims])
+            scale = np.reshape(x[dims:], [dims, dims])
+
+        # Get Sigma Matrix from scale.
         sigma = scale @ scale.T
 
         # Get the negative log probability of the data
@@ -116,7 +125,7 @@ class MultivariateStudentT(object):
     def nelder_mead(
         self,
         data,
-        #const=None,
+        const=None,
         max_iter=10000,
         nelder_mead_args=None,
         name='nelder_mead_multivarite_student_t',
@@ -127,8 +136,10 @@ class MultivariateStudentT(object):
         """
         if nelder_mead_args is None:
             optimizer_args = {}
-
-        init_data = np.concatenate([[self.df], self.loc, self.sigma.flatten()])
+        if 'df' in const:
+            init_data = np.concatenate([[self.df], self.loc, self.sigma.flatten()])
+        else:
+            init_data = np.concatenate([[self.df], self.loc, self.sigma.flatten()])
 
         #opt_result = scipy.optimize.minimize(
         return scipy.optimize.minimize(
