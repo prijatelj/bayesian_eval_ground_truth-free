@@ -124,21 +124,6 @@ class MultivariateStudentT(object):
         if not (isinstance(const, dict) and 'df' in const) and df <= 0:
             loss += (1e-4 - df) * constraint_multiplier
 
-        """
-        # Check if scale is a valid positive definite matrix
-        try:
-            np.linalg.cholesky(scale)
-        except:
-            # TODO How to add a constraint to the positive definite matrix `scale`?
-            # could apply the same constraint to the different diagonal values.
-
-            # it is a boolean state afaik, so if not positive definite, then return
-            # high value for loss
-
-            # TODO ensure the use of absolute value is fine.
-            loss += loss**2 * constraint_multiplier
-        """
-
         return loss
 
     def nelder_mead(
