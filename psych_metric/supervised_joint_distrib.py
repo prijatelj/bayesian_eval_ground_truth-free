@@ -372,8 +372,9 @@ class SupervisedJointDistrib(object):
                     np.cov(data, bias=False, rowvar=False),
                 )
             elif distrib == 'multivariatestudentt':
+                raise NotImplementedError('Need to return a non tfp distrib')
 
-                # initial df is 3
+                # initial df is 3 for loc = mean and Covariance exist.
                 # initial random scale is cov * (df -2) / df / 2
                 # as a poor attempt to ge a matrix in the proper range of
                 # values of scale.

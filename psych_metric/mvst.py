@@ -42,16 +42,37 @@ class MultivariateStudentT(object):
         raise ValueError(f'Only the Nedler-Mead method is supported, not `{method}`.')
 
     def log_prob(self, x):
-        return self.log_probability(x, self.df, self.loc, self.sigma)
+        if not isinstance(samples, np.ndarray):
+            try:
+                samples = np.array(samples)
+            except:
+                raise(f'`samples` is expected to convertible to a numpy array.')
 
-    def log_probability(self, x, df, loc, sigma):
+        if len(samples.shape) == 2 and samples.shape[1] == len(loc):
+            # Handle multiple samples
+            return np.array([
+                self.log_probability(x, self.df, self.loc, self.sigma)
+                for x in samples
+            ])
+        elif len(samples.shape) == 1 and len(samples) == len(loc):
+            # Handle the single sample case
+            return self.log_probability(x, self.df, self.loc, self.sigma)
+        else:
+            raise TypeError(' '.join([
+                'Expected given `samples` to be of either', 'dimension 2 when',
+                'multiple samples (with the rows as samples) or 1 when a',
+                'single sample. The samples must have the same dimensions as',
+                '`loc`.',
+            ]))
+
+    def _log_probability(self, sample, df, loc, sigma):
+        """Returns the log probability of a single sample."""
         dims = len(loc)
-
-        # TODO Ensure this is broadcastable
         return (
             scipy.special.gammaln((df + dims) / 2)
             - (df + dims) / 2 * (
-                1 + (1 / df) * (x - loc) @ np.linalg.inv(sigma) @ (x - loc).T
+                1 + (1 / df) * (sample - loc) @ np.linalg.inv(sigma)
+                @ (sample - loc).T
             ) - (
                 scipy.special.gammaln(df / 2)
                 + .5 * (
@@ -75,7 +96,7 @@ class MultivariateStudentT(object):
         x,
         data,
         constraint_multiplier=1e5,
-        df=None,
+        const=None,
     ):
         """the Log probability density function of multivariate
 
@@ -84,26 +105,24 @@ class MultivariateStudentT(object):
         dims = data.shape[1]
 
         # expand the params into their proper forms
-        if df is None:
+        if isinstance(const, dict) and 'df' in const:
+            df = const['df']
+            loc = x[: dims]
+            scale = np.reshape(x[dims:], [dims, dims])
+        else:
             df = x[0]
             loc = x[1 : dims + 1]
-            #scale = np.reshape(x[dims + 1: 2 * dims + 1], [dims, dims])
             scale = np.reshape(x[dims + 1:], [dims, dims])
-            sigma = scale @ scale.T
-        else:
-            loc = x[: dims]
-            #scale = np.reshape(x[dims + 1: 2 * dims + 1], [dims, dims])
-            scale = np.reshape(x[dims:], [dims, dims])
 
         # Get Sigma Matrix from scale.
         sigma = scale @ scale.T
 
         # Get the negative log probability of the data
-        loss = - self.log_probability(data, df, loc, sigma).sum()
+        loss = - self.log_prob(data, df, loc, sigma).sum()
 
         # apply constraints to variables
-        if df <= 0:
-            loss += (-df + 1e-4) * constraint_multiplier
+        if not (isinstance(const, dict) and 'df' in const) and df <= 0:
+            loss += (1e-4 - df) * constraint_multiplier
 
         """
         # Check if scale is a valid positive definite matrix
@@ -136,18 +155,25 @@ class MultivariateStudentT(object):
         """
         if nelder_mead_args is None:
             optimizer_args = {}
-        if 'df' in const:
-            init_data = np.concatenate([[self.df], self.loc, self.sigma.flatten()])
+
+        if const and 'df' in const:
+            print(f'df is const. df = {self.df}.')
+
+            init_data = np.concatenate([self.loc, self.sigma.flatten()])
+            return scipy.optimize.minimize(
+                lambda x: self.mvst_neg_log_prob(x, data, const={'df': self.df}),
+                init_data,
+                method='Nelder-Mead',
+                options={'maxiter': max_iter},
+            )
         else:
             init_data = np.concatenate([[self.df], self.loc, self.sigma.flatten()])
-
-        #opt_result = scipy.optimize.minimize(
-        return scipy.optimize.minimize(
-            lambda x: self.mvst_neg_log_prob(x, data),
-            init_data,
-            method='Nelder-Mead',
-            options={'maxiter': max_iter},
-        )
+            return scipy.optimize.minimize(
+                lambda x: self.mvst_neg_log_prob(x, data),
+                init_data,
+                method='Nelder-Mead',
+                options={'maxiter': max_iter},
+            )
 
         #assert(opt_result.success)
         opt_x = opt_result.x
@@ -158,5 +184,3 @@ class MultivariateStudentT(object):
             opt_x[data.shape[1] + 1:],
             [data.shape[1], data.shape[1]],
         )
-
-        return df, loc, scale
