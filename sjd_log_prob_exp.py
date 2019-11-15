@@ -137,6 +137,69 @@ def load_eval_fold(
     )
 
 
+def mean_results(log_prob_results, info_criterions):
+    # TODO average the results
+    # Obtain mean log prob for both datasets and all distribs
+    results = {}
+    for dataset in {'train', 'test'}:
+        results[dataset] = {}
+        for distrib in {'joint', 'target', 'transform'}:
+            results[dataset][distrib] = {}
+            results[dataset][distrib]['log_prob'] = {
+                k: np.mean([
+                    i[k][dataset]['log_prob'][distrib]
+                    for i in log_prob_results
+                ]) for k in log_prob_results[0].keys()
+            }
+
+    for candidate in log_prob_results[0].keys():
+        results[candidate] = {}
+
+        for dataset in {'train', 'test'}
+            results[candidate][dataset] = {}
+
+            # mean log prob
+            results[candidate][dataset]['log_prob'] = np.mean([
+                fold[candidate][dataset]['log_prob']
+                for fold in log_prob_results
+            ])
+
+            # mean info criterions
+            for ic in info_criterions:
+                results[candidate][dataset][ic] = np.mean([
+                    fold[candidate][dataset][ic]
+                    for fold in log_prob_results
+                ])
+
+            # TODO information criterions
+            #for ic in next(iter(log_prob_results[0].values()))['info_criterions'].keys():
+            #results[dataset][distrib][ic] =
+    """
+
+    mean_bic = {k: np.mean([i[k]['test']['info_criterions']['transform']['bic'] for i in log_prob_results]) for k in log_prob_results[0].keys()}
+
+    mean_results = {}
+    for k in log_prob_results[0].keys():
+        mean_results[k]['train'] = {
+            'log_prob':
+        }
+        mean_results[k]['test']
+            'log_prob':
+
+    mean_log_prob = {}
+    mean_ic = {ic: {} for ic in info_criterions}
+    for distrib, res in log_prob_results[0].items():
+        mean_log_prob[distrib] = [log_prob_results[distrib]['log_prob'] for i in log_prob_results]
+        for ic in info_criterons:
+            mean_ic[ic] =
+
+    mean_log_prob = np.mean(mean_log_prob)
+
+    #"""
+    # info criterions
+
+
+
 def sjd_kfold_log_prob(
     sjd_args,
     dir_path,
@@ -145,6 +208,7 @@ def sjd_kfold_log_prob(
     summary_name='summary.json',
     data=None,
     load_model=True,
+    info_criterions=['bic', 'aic', 'hqc'],
 ):
     """Performs SJD log prob test on kfold experiment by loading the model
     predictions form each fold and averages the results, saves error bars, and
@@ -216,6 +280,7 @@ def sjd_kfold_log_prob(
             labels,
             pred,
             sjd_args,
+            info_criterions,
         ))
 
     return log_prob_results
@@ -230,6 +295,7 @@ def multiple_sjd_kfold_log_prob(
     summary_name='summary.json',
     data=None,
     load_model=True,
+    info_criterions=['bic', 'aic', 'hqc'],
 ):
     """Performs SJD test on multiple kfold experiments and returns the
     aggregated result information.
@@ -250,49 +316,8 @@ def multiple_sjd_kfold_log_prob(
             summary_name,
             data,
             load_model,
+            info_criterions=info_criterions,
         ))
-
-        # TODO average the results
-        # Obtain mean log prob for both datasets and all distribs
-        results = {}
-        for dataset in {'train', 'test'}:
-            results[dataset] = {}
-            for distrib in {'joint', 'target', 'transform'}:
-                results[dataset][distrib] = {}
-                results[dataset][distrib]['log_prob'] = {
-                    k: np.mean([
-                        i[k][dataset]['log_prob'][distrib]
-                        for i in log_prob_results
-                    ]) for k in log_prob_results[0].keys()
-                }
-
-                # TODO information criterions
-                #for ic in next(iter(log_prob_results[0].values()))['info_criterions'].keys():
-                #results[dataset][distrib][ic] =
-        """
-
-        mean_bic = {k: np.mean([i[k]['test']['info_criterions']['transform']['bic'] for i in log_prob_results]) for k in log_prob_results[0].keys()}
-
-        mean_results = {}
-        for k in log_prob_results[0].keys():
-            mean_results[k]['train'] = {
-                'log_prob':
-            }
-            mean_results[k]['test']
-                'log_prob':
-
-        mean_log_prob = {}
-        mean_ic = {ic: {} for ic in info_criterions}
-        for distrib, res in log_prob_results[0].items():
-            mean_log_prob[distrib] = [log_prob_results[distrib]['log_prob'] for i in log_prob_results]
-            for ic in info_criterons:
-                mean_ic[ic] =
-
-        mean_log_prob = np.mean(mean_log_prob)
-
-        #"""
-        # info criterions
-
 
     return log_prob_results
 
@@ -609,6 +634,7 @@ if __name__ == '__main__':
         summary_name=args.human_sjd.summary_name,
         #data=None,
         #load_model=True,
+        #info_criterions,
     )
 
     # TODO then try with load data ONCE, load one summary of a kfold. use data for all.
