@@ -662,85 +662,6 @@ class SupervisedJointDistrib(object):
         # NOTE tensroflow optimization instead here.
         return (sample @ self.transform_matrix) + self.origin_adjust
 
-    def sample(self, num_samples, normalize=False):
-        """Sample from the estimated joint probability distribution.
-
-        Parameters
-        ----------
-        normalize : bool, optional (default=False)
-            If True, the samples' distributions will be normalized such that
-            their values are in the range [0, 1] and all sum to 1, otherwise
-            they will be in the range [0, total_count] and sum to total_count.
-            This is intended specifically for when the two random variables are
-            distributions of distributions (ie. Dirichlet-multinomial).
-
-            Ensure the elements sum to one (under assumption they sum to total
-            counts.)
-
-        Returns
-        -------
-        (np.ndarray, np.ndarray), shape(samples, input_dim, 2)
-            Two arrays of samples from the joint probability distribution of
-            the target and the predictor output aligned by samples in their
-            first dimension.
-        """
-
-        target_samples, pred_samples = self.tf_sample_sess.run(
-            [self.tf_target_samples, self.tf_pred_samples],
-            feed_dict={self.tf_num_samples: num_samples}
-        )
-
-        if self.independent:
-            if normalize:
-                if isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial):
-                    target_samples = target_samples / self.total_count
-
-                if isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial):
-                    pred_samples = pred_samples / self.total_count
-
-            return target_samples, pred_samples
-
-        # NOTE using Tensorflow while loop to resample and check/rejection
-        # would be more optimal. This is next step if necessary.
-
-        # Get any and all indices of non-probability distrib samples
-        bad_sample_idx = np.argwhere(np.logical_not(
-            is_prob_distrib(pred_samples),
-        ))
-        if len(bad_sample_idx) > 1:
-            bad_sample_idx = np.squeeze(bad_sample_idx)
-        num_bad_samples = len(bad_sample_idx)
-        #adjust_bad = num_bad_samples * (num_samples / (num_samples - num_bad_samples))
-
-        while num_bad_samples > 0:
-            print(f'Bad Times: num bad samples = {num_bad_samples}')
-
-            # rerun session w/ enough samples to replace bad samples and some.
-            new_pred = self.tf_sample_sess.run(
-                self.tf_pred_samples,
-                #feed_dict={self.tf_num_samples: np.ceil(num_bad_samples * adjust_bad)},
-                feed_dict={self.tf_num_samples: num_bad_samples},
-            )
-
-            pred_samples[bad_sample_idx] = new_pred
-
-            bad_sample_idx = np.argwhere(np.logical_not(
-                is_prob_distrib(pred_samples),
-            ))
-            if len(bad_sample_idx) > 1:
-                bad_sample_idx = np.squeeze(bad_sample_idx)
-            num_bad_samples = len(bad_sample_idx)
-
-        if normalize:
-            if isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial):
-                target_samples = target_samples / self.total_count
-
-                # NOTE assumes that predictors samples is of the same
-                # output as target, when target is a DirichletMultinomial.
-                pred_samples = pred_samples / self.total_count
-
-        return target_samples, pred_samples
-
     def _fit_transform_distrib(self, target, pred, distrib='MultivariateNormal'):
         """Fits and returns the transform distribution."""
         distances = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
@@ -846,6 +767,90 @@ class SupervisedJointDistrib(object):
         return np.array(log_prob)
         #return np.array(list(log_prob))
 
+    def fit(self, target, pred, independent=False):
+        """Fits the target and transform distributions to the data."""
+        # TODO
+        pass
+
+    def sample(self, num_samples, normalize=False):
+        """Sample from the estimated joint probability distribution.
+
+        Parameters
+        ----------
+        normalize : bool, optional (default=False)
+            If True, the samples' distributions will be normalized such that
+            their values are in the range [0, 1] and all sum to 1, otherwise
+            they will be in the range [0, total_count] and sum to total_count.
+            This is intended specifically for when the two random variables are
+            distributions of distributions (ie. Dirichlet-multinomial).
+
+            Ensure the elements sum to one (under assumption they sum to total
+            counts.)
+
+        Returns
+        -------
+        (np.ndarray, np.ndarray), shape(samples, input_dim, 2)
+            Two arrays of samples from the joint probability distribution of
+            the target and the predictor output aligned by samples in their
+            first dimension.
+        """
+
+        target_samples, pred_samples = self.tf_sample_sess.run(
+            [self.tf_target_samples, self.tf_pred_samples],
+            feed_dict={self.tf_num_samples: num_samples}
+        )
+
+        if self.independent:
+            if normalize:
+                if isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial):
+                    target_samples = target_samples / self.total_count
+
+                if isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial):
+                    pred_samples = pred_samples / self.total_count
+
+            return target_samples, pred_samples
+
+        # NOTE using Tensorflow while loop to resample and check/rejection
+        # would be more optimal. This is next step if necessary.
+
+        # Get any and all indices of non-probability distrib samples
+        bad_sample_idx = np.argwhere(np.logical_not(
+            is_prob_distrib(pred_samples),
+        ))
+        if len(bad_sample_idx) > 1:
+            bad_sample_idx = np.squeeze(bad_sample_idx)
+        num_bad_samples = len(bad_sample_idx)
+        #adjust_bad = num_bad_samples * (num_samples / (num_samples - num_bad_samples))
+
+        while num_bad_samples > 0:
+            print(f'Bad Times: num bad samples = {num_bad_samples}')
+
+            # rerun session w/ enough samples to replace bad samples and some.
+            new_pred = self.tf_sample_sess.run(
+                self.tf_pred_samples,
+                #feed_dict={self.tf_num_samples: np.ceil(num_bad_samples * adjust_bad)},
+                feed_dict={self.tf_num_samples: num_bad_samples},
+            )
+
+            pred_samples[bad_sample_idx] = new_pred
+
+            bad_sample_idx = np.argwhere(np.logical_not(
+                is_prob_distrib(pred_samples),
+            ))
+            if len(bad_sample_idx) > 1:
+                bad_sample_idx = np.squeeze(bad_sample_idx)
+            num_bad_samples = len(bad_sample_idx)
+
+        if normalize:
+            if isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial):
+                target_samples = target_samples / self.total_count
+
+                # NOTE assumes that predictors samples is of the same
+                # output as target, when target is a DirichletMultinomial.
+                pred_samples = pred_samples / self.total_count
+
+        return target_samples, pred_samples
+
     def log_prob(
         self,
         target,
@@ -933,3 +938,65 @@ class SupervisedJointDistrib(object):
             )
 
         return log_prob_target + log_prob_pred
+
+    def info_criterion(mle, criterions='bic', num_samples=None, data=None):
+        """Calculate information criterions.
+
+        Parameters
+        ----------
+        mle : float | np.ndarray
+            The pre-calculated maximum likelihood estimate.
+        criterions : str | array-like, optional
+            array-like of strings that indicate which criterions to be
+            calculated from the following: 'bic', 'aic', 'hqc'. Defaults to
+            'bic' for Bayesian Information Criterion.
+        num_samples : int, optional
+            Only necessary when criterions is or includes `bic` or 'hqc' to
+            calculate the Hannan-Quinn information criterion. This is
+            unnecessary if data is provided.
+        data : tuple, optional
+            Tuple of two np.ndarrays containing the data pertaining to the
+            target and the predictor respectively. They must be of the shape
+            matching their respective distribution's sample space. The usage of
+            this parameter overrides the usage of MLE and the mle will be
+            calculated from the log probability of the data.
+
+        Returns
+        -------
+            A dict of floats for each criterion calculated.
+        """
+        # TODO calculate log prob if data is given
+
+        # TODO need to add num_params property (target num params, transform
+        # num params) and num params of sjd = sum of that.
+        info_criterion = {}
+
+        # TODO type checking and exception raising
+
+        if 'bic' in criterions:
+            info_criterion['bic'] = distribution_tests.bic(
+                mle,
+                num_params,
+                num_samples,
+            )
+
+        if 'aic' in criterions:
+            info_criterion['aic'] = distribution_tests.aic(
+                mle,
+                num_params,
+            )
+
+        if 'hqc' in criterions:
+            info_criterion['hqc'] = distribution_tests.hqc(
+                mle,
+                num_params,
+                num_samples,
+            )
+
+        #if len(info_criterion) == 1:
+        #    return next(iter(info_criterion.values()))
+        return info_criterion
+
+    def entropy():
+        # TODO calculate / approximate the entropy of the joint distribution
+        return
