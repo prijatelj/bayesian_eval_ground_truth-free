@@ -39,7 +39,7 @@ def recreate_label_bin(class_order):
     """Recreate the label binarizer as specified in the summary, if
     necesary.
     """
-    return
+    raise NotImplementedError
 
 
 def load_eval_fold(
@@ -302,6 +302,60 @@ def sjd_metric_cred():
 
     raise NotImplementedError()
 
+def src_log_prob_exp(src, candidates, num_samples=1000, json_path=None):
+    """Compares the log probability of the candidate SupervisedJointDistrib
+    models to the given source distribution in a simulated test.
+
+    Parameters
+    ----------
+    src : SupervisedJoinDistrib
+    candidates : dict(str: SupervisedJointDistrib)
+    num_samples : int, optional
+    json_path : str, optional
+        Writes the results to a JSON file located at this filepath if given.
+
+    Returns
+    -------
+    dict
+        A dictionary whose keys are the identifiers of the candidates and
+        source SupervisedJointDistrib that points to a dictionary containing
+        the parameters and results.
+    """
+    # Sample the data from the src to be used to assess the candidate SJDs
+
+    # Obtain the src's log prob and information criterions as a baseline
+
+    # iterate through the candidate SJDs to obtain their results
+    for candidate in candidates:
+        pass
+
+    if json_path:
+        # Save the results to file
+        pass
+
+    #return results
+
+def log_prob_exp(candidates, target, pred, info_cirterions=None):
+    """Calculates the log probability of the candidate SupervisedJointDistrib
+    models.
+
+
+    Parameters
+    ----------
+    candidates : dict(str: SupervisedJointDistrib)
+        Dict containing the string identifier of each SJD model to their
+        respective instance of a SupervisedJointDistrib.
+    """
+
+    for candidate in candidates:
+        candidate.fit(target, pred)
+        log_prob = candidate.log_prob(target, pred)
+
+        if info_criterions:
+            ic = inf
+        # save in dict
+
+    return
 
 def log_prob_test_human_sjd(
     fit_sjd,
@@ -314,6 +368,7 @@ def log_prob_test_human_sjd(
 ):
     """Compares the log probability of the fitted SupervisedJointDistrib to
     other baselines.
+
     """
     log_probs = {}
 
