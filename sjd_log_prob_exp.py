@@ -254,9 +254,12 @@ def multiple_sjd_kfold_log_prob(
 
         # TODO average the results
         # Obtain mean log prob for both datasets and all distribs
+        results = {}
         for dataset in {'train', 'test'}:
+            results[dataset] = {}
             for distrib in {'joint', 'target', 'transform'}:
-                mean_transform_log_prob = {
+                results[dataset][distrib] = {}
+                results[dataset][distrib]['log_prob'] = {
                     k: np.mean([
                         i[k][dataset]['log_prob'][distrib]
                         for i in log_prob_results
@@ -265,6 +268,7 @@ def multiple_sjd_kfold_log_prob(
 
                 # TODO information criterions
                 #for ic in next(iter(log_prob_results[0].values()))['info_criterions'].keys():
+                #results[dataset][distrib][ic] =
         """
 
         mean_bic = {k: np.mean([i[k]['test']['info_criterions']['transform']['bic'] for i in log_prob_results]) for k in log_prob_results[0].keys()}
