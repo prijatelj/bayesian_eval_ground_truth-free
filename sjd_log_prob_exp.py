@@ -3,6 +3,7 @@ and the predictors trained on that data.
 """
 import csv
 import json
+import logging
 import os
 
 import h5py
@@ -209,8 +210,6 @@ def sjd_kfold_log_prob(
             **sjd_args,
         )
 
-        # TODO Perform Log Prob test on train set. (when log prob test human is refactored)
-
         # Perform Log Prob test on test/eval set.
         log_prob_results.append(log_prob_test_human_sjd(
             sjd,
@@ -218,33 +217,6 @@ def sjd_kfold_log_prob(
             pred,
             sjd_args,
         ))
-        #log_prob_results.append(sjd)
-
-    # TODO ? average the results?
-    # log prob
-    """
-    mean_log_prob = {k: np.mean([i[k]['test']['log_prob']['transform'] for i in log_prob_results]) for k in log_prob_results.keys()}
-    mean_bic = {k: np.mean([i[k]['test']['info_criterions']['transform']['bic'] for i in log_prob_results]) for k in log_prob_results.keys()}
-
-    mean_results = {}
-    for k in log_prob_results[0].keys():
-        mean_results[k]['train'] = {
-            'log_prob':
-        }
-        mean_results[k]['test']
-            'log_prob':
-
-    mean_log_prob = {}
-    mean_ic = {ic: {} for ic in info_criterions}
-    for distrib, res in log_prob_results[0].items():
-        mean_log_prob[distrib] = [log_prob_results[distrib]['log_prob'] for i in log_prob_results]
-        for ic in info_criterons:
-            mean_ic[ic] =
-
-    mean_log_prob = np.mean(mean_log_prob)
-
-    #"""
-    # info criterions
 
     return log_prob_results
 
@@ -268,7 +240,7 @@ def multiple_sjd_kfold_log_prob(
     log_prob_results = []
     for dir_p in dir_paths:
         if not os.path.isdir(dir_p):
-            # TODO log this and skip
+            logging.warning('Not a directory: skipping %s', dir_p)
             continue
         log_prob_results.append(sjd_kfold_log_prob(
             sjd_args,
@@ -279,6 +251,44 @@ def multiple_sjd_kfold_log_prob(
             data,
             load_model,
         ))
+
+        # TODO average the results
+        # Obtain mean log prob for both datasets and all distribs
+        for dataset in {'train', 'test'}:
+            for distrib in {'joint', 'target', 'transform'}:
+                mean_transform_log_prob = {
+                    k: np.mean([
+                        i[k][dataset]['log_prob'][distrib]
+                        for i in log_prob_results
+                    ]) for k in log_prob_results[0].keys()
+                }
+
+                # TODO information criterions
+                #for ic in next(iter(log_prob_results[0].values()))['info_criterions'].keys():
+        """
+
+        mean_bic = {k: np.mean([i[k]['test']['info_criterions']['transform']['bic'] for i in log_prob_results]) for k in log_prob_results[0].keys()}
+
+        mean_results = {}
+        for k in log_prob_results[0].keys():
+            mean_results[k]['train'] = {
+                'log_prob':
+            }
+            mean_results[k]['test']
+                'log_prob':
+
+        mean_log_prob = {}
+        mean_ic = {ic: {} for ic in info_criterions}
+        for distrib, res in log_prob_results[0].items():
+            mean_log_prob[distrib] = [log_prob_results[distrib]['log_prob'] for i in log_prob_results]
+            for ic in info_criterons:
+                mean_ic[ic] =
+
+        mean_log_prob = np.mean(mean_log_prob)
+
+        #"""
+        # info criterions
+
 
     return log_prob_results
 
