@@ -209,7 +209,9 @@ def sjd_kfold_log_prob(
             **sjd_args,
         )
 
-        # perform Log Prob test on test/eval set.
+        # TODO Perform Log Prob test on train set. (when log prob test human is refactored)
+
+        # Perform Log Prob test on test/eval set.
         log_prob_results.append(log_prob_test_human_sjd(
             sjd,
             labels,
@@ -281,28 +283,16 @@ def multiple_sjd_kfold_log_prob(
     return log_prob_results
 
 
-def sjd_metric_cred():
-    """Get a single model trained on all data, and create many samples to
-    obtain the credible interval of the predictor output, joint distribution,
-    and metrics calculated on that joint distribution.
-    """
-    # Fit SJD to human & preds if not already available.
-
-    # sample many times from that SJD (1e6)
-
-    # optionally save those samples to file.
-
-    # Calculate credible interval given alpha for Joint Distrib samples
-
-    # compare how that corresponds to the actual data human & pred.
-
-    # save all this and visualize it.
-
-    # Also, able to quantify % of data points outside of credible interval
-
-    raise NotImplementedError()
-
-def src_log_prob_exp(src, candidates, num_samples=1000, json_path=None):
+def src_log_prob_exp(
+    src,
+    candidates,
+    info_criterions=None,
+    do_not_fit=None,
+    num_samples=1000,
+    json_path=None,
+    calc_src=True,
+    src_id='src',
+):
     """Compares the log probability of the candidate SupervisedJointDistrib
     models to the given source distribution in a simulated test.
 
@@ -313,6 +303,13 @@ def src_log_prob_exp(src, candidates, num_samples=1000, json_path=None):
     num_samples : int, optional
     json_path : str, optional
         Writes the results to a JSON file located at this filepath if given.
+    calc_src : bool, optional
+        If True, calculates the log prob experiment results of the src
+        distribution fitting itself. This is True by default as it provides the
+        upper bound of performance.
+    src_id : str, optional
+        the identifier used in the results dictionary for the source
+        distribution.
 
     Returns
     -------
@@ -322,40 +319,79 @@ def src_log_prob_exp(src, candidates, num_samples=1000, json_path=None):
         the parameters and results.
     """
     # Sample the data from the src to be used to assess the candidate SJDs
+    target, pred = src.sample(num_samples)
 
-    # Obtain the src's log prob and information criterions as a baseline
+    if calc_src:
+        # Add the src to the candidates to calculate its results
+        candidates[src_id] = src
+
+        # Prevent the src SJD from being fit to its own data sample.
+        if do_not_fit is None:
+            do_not_fit = [src_id]
+        elif isinstance(do_not_fit, list):
+            do_not_fit.append(src_id)
 
     # iterate through the candidate SJDs to obtain their results
-    for candidate in candidates:
-        pass
+    results = log_prob_exp(
+        candidates,
+        target,
+        pred,
+        information_criterions,
+        do_not_fit,
+    )
 
     if json_path:
         # Save the results to file
-        pass
+        experiment.io.save_json(json_path, results)
 
-    #return results
+    return results
 
-def log_prob_exp(candidates, target, pred, info_cirterions=None):
+
+def log_prob_exp(
+    candidates,
+    target,
+    pred,
+    info_criterions=None,
+    do_not_fit=None,
+):
     """Calculates the log probability of the candidate SupervisedJointDistrib
     models.
-
 
     Parameters
     ----------
     candidates : dict(str: SupervisedJointDistrib)
         Dict containing the string identifier of each SJD model to their
         respective instance of a SupervisedJointDistrib.
+    target : np.ndarray
+    pred : np.ndarray
+    info_criterions : list(str), optional
+    do_not_fit : list, optional
+        List of the candidate name whom are not to be fitted to the data. If
+        True, then the SJDs will not be fit to the data.
     """
+    for candidate_id, candidate_sjd in candidates.items():
+        if do_not_fit is None or (isinstance(do_not_fit, list)
+            and candidate_id not in do_not_fit
+        ):
+            # Fit the SJD to the data
+            candidate.fit(target, pred)
 
-    for candidate in candidates:
-        candidate.fit(target, pred)
-        log_prob = candidate.log_prob(target, pred)
+        # Create dict to store results for this candidate
+        results[candidate_id] = {}
+
+        # Calculate the log probability (log likelihood)
+        results[candidate_id]['log_prob'] = candidate.log_prob(target, pred)
 
         if info_criterions:
-            ic = inf
-        # save in dict
+            # Calculate any information criterions
+            results[candidate_id]['info_criterion'] = candidate.info_criterion(
+                results[candidate_id]['log_prob'],
+                info_criterions,
+                len(target),
+            )
 
-    return
+    return results
+
 
 def log_prob_test_human_sjd(
     fit_sjd,
