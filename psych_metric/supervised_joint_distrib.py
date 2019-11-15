@@ -17,6 +17,38 @@ from psych_metric import mvst
 
 # TODO handle continuous distrib of continuous distrib, only discrete atm.
 
+def get_num_params(distrib, dims):
+    """Convenience function for getting the number of params of a distribution
+    given the number of dimensions.
+    """
+    if isinstance(distrib, tfp.distributions.Distribution):
+        distrib = distrib.__class__.__name__.lower()
+        # TODO perhaps add specific tfp distribution extraction of classes?
+    elif isinstance(distrib, str):
+        distrib = distrib.lower()
+    else:
+        raise TypeError(' '.join([
+            'expected `distrib` to be of type `str` or',
+            f'`tfp.distributions.Distribution`, not `{type(distrib)}`',
+        ]))
+    if not isinstance(distrib, int):
+        raise TypeError(
+            f'expected `dims` to be of type `int`, not `{type(dims)}`',
+        )
+
+    if distrib in {'multivariatenormal', 'multivariatecauchy'}:
+        # loc = dims, and scale matrix is a triangle matrix
+        return dims + dims * (dims + 1) / 2
+    if distrib == 'multivariatestudentt':
+        # Same as Multivariate Normal, but with a degree of freedom per dim
+        return dims + dims + dims * (dims + 1) / 2
+    if distrib == 'dirichlet':
+        # Concentration is number of classes
+        return dims
+    if distrib == 'dirichletmultinomial':
+        # Concentration is number of classes + 1 for total counts
+        return dims + 1
+
 
 def transform_to(sample, transform_matrix, origin_adjust=None):
     """Transforms the sample from discrete distribtuion space into the
@@ -139,6 +171,9 @@ class SupervisedJointDistrib(object):
     knn_pdf_num_samples : int
         Number of samples used to estimate the predictor pdf when predictor is
         dependent on target.
+    sample_dim : int, optional
+        The number of dimensions of a single sample of both the target and
+        predictor distribtutions.
     """
 
     def __init__(
@@ -198,6 +233,13 @@ class SupervisedJointDistrib(object):
         dtype : type, optional
             The data type of the data. If a single type, all data is assumed to
             be of that type. Defaults to np.float32
+        num_params : int
+            The total number of parameters of the entire joint probability
+            distribution model.
+        num_params_target : int
+            The number of parameters of the target distribution
+        num_params_transform : int
+            The number of parameters of the transform distribution
         """
         self.independent = independent
         self.num_neighbors = num_neighbors
@@ -226,19 +268,34 @@ class SupervisedJointDistrib(object):
                 ]))
         self.total_count = total_count
 
+        # Set the class' sample_dim and transform_matrix
         if target is not None and pred is not None:
             if target.shape != pred.shape:
                 raise ValueError(' '.join([
-                    '`target.shape` and `pred.shape` must be the same.',
-                    f'Insteadrecieved shapes {target.shape} and {pred.shape}.',
+                    '`target.shape` and `pred.shape` must be the same shape.',
+                    f'Instead recieved shapes {target.shape} and {pred.shape}.',
                 ]))
+
+            self.sample_dim = target.shape[1]
 
             # Get transform matrix from data
             self.transform_matrix = self._get_change_of_basis_matrix(
                 target.shape[1]
             )
+
+            # Create the origin adjustment for going to and from n-1 simplex.
+            self.origin_adjust = np.zeros(target.shape[1])
+            self.origin_adjust[0] = 1
+
+            # Fit the data
+            self.fit(target, pred, mle_args)
         elif isinstance(sample_dim, int):
+            self.sample_dim = sample_dim
             self.transform_matrix = self._get_change_of_basis_matrix(sample_dim)
+
+            # Create the origin adjustment for going to and from n-1 simplex.
+            self.origin_adjust = np.zeros(sample_dim)
+            self.origin_adjust[0] = 1
         else:
             TypeError(' '.join([
                 '`target` and `pred` must be provided together, otherwise',
@@ -246,36 +303,6 @@ class SupervisedJointDistrib(object):
                 '`target_distrib` and `transform_distrib` given explicitly as',
                 'an already defined distribution each.',
             ]))
-
-        # Create the origin adjustment for going to and from n-1 simplex.
-        self.origin_adjust = np.zeros(self.transform_matrix.shape[1])
-        self.origin_adjust[0] = 1
-
-        # TODO parallelize the fitting of the target and predictor distribs
-
-        # Fit the target data
-        self.target_distrib = self._fit_independent_distrib(
-            target_distrib,
-            target,
-            mle_args,
-        )
-
-        # Fit the transformation function of the target to the predictor output
-        if self.independent:
-            self.transform_distrib = self._fit_independent_distrib(
-                transform_distrib,
-                pred,
-                mle_args,
-            )
-        elif isinstance(transform_distrib, tfp.distributions.Distribution):
-            # Use given distribution as the fitted dependent distribution
-            self.transform_distrib = transform_distrib
-        else:
-            self.transform_distrib = self._fit_transform_distrib(
-                target,
-                pred,
-                transform_distrib,
-            )
 
         # Create the Tensorflow session and ops for sampling
         self._create_sampling_attributes(tf_sess_config)
@@ -285,7 +312,7 @@ class SupervisedJointDistrib(object):
         )
         #self._create_empirical_predictor_pdf(independent=self.independent)
 
-        # TODO create the transform log_prob knn
+        # Create the transform log_prob knn
         self._create_knn_transform_pdf(self.independent, knn_num_samples)
 
     def __copy__(self):
@@ -718,13 +745,13 @@ class SupervisedJointDistrib(object):
             self.knn_pdf_num_samples,
         )
 
-    def transform_knn_log_prob(self, target, pred, k=None):
-        # NOTE this is highly parallizable across samples.
+    def _transform_knn_log_prob(self, target, pred, k=None):
         if k is None:
             k = self.num_neighbors
+        if processes is None:
+            processes = self.processes
 
-        with Pool(processes=self.processes) as pool:
-            #log_prob = pool.starmap_async(
+        with Pool(processes=processes) as pool:
             log_prob = pool.starmap(
                 transform_knn_log_prob_single,
                 zip(
@@ -737,40 +764,49 @@ class SupervisedJointDistrib(object):
                 ),
             )
 
-        """
-        log_prob = []
-        for i, trgt in enumerate(target):
-            # Find valid distances from saved set: `self.transform_knn_dists`
-            # to test validity, convert target sample to simplex space.
-            simplex_trgt = self._transform_to(trgt)
+        return np.array(log_prob)
 
-            # add distances to target & convert back to full dimensional space.
-            dist_check = self._transform_from(
-                self.transform_knn_dists + simplex_trgt
+    def fit(self, target, pred, independent=False, mle_args=None):
+        """Fits the target and transform distributions to the data."""
+        # TODO check if the target and pred match the distributions' sample
+        # space
+
+        # TODO parallelize the fitting of the target and predictor distribs
+
+        # Fit the target data
+        self.target_distrib = self._fit_independent_distrib(
+            target_distrib,
+            target,
+            mle_args,
+        )
+
+        # Fit the transformation function of the target to the predictor output
+        if self.independent:
+            self.transform_distrib = self._fit_independent_distrib(
+                transform_distrib,
+                pred,
+                mle_args,
+            )
+        elif isinstance(transform_distrib, tfp.distributions.Distribution):
+            # Use given distribution as the fitted dependent distribution
+            self.transform_distrib = transform_distrib
+        else:
+            self.transform_distrib = self._fit_transform_distrib(
+                target,
+                pred,
+                transform_distrib,
             )
 
-            # Check which are valid samples. Save indices or new array
-            valid_dists = self.transform_knn_dists[
-                np.where(is_prob_distrib(dist_check))[0]
-            ]
+        # Create the Tensorflow session and ops for sampling
+        self._create_sampling_attributes(tf_sess_config)
+        self._create_log_joint_prob_attributes(
+            self.independent,
+            tf_sess_config,
+        )
+        #self._create_empirical_predictor_pdf(independent=self.independent)
 
-            # Fit BallTree to the distances valid to the specific target.
-            knn_tree = BallTree(valid_dists)
-
-            # Get distance between actual sample pair of target and pred
-            actual_dist = self._transform_to(pred[i]) - simplex_trgt
-
-            # Estimate the log probability.
-            log_prob.append(self._knn_log_prob(actual_dist, knn_tree))
-        #"""
-
-        return np.array(log_prob)
-        #return np.array(list(log_prob))
-
-    def fit(self, target, pred, independent=False):
-        """Fits the target and transform distributions to the data."""
-        # TODO
-        pass
+        # TODO create the transform log_prob knn
+        self._create_knn_transform_pdf(self.independent, knn_num_samples)
 
     def sample(self, num_samples, normalize=False):
         """Sample from the estimated joint probability distribution.
@@ -928,7 +964,7 @@ class SupervisedJointDistrib(object):
         #    },
         #)
 
-        log_prob_pred = self.transform_knn_log_prob(target, pred)
+        log_prob_pred = self._transform_knn_log_prob(target, pred)
 
         if return_individuals:
             return (
