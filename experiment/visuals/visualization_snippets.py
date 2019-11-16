@@ -129,7 +129,7 @@ def func_on_scatter(
 
 def hist_func(
     data,
-    func_range,
+    #func_range,
     func,
     bins=40,
     title=None,
@@ -138,6 +138,7 @@ def hist_func(
     nrows=2,
     ncols=2,
     axes_lim=None,
+    density=True,
 ):
     """Plot a function line on top of a histogram."""
     fig, axes = plt.subplots(
@@ -156,14 +157,17 @@ def hist_func(
                 ax.hist(
                     data.iloc[:, plot_count],
                     bins=bins,
-                    color='blue',
+                    color=(0.0, 0.0, 1.0, 0.5),
                     label=str(data.columns[plot_count]),
+                    density=density,
                 )
 
                 if axes_lim:
                     # Set axis limits
                     ax.set_xlim(axes_lim[:2])
-                    ax.set_ylim(axes_lim[2:])
+                    # No setting of the y axis limits due to not necessarily
+                    # being bounded by the same anyways.
+                    #ax.set_ylim(axes_lim[2:])
 
                 # Draw axis values or not (if aligned only draw on left and bottom)
                 if j == 0:
@@ -175,10 +179,14 @@ def hist_func(
                     pass
 
                 # Draw the function over the histogram
-                ax.plot(
-                    func_range[:, plot_count],
+                #ax.plot(
+                # plot the histogram of samples to compare to.
+                # look at densities
+                ax.hist(
                     func[:, plot_count],
-                    color='red',
+                    bins=bins,
+                    color=(1.0, 0.0, 0.0, 0.5),
+                    density=density,
                 )
             else:
                 # Turn off the axes for the blank plots, if any.
