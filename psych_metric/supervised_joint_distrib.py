@@ -107,7 +107,6 @@ def knn_log_prob(pred, num_classes, knn_tree, k, knn_pdf_num_samples=int(1e6)):
     return log_prob
 
 
-#"""
 def transform_knn_log_prob_single(
     trgt,
     pred,
@@ -140,7 +139,6 @@ def transform_knn_log_prob_single(
 
     # Estimate the log probability.
     return knn_log_prob(actual_dist, transform_matrix.shape[1], knn_tree, k)
-#"""
 
 
 class SupervisedJointDistrib(object):
@@ -286,9 +284,6 @@ class SupervisedJointDistrib(object):
             # Create the origin adjustment for going to and from n-1 simplex.
             self.origin_adjust = np.zeros(target.shape[1])
             self.origin_adjust[0] = 1
-
-            # Fit the data
-            self.fit(target, pred, mle_args)
         elif isinstance(sample_dim, int):
             self.sample_dim = sample_dim
             self.transform_matrix = self._get_change_of_basis_matrix(sample_dim)
@@ -304,16 +299,21 @@ class SupervisedJointDistrib(object):
                 'an already defined distribution each.',
             ]))
 
-        # Create the Tensorflow session and ops for sampling
-        self._create_sampling_attributes(tf_sess_config)
-        self._create_log_joint_prob_attributes(
-            self.independent,
-            tf_sess_config,
-        )
-        #self._create_empirical_predictor_pdf(independent=self.independent)
+        # NOTE given the nature of the distribs being separate, the fitting of
+        # them within this class is a convenience for the research.
+        # Practically this class would only store the target and the
+        # conditional prob related code (simplex conversion and estimate of the
+        # transform function)
 
-        # Create the transform log_prob knn
-        self._create_knn_transform_pdf(self.independent, knn_num_samples)
+        # Fit the data (simply modularizes the fitting code,)
+        self.fit(
+            target_distrib,
+            transform_distrib,
+            target,
+            pred,
+            independent,
+            mle_args,
+        )
 
     def __copy__(self):
         cls = self.__class__
@@ -766,7 +766,16 @@ class SupervisedJointDistrib(object):
 
         return np.array(log_prob)
 
-    def fit(self, target, pred, independent=False, mle_args=None):
+    def fit(
+        self,
+        target_distrib,
+        transform_distrib,
+        target,
+        pred,
+        independent=False,
+        mle_args=None,
+        tf_sess_config=None
+    ):
         """Fits the target and transform distributions to the data."""
         # TODO check if the target and pred match the distributions' sample
         # space
@@ -805,8 +814,9 @@ class SupervisedJointDistrib(object):
         )
         #self._create_empirical_predictor_pdf(independent=self.independent)
 
-        # TODO create the transform log_prob knn
+        # create the transform log_prob knn
         self._create_knn_transform_pdf(self.independent, knn_num_samples)
+
 
     def sample(self, num_samples, normalize=False):
         """Sample from the estimated joint probability distribution.
