@@ -127,9 +127,76 @@ def func_on_scatter(
     plt.show()
 
 
-def hist_kde(df):
-    """Plot a kde on top of a histogram."""
-    pass
+def hist_func(
+    data,
+    func_range,
+    func,
+    bins=40,
+    title=None,
+    xaxis_label=None,
+    yaxis_label=None,
+    nrows=2,
+    ncols=2,
+    axes_lim=None,
+):
+    """Plot a function line on top of a histogram."""
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=(10, 10),
+    )
+
+    plot_count = 0
+    for i in range(nrows):
+        for j in range(ncols):
+            ax = axes[i][j]
+
+            if plot_count < len(data.columns):
+                # Draw histogram
+                ax.hist(
+                    data.iloc[:, plot_count],
+                    bins=bins,
+                    color='blue',
+                    label=str(data.columns[plot_count]),
+                )
+
+                if axes_lim:
+                    # Set axis limits
+                    ax.set_xlim(axes_lim[:2])
+                    ax.set_ylim(axes_lim[2:])
+
+                # Draw axis values or not (if aligned only draw on left and bottom)
+                if j == 0:
+                    # Draw the y axis values
+                    pass
+
+                if i == nrows - 1:
+                    # Draw the x axis values
+                    pass
+
+                # Draw the function over the histogram
+                ax.plot(
+                    func_range[:, plot_count],
+                    func[:, plot_count],
+                    color='red',
+                )
+            else:
+                # Turn off the axes for the blank plots, if any.
+                ax.set_axis_off()
+
+            plot_count += 1
+
+    # TODO draw the legend of entire figure, data and function
+
+    if isinstance(title, str):
+        plt.suptitle(title)
+
+    if isinstance(xaxis_label, str):
+        fig.text(0.5, 0.04, xaxis_label, ha='center')
+    if isinstance(yaxis_label, str):
+        fig.text(0.04, 0.5, yaxis_label, va='center', rotation='vertical')
+
+    plt.show()
 
 
 def pair_plot_info(
