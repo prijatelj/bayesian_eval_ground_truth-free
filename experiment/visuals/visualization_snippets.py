@@ -171,7 +171,7 @@ def pair_plot_info(
             'bins': 20,
             'kde_kws': {'legend': False, 'color':'k', 'alpha': 0.5},
             'hist_kws': {'alpha': 1.0},
-            'norm_hist': True,
+            #'norm_hist': True, # Needs its own scale for this to be useful
         }
         if diag_kws:
             diag_args.update(diag_kws)
@@ -204,7 +204,12 @@ def pair_plot_info(
     if axes_lim:
         for i, row in enumerate(pg.axes):
             for j, ax in enumerate(row):
-                if i == j: continue
+                if i == j:
+                    # Turn off grid for diagonal, because it is only meant to
+                    # indicate shape, nothing quantifiable or about magnitudes;
+                    # Needs a separate plot for that (histogram).
+                    ax.grid(False)
+                    continue
                 ax.set_xlim(axes_lim[:2])
                 ax.set_ylim(axes_lim[2:])
 
