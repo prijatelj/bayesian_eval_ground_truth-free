@@ -137,67 +137,38 @@ def load_eval_fold(
     )
 
 
-def mean_results(log_prob_results, info_criterions):
-    # TODO average the results
+def mean_results(log_prob_results, info_criterions=None):
+    """Average the results"""
     # Obtain mean log prob for both datasets and all distribs
     results = {}
-    for dataset in {'train', 'test'}:
-        results[dataset] = {}
-        for distrib in {'joint', 'target', 'transform'}:
-            results[dataset][distrib] = {}
-            results[dataset][distrib]['log_prob'] = {
-                k: np.mean([
-                    i[k][dataset]['log_prob'][distrib]
-                    for i in log_prob_results
-                ]) for k in log_prob_results[0].keys()
-            }
-
     for candidate in log_prob_results[0].keys():
         results[candidate] = {}
 
-        for dataset in {'train', 'test'}
-            results[candidate][dataset] = {}
+        for dataset in {'train', 'test'}:
+            results[candidate][dataset] = {
+                'log_prob': {},
+                'info_criterion': {},
+            }
 
-            # mean log prob
-            results[candidate][dataset]['log_prob'] = np.mean([
-                fold[candidate][dataset]['log_prob']
-                for fold in log_prob_results
-            ])
-
-            # mean info criterions
-            for ic in info_criterions:
-                results[candidate][dataset][ic] = np.mean([
-                    fold[candidate][dataset][ic]
+            for distrib in {'joint', 'target', 'transform'}:
+                # mean log prob
+                results[candidate][dataset]['log_prob'][distrib] = np.mean([
+                    fold[candidate][dataset]['log_prob'][distrib]
                     for fold in log_prob_results
                 ])
 
-            # TODO information criterions
-            #for ic in next(iter(log_prob_results[0].values()))['info_criterions'].keys():
-            #results[dataset][distrib][ic] =
-    """
+                # mean info criterions
+                if not info_criterions:
+                    continue
+                results[candidate][dataset]['info_criterion'][distrib] = {}
 
-    mean_bic = {k: np.mean([i[k]['test']['info_criterions']['transform']['bic'] for i in log_prob_results]) for k in log_prob_results[0].keys()}
+                for ic in info_criterions:
+                    results[candidate][dataset]['info_criterion'][distrib][ic] = np.mean([
+                        fold[candidate][dataset]['info_criterion'][distrib][ic]
+                        for fold in log_prob_results
+                    ])
 
-    mean_results = {}
-    for k in log_prob_results[0].keys():
-        mean_results[k]['train'] = {
-            'log_prob':
-        }
-        mean_results[k]['test']
-            'log_prob':
-
-    mean_log_prob = {}
-    mean_ic = {ic: {} for ic in info_criterions}
-    for distrib, res in log_prob_results[0].items():
-        mean_log_prob[distrib] = [log_prob_results[distrib]['log_prob'] for i in log_prob_results]
-        for ic in info_criterons:
-            mean_ic[ic] =
-
-    mean_log_prob = np.mean(mean_log_prob)
-
-    #"""
-    # info criterions
-
+    return results
 
 
 def sjd_kfold_log_prob(
@@ -308,7 +279,8 @@ def multiple_sjd_kfold_log_prob(
         if not os.path.isdir(dir_p):
             logging.warning('Not a directory: skipping %s', dir_p)
             continue
-        log_prob_results.append(sjd_kfold_log_prob(
+
+        log_prob_results.append(mean_results(sjd_kfold_log_prob(
             sjd_args,
             dir_p,
             weights_file,
@@ -317,7 +289,7 @@ def multiple_sjd_kfold_log_prob(
             data,
             load_model,
             info_criterions=info_criterions,
-        ))
+        )))
 
     return log_prob_results
 
@@ -375,7 +347,7 @@ def src_log_prob_exp(
         candidates,
         target,
         pred,
-        information_criterions,
+        info_criterions,
         do_not_fit,
     )
 
@@ -408,7 +380,8 @@ def log_prob_exp(
         List of the candidate name whom are not to be fitted to the data. If
         True, then the SJDs will not be fit to the data.
     """
-    for candidate_id, candidate_sjd in candidates.items():
+    results = {}
+    for candidate_id, candidate in candidates.items():
         if do_not_fit is None or (isinstance(do_not_fit, list)
             and candidate_id not in do_not_fit
         ):
