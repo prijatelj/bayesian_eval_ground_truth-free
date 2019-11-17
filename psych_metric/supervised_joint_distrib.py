@@ -82,7 +82,6 @@ def is_prob_distrib(
     # check if all values are w/in range
     in_range = (vector >= 0).all(axis) == (vector <= 1).all(axis)
 
-    #return sums_to_one == in_range
     return sums_to_one & in_range
 
 
