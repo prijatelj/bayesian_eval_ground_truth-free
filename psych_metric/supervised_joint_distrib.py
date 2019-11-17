@@ -82,7 +82,8 @@ def is_prob_distrib(
     # check if all values are w/in range
     in_range = (vector >= 0).all(axis) == (vector <= 1).all(axis)
 
-    return sums_to_one == in_range
+    #return sums_to_one == in_range
+    return sums_to_one & in_range
 
 
 def knn_log_prob(pred, num_classes, knn_tree, k, knn_pdf_num_samples=int(1e6)):
