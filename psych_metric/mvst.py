@@ -1,7 +1,10 @@
 """Multivariate Student T distribution."""
 import numpy as np
 import scipy
+import tensorflow as tf
+import tensorflow_probability as tfp
 
+from psych_metric.supervised_joint_distrib import is_prob_distrib
 
 class MultivariateStudentT(object):
     """The Multivariate Student T distribution.
@@ -41,7 +44,10 @@ class MultivariateStudentT(object):
 
         raise ValueError(f'Only the Nedler-Mead method is supported, not `{method}`.')
 
-    def log_prob(self, x):
+    def log_prob(self, samples):
+        return self._log_prob(samples, self.df, self.loc, self.sigma)
+
+    def _log_prob(self, samples, df, loc, sigma):
         if not isinstance(samples, np.ndarray):
             try:
                 samples = np.array(samples)
@@ -51,12 +57,12 @@ class MultivariateStudentT(object):
         if len(samples.shape) == 2 and samples.shape[1] == len(loc):
             # Handle multiple samples
             return np.array([
-                self.log_probability(x, self.df, self.loc, self.sigma)
+                self._log_probability(x, df, loc, sigma)
                 for x in samples
             ])
         elif len(samples.shape) == 1 and len(samples) == len(loc):
             # Handle the single sample case
-            return self.log_probability(x, self.df, self.loc, self.sigma)
+            return self._log_probability(samples, df, loc, sigma)
         else:
             raise TypeError(' '.join([
                 'Expected given `samples` to be of either', 'dimension 2 when',
@@ -82,14 +88,61 @@ class MultivariateStudentT(object):
             )
         )
 
-    def sample(self, number_samples):
-        """Sample from the distribution."""
-        raise NotImplementedError(
-            'Need to implement sampling from Multivariate Student T distrib.'
+    def sample(self, num_samples):
+        """Sample from the estimated joint probability distribution.
+
+        Parameters
+        ----------
+        num_samples : int
+            Number of samples to draw from the distribution.
+
+        Returns
+        -------
+        (np.ndarray, np.ndarray), shape(samples, input_dim, 2)
+            Two arrays of samples from the joint probability distribution of
+            the target and the predictor output aligned by samples in their
+            first dimension.
+        """
+        sess = tf.Session()
+
+        lower_tri = tf.linalg.LinearOperatorLowerTriangular(self.sigma)
+
+        tfp_mvst = tfp.distributions.MultivariateStudentTLinearOperator(
+            self.df,
+            self.loc,
+            lower_tri,
         )
 
-        # TODO sampling, perhaps via MCMC...?
-        return samples
+        samples = tfp_mvst.sample(num_samples).eval(session=sess)
+
+        # NOTE using Tensorflow while loop to resample and check/rejection
+        # would be more optimal. This is next step if necessary.
+
+        # Get any and all indices of non-probability distrib samples
+        bad_sample_idx = np.argwhere(np.logical_not(
+            is_prob_distrib(samples),
+        ))
+        if len(bad_sample_idx) > 1:
+            bad_sample_idx = np.squeeze(bad_sample_idx)
+        num_bad_samples = len(bad_sample_idx)
+        #adjust_bad = num_bad_samples * (num_samples / (num_samples - num_bad_samples))
+
+        while num_bad_samples > 0:
+            print(f'Bad Times: num bad samples = {num_bad_samples}')
+
+            # rerun session w/ enough samples to replace bad samples and some.
+            new_pred = tfp_mvst.sample(num_bad_samples).eval(session=sess)
+
+            samples[bad_sample_idx] = new_pred
+
+            bad_sample_idx = np.argwhere(np.logical_not(
+                is_prob_distrib(samples),
+            ))
+            if len(bad_sample_idx) > 1:
+                bad_sample_idx = np.squeeze(bad_sample_idx)
+            num_bad_samples = len(bad_sample_idx)
+
+        return  samples
 
     def mvst_neg_log_prob(
         self,
@@ -118,7 +171,7 @@ class MultivariateStudentT(object):
         sigma = scale @ scale.T
 
         # Get the negative log probability of the data
-        loss = - self.log_prob(data, df, loc, sigma).sum()
+        loss = - self._log_prob(data, df, loc, sigma).sum()
 
         # apply constraints to variables
         if not (isinstance(const, dict) and 'df' in const) and df <= 0:
@@ -161,11 +214,11 @@ class MultivariateStudentT(object):
             )
 
         #assert(opt_result.success)
-        opt_x = opt_result.x
+        #opt_x = opt_result.x
 
-        self.df = opt_x[0]
-        self.loc = opt_x[1 : data.shape[1] + 1]
-        self.scale = np.reshape(
-            opt_x[data.shape[1] + 1:],
-            [data.shape[1], data.shape[1]],
-        )
+        #self.df = opt_x[0]
+        #self.loc = opt_x[1 : data.shape[1] + 1]
+        #self.scale = np.reshape(
+        #    opt_x[data.shape[1] + 1:],
+        #    [data.shape[1], data.shape[1]],
+        #)
