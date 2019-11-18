@@ -1,10 +1,15 @@
 """Multivariate Student T distribution."""
+from copy import deepcopy
+from multiprocessing import Pool
+
 import numpy as np
 import scipy
 import tensorflow as tf
 import tensorflow_probability as tfp
+from simanneal import Annealer
 
 from psych_metric.supervised_joint_distrib import is_prob_distrib
+
 
 class MultivariateStudentT(object):
     """The Multivariate Student T distribution.
@@ -19,6 +24,8 @@ class MultivariateStudentT(object):
     sigma : np.ndarray(float)
         The sigma matrix of the multivariate student T distribution. This is
         NOT the scale matrix! This is equal to scale @ scale.T
+    const : list | set
+        List of parameter names that are constant.
     """
 
     def __init__(self, df, loc, sigma, scale=True):
@@ -118,6 +125,7 @@ class MultivariateStudentT(object):
         # NOTE using Tensorflow while loop to resample and check/rejection
         # would be more optimal. This is next step if necessary.
 
+        """
         # Get any and all indices of non-probability distrib samples
         bad_sample_idx = np.argwhere(np.logical_not(
             is_prob_distrib(samples),
@@ -141,6 +149,7 @@ class MultivariateStudentT(object):
             if len(bad_sample_idx) > 1:
                 bad_sample_idx = np.squeeze(bad_sample_idx)
             num_bad_samples = len(bad_sample_idx)
+        #"""
 
         return  samples
 
@@ -213,12 +222,64 @@ class MultivariateStudentT(object):
                 options={'maxiter': max_iter},
             )
 
-        #assert(opt_result.success)
-        #opt_x = opt_result.x
+    def simulated_anneal(self, data, const=None, auto_min=1, processes=8):
+        sa_mvst = MVSTSimAnneal(data, self, const)
+        sa_mvst.set_schedule(sa_mvst.auto(minutes=auto_min))
+        sa_mvst.copy_strategy = 'deepcopy'
 
-        #self.df = opt_x[0]
-        #self.loc = opt_x[1 : data.shape[1] + 1]
-        #self.scale = np.reshape(
-        #    opt_x[data.shape[1] + 1:],
-        #    [data.shape[1], data.shape[1]],
-        #)
+        return sa_mvst.anneal()
+        """
+        with Pool(processes=processes) as pool:
+            states = pool.starmap(
+                anneal,
+                zip(
+                    [data] * processes,
+                    [self] * processes,
+                    [const] * processes,
+                ),
+            )
+        return states
+        """
+
+
+def anneal(data, mvst, const, auto_min=1):
+    sa_mvst = MVSTSimAnneal(data, mvst, const)
+    sa_mvst.set_schedule(sa_mvst.auto(minutes=auto_min))
+    sa_mvst.copy_strategy = 'deepcopy'
+
+    return sa_mvst.anneal()
+
+
+class MVSTSimAnneal(Annealer):
+    """Simulated annealing of the Multivariate Student T's parameters."""
+
+    def __init__(self, data, mvst, const=None, dtype=np.float32):
+        self.data = data
+        self.mvst = mvst
+        self.const = const if const is not None else []
+        self.dtype = dtype
+
+        state = {
+            'df': mvst.df,
+            'loc': mvst.loc,
+            'sigma': mvst.sigma,
+        }
+
+        super(MVSTSimAnneal, self).__init__(state)
+
+    def move(self):
+        if 'df' not in self.const:
+            self.state['df'] = np.random.exponential(5)
+
+        if 'loc' not in self.const:
+            self.state['loc'] = np.random.uniform(
+                np.finfo(self.dtype).tiny,
+                np.finfo(self.dtype).max,
+                len(self.mvst.loc),
+            )
+
+        if 'sigma' not in self.const:
+            self.state['sigma'] = np.random.logistic(0, 1.0, self.mvst.sigma.shape)
+
+    def energy(self):
+        return -self.mvst._log_prob(self.data, **self.state).sum()
