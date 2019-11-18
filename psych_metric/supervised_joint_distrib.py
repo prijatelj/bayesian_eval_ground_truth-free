@@ -313,6 +313,7 @@ class SupervisedJointDistrib(object):
             pred,
             independent,
             mle_args,
+            knn_num_samples,
         )
 
     def __copy__(self):
@@ -774,6 +775,7 @@ class SupervisedJointDistrib(object):
         pred,
         independent=False,
         mle_args=None,
+        knn_num_samples=int(1e6),
         tf_sess_config=None
     ):
         """Fits the target and transform distributions to the data."""
@@ -787,6 +789,12 @@ class SupervisedJointDistrib(object):
             target_distrib,
             target,
             mle_args,
+        )
+
+        # Set the number of parameters for the target distribution
+        self.target_num_params = get_num_params(
+            target_distrib,
+            self.sample_dim,
         )
 
         # Fit the transformation function of the target to the predictor output
@@ -805,6 +813,14 @@ class SupervisedJointDistrib(object):
                 pred,
                 transform_distrib,
             )
+
+        # Set the number of parameters for the transform distribution
+        self.transform_num_params = get_num_params(
+            transform_distrib,
+            self.sample_dim,
+        )
+        # And the joint model's number of parameters
+        self.num_params = self.target_num_params + self.transform_num_params
 
         # Create the Tensorflow session and ops for sampling
         self._create_sampling_attributes(tf_sess_config)
@@ -866,7 +882,6 @@ class SupervisedJointDistrib(object):
         if len(bad_sample_idx) > 1:
             bad_sample_idx = np.squeeze(bad_sample_idx)
         num_bad_samples = len(bad_sample_idx)
-        #adjust_bad = num_bad_samples * (num_samples / (num_samples - num_bad_samples))
 
         while num_bad_samples > 0:
             print(f'Bad Times: num bad samples = {num_bad_samples}')
@@ -874,7 +889,6 @@ class SupervisedJointDistrib(object):
             # rerun session w/ enough samples to replace bad samples and some.
             new_pred = self.tf_sample_sess.run(
                 self.tf_pred_samples,
-                #feed_dict={self.tf_num_samples: np.ceil(num_bad_samples * adjust_bad)},
                 feed_dict={self.tf_num_samples: num_bad_samples},
             )
 
@@ -985,7 +999,7 @@ class SupervisedJointDistrib(object):
 
         return log_prob_target + log_prob_pred
 
-    def info_criterion(mle, criterions='bic', num_samples=None, data=None):
+    def info_criterion(self, mle, criterions='bic', num_samples=None, data=None):
         """Calculate information criterions.
 
         Parameters
@@ -1022,27 +1036,25 @@ class SupervisedJointDistrib(object):
         if 'bic' in criterions:
             info_criterion['bic'] = distribution_tests.bic(
                 mle,
-                num_params,
+                self.num_params,
                 num_samples,
             )
 
         if 'aic' in criterions:
             info_criterion['aic'] = distribution_tests.aic(
                 mle,
-                num_params,
+                self.num_params,
             )
 
         if 'hqc' in criterions:
             info_criterion['hqc'] = distribution_tests.hqc(
                 mle,
-                num_params,
+                self.num_params,
                 num_samples,
             )
 
-        #if len(info_criterion) == 1:
-        #    return next(iter(info_criterion.values()))
         return info_criterion
 
-    def entropy():
+    def entropy(self):
         # TODO calculate / approximate the entropy of the joint distribution
-        return
+        raise NotImplementedError
