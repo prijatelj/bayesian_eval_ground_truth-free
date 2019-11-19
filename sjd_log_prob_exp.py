@@ -298,7 +298,6 @@ def src_log_prob_exp(
     src,
     candidates,
     info_criterions=None,
-    do_not_fit=None,
     num_samples=1000,
     json_path=None,
     calc_src=True,
@@ -336,22 +335,34 @@ def src_log_prob_exp(
         # Add the src to the candidates to calculate its results
         candidates[src_id] = src
 
-        # Prevent the src SJD from being fit to its own data sample.
-        if do_not_fit is None:
-            do_not_fit = [src_id]
-        elif isinstance(do_not_fit, list):
-            do_not_fit.append(src_id)
-
-    # TODO Get data dependent candidates' SJDs
-
     # iterate through the candidate SJDs to obtain their results
-    results = log_prob_exp(
-        candidates,
-        target,
-        pred,
-        info_criterions,
-        do_not_fit,
-    )
+    results = {}
+    for key, kws in candidates.items():
+        if not isinstance(kws, SupervisedJointDistrib):
+            candidate = kws
+        else:
+            # fit appropriate SJDs to train data.
+            candidate = SupervisedJointDistrib(
+                target=target,
+                pred=pred,
+                **kws,
+            )
+
+        # Get log prob exp results on train:
+        results[key] = log_prob_exp(
+            candidate,
+            target,
+            pred,
+            info_criterions,
+        )
+
+        # TODO test results!
+        #results[key] = log_prob_exp(
+        #    candidate,
+        #    target,
+        #    pred,
+        #    info_criterions,
+        #)
 
     if json_path:
         # Save the results to file
@@ -361,11 +372,11 @@ def src_log_prob_exp(
 
 
 def log_prob_exp(
-    candidates,
+    candidate,
     target,
     pred,
+    num_params,
     info_criterions=None,
-    do_not_fit=None,
 ):
     """Calculates the log probability of the candidate SupervisedJointDistrib
     models.
@@ -378,31 +389,18 @@ def log_prob_exp(
     target : np.ndarray
     pred : np.ndarray
     info_criterions : list(str), optional
-    do_not_fit : list, optional
-        List of the candidate name whom are not to be fitted to the data. If
-        True, then the SJDs will not be fit to the data.
     """
-    results = {}
-    for candidate_id, candidate in candidates.items():
-        if do_not_fit is None or (isinstance(do_not_fit, list)
-            and candidate_id not in do_not_fit
-        ):
-            # Fit the SJD to the data
-            candidate.fit(target, pred)
+    # Calculate the log probability (log likelihood)
+    results = {'log_prob': candidate.log_prob(target, pred)}
 
-        # Create dict to store results for this candidate
-        results[candidate_id] = {}
-
-        # Calculate the log probability (log likelihood)
-        results[candidate_id]['log_prob'] = candidate.log_prob(target, pred)
-
-        if info_criterions:
-            # Calculate any information criterions
-            results[candidate_id]['info_criterion'] = candidate.info_criterion(
-                results[candidate_id]['log_prob'],
-                info_criterions,
-                len(target),
-            )
+    if info_criterions:
+        # Calculate any information criterions
+        results['info_criterion'] = distribution_tests.info_criterion(
+            results['log_prob'],
+            info_criterions,
+            num_params,
+            len(target),
+        )
 
     return results
 
