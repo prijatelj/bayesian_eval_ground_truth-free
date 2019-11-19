@@ -17,38 +17,6 @@ from psych_metric import mvst
 
 # TODO handle continuous distrib of continuous distrib, only discrete atm.
 
-def get_num_params(distrib, dims):
-    """Convenience function for getting the number of params of a distribution
-    given the number of dimensions.
-    """
-    if isinstance(distrib, tfp.distributions.Distribution):
-        distrib = distrib.__class__.__name__.lower()
-        # TODO perhaps add specific tfp distribution extraction of classes?
-    elif isinstance(distrib, str):
-        distrib = distrib.lower()
-    else:
-        raise TypeError(' '.join([
-            'expected `distrib` to be of type `str` or',
-            f'`tfp.distributions.Distribution`, not `{type(distrib)}`',
-        ]))
-    if not isinstance(distrib, int):
-        raise TypeError(
-            f'expected `dims` to be of type `int`, not `{type(dims)}`',
-        )
-
-    if distrib in {'multivariatenormal', 'multivariatecauchy'}:
-        # loc = dims, and scale matrix is a triangle matrix
-        return dims + dims * (dims + 1) / 2
-    if distrib == 'multivariatestudentt':
-        # Same as Multivariate Normal, but with a degree of freedom per dim
-        return dims + dims + dims * (dims + 1) / 2
-    if distrib == 'dirichlet':
-        # Concentration is number of classes
-        return dims
-    if distrib == 'dirichletmultinomial':
-        # Concentration is number of classes + 1 for total counts
-        return dims + 1
-
 
 def transform_to(sample, transform_matrix, origin_adjust=None):
     """Transforms the sample from discrete distribtuion space into the
@@ -66,23 +34,6 @@ def transform_from(sample, transform_matrix, origin_adjust=None):
         origin_adjust = np.zeros(transform_matrix.shape[1])
         origin_adjust[0] = 1
     return (sample @ transform_matrix) + origin_adjust
-
-
-def is_prob_distrib(
-    vector,
-    rtol=1e-09,
-    atol=0.0,
-    equal_nan=False,
-    axis=1,
-):
-    """Checks if the vector is a valid discrete probability distribution."""
-    # check if each row sums to 1
-    sums_to_one = np.isclose(vector.sum(axis), 1, rtol, atol, equal_nan)
-
-    # check if all values are w/in range
-    in_range = (vector >= 0).all(axis) == (vector <= 1).all(axis)
-
-    return sums_to_one & in_range
 
 
 def knn_log_prob(pred, num_classes, knn_tree, k, knn_pdf_num_samples=int(1e6)):
@@ -128,7 +79,7 @@ def transform_knn_log_prob_single(
 
     # Check which are valid samples. Save indices or new array
     valid_dists = transform_knn_dists[
-        np.where(is_prob_distrib(dist_check))[0]
+        np.where(distirbution_tests.is_prob_distrib(dist_check))[0]
     ]
 
     # Fit BallTree to the distances valid to the specific target.
@@ -792,7 +743,7 @@ class SupervisedJointDistrib(object):
         )
 
         # Set the number of parameters for the target distribution
-        self.target_num_params = get_num_params(
+        self.target_num_params = distribution_tests.get_num_params(
             target_distrib,
             self.sample_dim,
         )
@@ -815,7 +766,7 @@ class SupervisedJointDistrib(object):
             )
 
         # Set the number of parameters for the transform distribution
-        self.transform_num_params = get_num_params(
+        self.transform_num_params = distribution_tests.get_num_params(
             transform_distrib,
             self.sample_dim,
         )
@@ -877,7 +828,7 @@ class SupervisedJointDistrib(object):
 
         # Get any and all indices of non-probability distrib samples
         bad_sample_idx = np.argwhere(np.logical_not(
-            is_prob_distrib(pred_samples),
+            distribution_tests.is_prob_distrib(pred_samples),
         ))
         if len(bad_sample_idx) > 1:
             bad_sample_idx = np.squeeze(bad_sample_idx)
@@ -895,7 +846,7 @@ class SupervisedJointDistrib(object):
             pred_samples[bad_sample_idx] = new_pred
 
             bad_sample_idx = np.argwhere(np.logical_not(
-                is_prob_distrib(pred_samples),
+                distribution_tests.is_prob_distrib(pred_samples),
             ))
             if len(bad_sample_idx) > 1:
                 bad_sample_idx = np.squeeze(bad_sample_idx)

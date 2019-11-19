@@ -1,4 +1,6 @@
-"""Functions for performing distribution model selection."""
+"""Functions for performing distribution model selection and helper
+functions.
+"""
 import functools
 import logging
 import math
@@ -150,6 +152,56 @@ def calc_info_criterion(mle, num_params, criterions, num_samples=None):
         info_criterion['hqc'] = hqc(mle, num_params, num_samples)
 
     return info_criterion
+
+
+def get_num_params(distrib, dims):
+    """Convenience function for getting the number of params of a distribution
+    given the number of dimensions.
+    """
+    if isinstance(distrib, tfp.distributions.Distribution):
+        distrib = distrib.__class__.__name__.lower()
+        # TODO perhaps add specific tfp distribution extraction of classes?
+    elif isinstance(distrib, str):
+        distrib = distrib.lower()
+    else:
+        raise TypeError(' '.join([
+            'expected `distrib` to be of type `str` or',
+            f'`tfp.distributions.Distribution`, not `{type(distrib)}`',
+        ]))
+    if not isinstance(distrib, int):
+        raise TypeError(
+            f'expected `dims` to be of type `int`, not `{type(dims)}`',
+        )
+
+    if distrib in {'multivariatenormal', 'multivariatecauchy'}:
+        # loc = dims, and scale matrix is a triangle matrix
+        return dims + dims * (dims + 1) / 2
+    if distrib == 'multivariatestudentt':
+        # Same as Multivariate Normal, but with a degree of freedom per dim
+        return dims + dims + dims * (dims + 1) / 2
+    if distrib == 'dirichlet':
+        # Concentration is number of classes
+        return dims
+    if distrib == 'dirichletmultinomial':
+        # Concentration is number of classes + 1 for total counts
+        return dims + 1
+
+
+def is_prob_distrib(
+    vector,
+    rtol=1e-09,
+    atol=0.0,
+    equal_nan=False,
+    axis=1,
+):
+    """Checks if the vector is a valid discrete probability distribution."""
+    # check if each row sums to 1
+    sums_to_one = np.isclose(vector.sum(axis), 1, rtol, atol, equal_nan)
+
+    # check if all values are w/in range
+    in_range = (vector >= 0).all(axis) == (vector <= 1).all(axis)
+
+    return sums_to_one & in_range
 
 
 def mvst_tf_log_prob(x, df, loc, sigma):

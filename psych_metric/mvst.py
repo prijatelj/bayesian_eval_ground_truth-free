@@ -8,7 +8,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from simanneal import Annealer
 
-from psych_metric.supervised_joint_distrib import is_prob_distrib
+#from psych_metric.supervised_joint_distrib import is_prob_distrib
 
 
 class MultivariateStudentT(object):
