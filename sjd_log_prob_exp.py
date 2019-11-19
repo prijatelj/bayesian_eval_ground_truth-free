@@ -145,10 +145,10 @@ def mean_results(log_prob_results, info_criterions=None):
         results[candidate] = {}
 
         for dataset in {'train', 'test'}:
-            results[candidate][dataset] = {
-                'log_prob': {},
-                'info_criterion': {},
-            }
+            results[candidate][dataset] = {'log_prob': {}}
+
+            if info_criterions:
+                results[candidate][dataset]['info_criterion'] = {}
 
             for distrib in {'joint', 'target', 'transform'}:
                 # mean log prob
@@ -341,6 +341,8 @@ def src_log_prob_exp(
             do_not_fit = [src_id]
         elif isinstance(do_not_fit, list):
             do_not_fit.append(src_id)
+
+    # TODO Get data dependent candidates' SJDs
 
     # iterate through the candidate SJDs to obtain their results
     results = log_prob_exp(
