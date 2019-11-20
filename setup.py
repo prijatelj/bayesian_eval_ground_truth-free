@@ -19,6 +19,7 @@ setup(
         'psych_metric.datasets',
         'psych_metric.datasets.crowd_layer',
         'psych_metric.datasets.facial_beauty',
+        'psych_metric.distrib',
     ],
     #scripts
     long_description=long_description,

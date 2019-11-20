@@ -1,8 +1,12 @@
+"""All Tensorflow Code pertaining to the Multivarite Student T distribution and
+the Multivariate Cauchy distirbution as it is the same as the former but with a
+constant 1.0 as the degree of freedom.
+"""
 
 import numpy as np
 import scipy
 import tensorflow as tf
-import tensorflow-probability as tfp
+import tensorflow_probability as tfp
 
 
 def mvst_tf_log_prob(x, df, loc, sigma):

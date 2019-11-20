@@ -14,6 +14,7 @@ import tensorflow_probability as tfp
 
 from psych_metric import distribution_tests
 from psych_metric import mvst
+from psych_metric.distrib import mle_gradient_descent
 
 # TODO handle continuous distrib of continuous distrib, only discrete atm.
 
@@ -137,7 +138,6 @@ class SupervisedJointDistrib(object):
         sample_dim=None,
         total_count=None,
         tf_sess_config=None,
-        mle_method='adam',
         mle_args=None,
         knn_num_samples=int(1e6),
         dtype=np.float32,
@@ -177,14 +177,11 @@ class SupervisedJointDistrib(object):
         total_count : int
             Non-zero, positive integer of total count for the
             Dirichlet-multinomial target distribution.
-        mle_method : str, optional
-            The maximum likelihood estimation method to use to fit the
-            distributions. Only necessary when fitting a distribution that can
-            use different optimization methods, such as the Multivariate Cauchy
-            or Multivariate Student T.
         mle_args : dict, optional
             Dictionary of arguments for the maximum likelihood estimation
-            method used
+            method used. Contains an `optimizer_id` key with a str identifier
+            of which optimization method is used: 'adam', 'nadam',
+            'nelder-mead', 'simulated_annealing', 'nuts', 'random_walk'
         knn_num_samples : int
             number of samples to draw for the KNN density estimate. Defaults to
             int(1e6).
@@ -272,7 +269,6 @@ class SupervisedJointDistrib(object):
             target,
             pred,
             independent,
-            mle_method,
             mle_args,
             knn_num_samples,
         )
@@ -300,7 +296,6 @@ class SupervisedJointDistrib(object):
         self,
         distrib,
         data=None,
-        mle_method='adam',
         mle_args=None,
     ):
         """Fits the given data with an independent distribution."""
@@ -320,7 +315,7 @@ class SupervisedJointDistrib(object):
 
                 if mle_args:
                     data = data.astype(np.float32)
-                    mle_results = distribution_tests.mle_adam(
+                    mle_results = mle_gradient_descent(
                         distrib,
                         np.maximum(data, np.finfo(data.dtype).tiny),
                         init_params={
@@ -344,7 +339,7 @@ class SupervisedJointDistrib(object):
                     # TODO need to 1) be given a dtype, 2) enforce that in all
                     # data and tensors.
                     data = data.astype(np.float32)
-                    mle_results = distribution_tests.mle_adam(
+                    mle_results = mle_gradient_descent(
                         distrib,
                         np.maximum(data, np.finfo(data.dtype).tiny),
                         init_params={'concentration': np.mean(data, axis=0)},
@@ -377,7 +372,7 @@ class SupervisedJointDistrib(object):
                 # values of scale.
 
                 if mle_args:
-                    mle_results = distribution_tests.mle_adam(
+                    mle_results = mle_gradient_descent(
                         distrib,
                         data,
                         init_params={
@@ -411,7 +406,7 @@ class SupervisedJointDistrib(object):
                 or distrib['distrib_id'] == 'Dirichlet'
                 or distrib['distrib_id'] == 'MultivariateNormal'
             ):
-                return  distribution_tests.mle_adam(
+                return  mle_gradient_descent(
                     distrib['distrib_id'],
                     np.maximum(data, np.finfo(data.dtype).tiny),
                     init_params=distrib['params'],
@@ -664,8 +659,8 @@ class SupervisedJointDistrib(object):
         target,
         pred,
         distrib='MultivariateNormal',
-        mle_method='adam',
         mle_args=None,
+        zero_loc=False,
     ):
         """Fits and returns the transform distribution."""
         differences = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
@@ -674,7 +669,11 @@ class SupervisedJointDistrib(object):
         # allow the usage of non-convergence mle or not. (should be fine using
         # multivariate gaussian)
         if isinstance(distrib, str):
-            if distrib != 'MultivariateNormal' or distrib != 'MultivariateCauchy' or distrib != 'MultivariateStudentT':
+            if (
+                distrib != 'MultivariateNormal'
+                or distrib != 'MultivariateCauchy'
+                or distrib != 'MultivariateStudentT'
+            ):
                 raise ValueError(' '.join([
                     'Currently only "MultivariateNormal",',
                     '"MultivariateCauchy", and "MultivariateStudentT" are',
@@ -701,7 +700,7 @@ class SupervisedJointDistrib(object):
                     '`distrib_id`.',
                 ]))
 
-            self.target_distrib = distribution_tests.mle_adam(
+            self.target_distrib = mle_gradient_descent(
                 distrib['distrib_id'],
                 np.maximum(target, np.finfo(target.dtype).tiny),
                 init_params=distrib['params'],
