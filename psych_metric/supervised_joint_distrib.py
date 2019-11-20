@@ -66,11 +66,11 @@ def transform_knn_log_prob_single(
     origin_adjust,
     transform_matrix,
 ):
-    # Find valid distances from saved set: `self.transform_knn_dists`
+    # Find valid differences from saved set: `self.transform_knn_dists`
     # to test validity, convert target sample to simplex space.
     simplex_trgt = transform_to(trgt, transform_matrix, origin_adjust)
 
-    # add distances to target & convert back to full dimensional space.
+    # add differences to target & convert back to full dimensional space.
     dist_check = transform_from(
         transform_knn_dists + simplex_trgt,
         transform_matrix,
@@ -82,7 +82,7 @@ def transform_knn_log_prob_single(
         np.where(distirbution_tests.is_prob_distrib(dist_check))[0]
     ]
 
-    # Fit BallTree to the distances valid to the specific target.
+    # Fit BallTree to the differences valid to the specific target.
     knn_tree = BallTree(valid_dists)
 
     # Get distance between actual sample pair of target and pred
@@ -137,6 +137,7 @@ class SupervisedJointDistrib(object):
         sample_dim=None,
         total_count=None,
         tf_sess_config=None,
+        mle_method='adam',
         mle_args=None,
         knn_num_samples=int(1e6),
         dtype=np.float32,
@@ -176,7 +177,15 @@ class SupervisedJointDistrib(object):
         total_count : int
             Non-zero, positive integer of total count for the
             Dirichlet-multinomial target distribution.
-        knn_samples : int
+        mle_method : str, optional
+            The maximum likelihood estimation method to use to fit the
+            distributions. Only necessary when fitting a distribution that can
+            use different optimization methods, such as the Multivariate Cauchy
+            or Multivariate Student T.
+        mle_args : dict, optional
+            Dictionary of arguments for the maximum likelihood estimation
+            method used
+        knn_num_samples : int
             number of samples to draw for the KNN density estimate. Defaults to
             int(1e6).
         dtype : type, optional
@@ -263,6 +272,7 @@ class SupervisedJointDistrib(object):
             target,
             pred,
             independent,
+            mle_method,
             mle_args,
             knn_num_samples,
         )
@@ -286,7 +296,13 @@ class SupervisedJointDistrib(object):
 
         return new
 
-    def _fit_independent_distrib(self, distrib, data=None, mle_args=None):
+    def _fit_independent_distrib(
+        self,
+        distrib,
+        data=None,
+        mle_method='adam',
+        mle_args=None,
+    ):
         """Fits the given data with an independent distribution."""
         if isinstance(distrib, tfp.distributions.Distribution):
             # Use given distribution as the fitted distribution.
@@ -352,6 +368,8 @@ class SupervisedJointDistrib(object):
                 )
             elif distrib == 'multivariatestudentt':
                 raise NotImplementedError('Need to return a non tfp distrib')
+                # TODO ensure all is well in mle_adam and return the tfp
+                # MultivariateStudentT Linear Operator.
 
                 # initial df is 3 for loc = mean and Covariance exist.
                 # initial random scale is cov * (df -2) / df / 2
@@ -444,7 +462,7 @@ class SupervisedJointDistrib(object):
                 tf.float32,
             )
 
-            # Draw the transform distances from transform distribution
+            # Draw the transform differences from transform distribution
             transform_dists = tf.cast(
                 self.transform_distrib.sample(num_samples),
                 tf.float32,
@@ -524,11 +542,11 @@ class SupervisedJointDistrib(object):
             tf.float64,
         )
 
-        # Get the distances between pred and target
-        distances = pred_simplex_samples - target_simplex_samples
+        # Get the differences between pred and target
+        differences = pred_simplex_samples - target_simplex_samples
 
-        # Calculate the transform distrib's log prob of these distances
-        self.joint_log_prob = self.transform_distrib.log_prob(distances)
+        # Calculate the transform distrib's log prob of these differences
+        self.joint_log_prob = self.transform_distrib.log_prob(differences)
 
         # Save the placeholders as class attributes
         self.log_prob_target_samples = log_prob_target_samples
@@ -575,7 +593,7 @@ class SupervisedJointDistrib(object):
         num_samples=int(1e6),
     ):
         """KNN density estimate for the transform distribution whose space is
-        that of the distances of valid points within the probability simplex.
+        that of the differences of valid points within the probability simplex.
 
         The Tensorflow Probability log prob for the transform will extremely
         under estimate the log probability when the gaussian (or any distrib
@@ -643,7 +661,7 @@ class SupervisedJointDistrib(object):
 
     def _fit_transform_distrib(self, target, pred, distrib='MultivariateNormal'):
         """Fits and returns the transform distribution."""
-        distances = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
+        differences = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
 
         # TODO make some handling of MLE not converging if using adam, ie. to
         # allow the usage of non-convergence mle or not. (should be fine using
@@ -656,15 +674,15 @@ class SupervisedJointDistrib(object):
                     f'{distrib} is not supported.',
                 ]))
             # NOTE logically, mean should be zero given the simplex and
-            # distances.  Will need to resample more given
+            # differences.  Will need to resample more given
 
             # deterministically calculate the Maximum Likely multivatiate
             # norrmal TODO need to handle when covariance = 0 and change to an
             # infinitesimal
             return tfp.distributions.MultivariateNormalFullCovariance(
                 #np.zeros(pred.shape[1]),
-                np.mean(distances, axis=0),
-                np.cov(distances, bias=False, rowvar=False),
+                np.mean(differences, axis=0),
+                np.cov(differences, bias=False, rowvar=False),
             )
         if isinstance(distrib, dict):
             if distrib['distrib_id'] != 'MultivariateNormal':
@@ -945,7 +963,8 @@ class SupervisedJointDistrib(object):
 
         if return_individuals:
             return (
-                log_prob_target + log_prob_pred,
+                #log_prob_target + log_prob_pred,
+                None,
                 log_prob_target,
                 log_prob_pred,
             )
