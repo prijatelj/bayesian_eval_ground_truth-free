@@ -11,6 +11,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from psych_metric.mvst import MultivariateStudentT
+
 @functools.total_ordering
 class MLEResults(object):
     def _is_valid_operand(self, other):
@@ -220,6 +222,44 @@ def mvst_tf_log_prob(x, df, loc, sigma):
                 )
             )
         )
+
+
+def get_sjd_rv_params(candidate, target=True):
+    distrib = candidate.target_distrib._parameters if is_target else \
+        candidate.transform_distrib._parameters
+
+    if isinstance(distrib, tfp.Distribution):
+        valid_params = {
+            'concentration',
+            'loc',
+            'scale',
+            'df',
+            'total_count',
+            'covariance_matrix',
+        }
+
+        params = {k: v for k, v in distrib._parameters if k in valid_params}
+    elif isinstance(distrib, MultivariateStudentT):
+        params = {
+            'df': distrib.df
+            'loc': distrib.loc
+            'sigma': distrib.sigma
+        }
+    else:
+        raise TypeError(' '.join([
+            'Expected `distrib` to be of types',
+            '`tfp.distributions.Distribution` or',
+            f'`psych_metric.mvst.Multivariate`, not `{type(distrib)}`',
+        ]))
+
+    return params
+
+
+def get_sjd_params(candidate):
+    return {
+        'target': get_params(candidate, is_target=True)
+        'transform': get_params(candidate, is_target=False)
+    }
 
 
 # NOTE MLE search over params  could be done in SHADHO instead
