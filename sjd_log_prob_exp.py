@@ -139,6 +139,7 @@ def load_eval_fold(
 
 def mean_results(log_prob_results, info_criterions=None):
     """Average the results"""
+    # TODO make an updated mean_results, this is for the older format.
     # Obtain mean log prob for both datasets and all distribs
     results = {}
     for candidate in log_prob_results[0].keys():
@@ -172,14 +173,15 @@ def mean_results(log_prob_results, info_criterions=None):
 
 
 def sjd_kfold_log_prob(
-    sjd_args,
+    candidates,
     dir_path,
     weights_file,
     label_src,
     summary_name='summary.json',
     data=None,
     load_model=True,
-    info_criterions=['bic', 'aic', 'hqc'],
+    info_criterions=None,
+    output_path=None,
 ):
     """Performs SJD log prob test on kfold experiment by loading the model
     predictions form each fold and averages the results, saves error bars, and
@@ -208,13 +210,11 @@ def sjd_kfold_log_prob(
         indices. This is to avoid having to reload and prep the data if it can
         be already loaded and prepped beforehand.
     """
-    # load data if given dict
+    # Use data if given tuple, otherwise load each time given dict
     if isinstance(data, dict):
         data = predictors.load_prep_data(**data)
 
-    # Use data if given tuple, otherwise load each time.
-
-    log_prob_results = []
+    results = []
     for ls_item in os.listdir(dir_path):
         dir_p = os.path.join(dir_path, ls_item)
 
@@ -231,30 +231,26 @@ def sjd_kfold_log_prob(
             load_model=load_model,
         )
 
-        # TODO generate predictions XOR if made it so already given preds, use them
+        # TODO generate predictions XOR if already given preds, use them
         if load_model:
             pred = (model.predict(features[0]), model.predict(features[1]))
         else:
             pred = model
             del model
 
-        # fit SJD to train data.
-        sjd = SupervisedJointDistrib(
-            target=labels[0],
-            pred=pred[0],
-            **sjd_args,
-        )
-
-        # Perform Log Prob test on test/eval set.
-        log_prob_results.append(log_prob_test_human_sjd(
-            sjd,
-            labels,
-            pred,
-            sjd_args,
+        # Get Eval fold's results
+        results.append(log_prob_exps(
+            candidates,
+            (labels[0], pred[0]),
+            (labels[1], pred[1]),
             info_criterions,
         ))
 
-    return log_prob_results
+    if output_path:
+        # Save the results to file
+        experiment.io.save_json(output_path, results)
+
+    return results
 
 
 def multiple_sjd_kfold_log_prob(
@@ -329,12 +325,49 @@ def src_log_prob_exp(
         the parameters and results.
     """
     # Sample the data from the src to be used to assess the candidate SJDs
-    target, pred = src.sample(num_samples)
+    train = src.sample(num_samples)
+    test = src.sample(num_samples)
 
     if calc_src:
         # Add the src to the candidates to calculate its results
         candidates[src_id] = src
 
+    results = log_prob_exps(candidates, train, test, info_criterions)
+
+    if json_path:
+        # Save the results to file
+        experiment.io.save_json(json_path, results)
+
+    return results
+
+
+def log_prob_exps(
+    candidates,
+    train,
+    test,
+    info_criterions=None,
+):
+    """
+    Runs multiple log prob experiments with the given set of candidates and
+    data
+
+    Parameters
+    ----------
+    candidates : dict
+        Dictionary of str candidate identifiers keys to values of either.
+    train : tuple(np.ndarray, np.ndarray)
+        Data used for fitting the SJD and testing the typical Bayesian
+        situation. Tuple of same shaped ndarrays where the first is the target
+        and the second is the predictions of a predictor.
+    test : tuple(np.ndarray, np.ndarray)
+        Data used for testing the fitted SJD only in a cross validation
+        scenerio, different from the typical Bayesian situation of testing
+        fitted models. Tuple of same shaped ndarrays where the first is the
+        target and the second is the predictions of a predictor.
+    info_criterions : list(str)
+        List of str identifiers of which information criterions to calculate
+        after calculating the log probability.
+    """
     # iterate through the candidate SJDs to obtain their results
     results = {}
     for key, kws in candidates.items():
@@ -343,30 +376,29 @@ def src_log_prob_exp(
         else:
             # fit appropriate SJDs to train data.
             candidate = SupervisedJointDistrib(
-                target=target,
-                pred=pred,
+                target=train[0],
+                pred=train[1],
                 **kws,
             )
 
-        # Get log prob exp results on train:
-        results[key] = log_prob_exp(
+        # Save parameters
+        results[key] = {'params': distribution_tests.get_sjd_params(candidate)}
+
+        # Get log prob exp results on in-sample data:
+        results[key]['train'] = log_prob_exp(
             candidate,
-            target,
-            pred,
+            train[0],
+            train[1],
             info_criterions,
         )
 
-        # TODO test results!
-        #results[key] = log_prob_exp(
-        #    candidate,
-        #    target,
-        #    pred,
-        #    info_criterions,
-        #)
-
-    if json_path:
-        # Save the results to file
-        experiment.io.save_json(json_path, results)
+        # Get out of sample log prob exp results
+        results[key]['test'] = log_prob_exp(
+            candidate,
+            test[0],
+            test[1],
+            info_criterions,
+        )
 
     return results
 
@@ -391,16 +423,28 @@ def log_prob_exp(
     info_criterions : list(str), optional
     """
     # Calculate the log probability (log likelihood)
-    results = {'log_prob': candidate.log_prob(target, pred)}
+    log_probs = candidate.log_prob(target, pred)
+    results = {var:{'log_prob': log_probs[i]} for i, var in
+        enumerate(['target', 'transform', 'joint'])
+    }
 
     if info_criterions:
-        # Calculate any information criterions
-        results['info_criterion'] = distribution_tests.info_criterion(
-            results['log_prob'],
-            info_criterions,
-            num_params,
-            len(target),
-        )
+        # Calculate any information criterions (target, pred, joint)
+        for var, value in results:
+            # Get appropriate number of parameters from the SJD
+            if var == 'target':
+                num_params = candidate.target_num_params
+            elif var == 'transform':
+                num_params = candidate.transform_num_params
+            elif var == 'joint':
+                num_params = candidate.num_params
+
+            value['info_criterion'] = distribution_tests.info_criterion(
+                value['log_prob'],
+                info_criterions,
+                num_params,
+                len(target),
+            )
 
     return results
 
@@ -599,19 +643,20 @@ if __name__ == '__main__':
     )
 
     # TODO first, load in entirety a single eval fold
+    """
     uh = sjd_kfold_log_prob(
-        sjd_args=vars(args.sjd),
+        #sjd_args=vars(args.sjd),
         dir_path=args.human_sjd.dir_path,
         weights_file=args.human_sjd.weights_file,
         label_src=args.label_src,
         summary_name=args.human_sjd.summary_name,
-        #data=None,
-        #load_model=True,
-        #info_criterions,
+        data=None,
+        load_model=True,
+        #info_criterions=args.,
     )
-
+    """
     # TODO then try with load data ONCE, load one summary of a kfold. use data for all.
-    data=args.human_sjd.dir_path,
+    #data=args.human_sjd.dir_path,
 
     # TODO then do a single kfold experiment
 
