@@ -137,9 +137,45 @@ def load_eval_fold(
     )
 
 
+def old_mean_results(log_prob_results, info_criterions=None):
+    """Average the results"""
+    # Obtain mean log prob for both datasets and all distribs
+    results = {}
+    for candidate in log_prob_results[0].keys():
+        results[candidate] = {}
+
+        for dataset in {'train', 'test'}:
+            results[candidate][dataset] = {'log_prob': {}}
+
+            if info_criterions:
+                results[candidate][dataset]['info_criterion'] = {}
+
+            for distrib in {'joint', 'target', 'transform'}:
+                # mean log prob
+                results[candidate][dataset]['log_prob'][distrib] = np.mean([
+                    fold[candidate][dataset]['log_prob'][distrib]
+                    for fold in log_prob_results
+                ])
+
+                # mean info criterions
+                if not info_criterions:
+                    continue
+                results[candidate][dataset]['info_criterion'][distrib] = {}
+
+                for ic in info_criterions:
+                    results[candidate][dataset]['info_criterion'][distrib][ic] = np.mean([
+                        fold[candidate][dataset]['info_criterion'][distrib][ic]
+                        for fold in log_prob_results
+                    ])
+
+    return results
+
+
 def mean_results(log_prob_results, info_criterions=None):
     """Average the results"""
     # TODO make an updated mean_results, this is for the older format.
+    raise NotImplementedError
+
     # Obtain mean log prob for both datasets and all distribs
     results = {}
     for candidate in log_prob_results[0].keys():
@@ -425,7 +461,7 @@ def log_prob_exp(
     # Calculate the log probability (log likelihood)
     log_probs = candidate.log_prob(target, pred)
     results = {var:{'log_prob': log_probs[i]} for i, var in
-        enumerate(['target', 'transform', 'joint'])
+        enumerate(['joint', 'target', 'transform'])
     }
 
     if info_criterions:
@@ -437,6 +473,9 @@ def log_prob_exp(
             elif var == 'transform':
                 num_params = candidate.transform_num_params
             elif var == 'joint':
+                if value['log_prob'] is None:
+                    # Joint was not able to be calculated.
+                    continue
                 num_params = candidate.num_params
 
             value['info_criterion'] = distribution_tests.info_criterion(
