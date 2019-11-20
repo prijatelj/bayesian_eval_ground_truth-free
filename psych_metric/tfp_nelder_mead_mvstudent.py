@@ -4,6 +4,25 @@ import scipy
 import tensorflow as tf
 import tensorflow-probability as tfp
 
+
+def mvst_tf_log_prob(x, df, loc, sigma):
+    with tf.name_scope('multivariate_student_t_log_prob') as scope:
+        dims = tf.cast(loc.shape[0], tf.float32)
+
+        # TODO make this broadcastable, IT IS NOT. need to loop through samples
+        return (
+            tf.math.lgamma((df + dims) / 2.0)
+            - (df + dims) / 2.0 * (
+                1.0 + (1.0 / df) * (x - loc) @ tf.linalg.inv(sigma) @ tf.transpose(x - loc)
+            ) - (
+                tf.math.lgamma(df / 2.0)
+                + .5 * (dims * (tf.log(df) + tf.log(np.pi))
+                    + tf.log(tf.linalg.norm(sigma))
+                )
+            )
+        )
+
+
 def nelder_mead_mvstudent(
     data,
     df=None,
