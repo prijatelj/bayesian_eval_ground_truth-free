@@ -718,6 +718,10 @@ class SupervisedJointDistrib(object):
 
         return np.array(log_prob)
 
+    @property
+    def num_params(self):
+        return self.target_num_params + self.transform_num_params
+
     def fit(
         self,
         target_distrib,
@@ -770,8 +774,6 @@ class SupervisedJointDistrib(object):
             transform_distrib,
             self.sample_dim,
         )
-        # And the joint model's number of parameters
-        self.num_params = self.target_num_params + self.transform_num_params
 
         # Create the Tensorflow session and ops for sampling
         self._create_sampling_attributes(tf_sess_config)
