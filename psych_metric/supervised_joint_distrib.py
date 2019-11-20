@@ -659,7 +659,14 @@ class SupervisedJointDistrib(object):
         # NOTE tensroflow optimization instead here.
         return (sample @ self.transform_matrix) + self.origin_adjust
 
-    def _fit_transform_distrib(self, target, pred, distrib='MultivariateNormal'):
+    def _fit_transform_distrib(
+        self,
+        target,
+        pred,
+        distrib='MultivariateNormal',
+        mle_method='adam',
+        mle_args=None,
+    ):
         """Fits and returns the transform distribution."""
         differences = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
 
@@ -667,11 +674,12 @@ class SupervisedJointDistrib(object):
         # allow the usage of non-convergence mle or not. (should be fine using
         # multivariate gaussian)
         if isinstance(distrib, str):
-            if distrib != 'MultivariateNormal':
+            if distrib != 'MultivariateNormal' or distrib != 'MultivariateCauchy' or distrib != 'MultivariateStudentT':
                 raise ValueError(' '.join([
-                    'Currently only "MultivariateNormal" is supported for the',
-                    'transform distribution as proof of concept.',
-                    f'{distrib} is not supported.',
+                    'Currently only "MultivariateNormal",',
+                    '"MultivariateCauchy", and "MultivariateStudentT" are',
+                    'supported for the', 'transform distribution as proof of',
+                    f'concept. {distrib} is not supported.',
                 ]))
             # NOTE logically, mean should be zero given the simplex and
             # differences.  Will need to resample more given
@@ -697,7 +705,7 @@ class SupervisedJointDistrib(object):
                 distrib['distrib_id'],
                 np.maximum(target, np.finfo(target.dtype).tiny),
                 init_params=distrib['params'],
-                #**mle_args,
+                **mle_args,
             )
         else:
             raise TypeError('`distrib` is expected to be of type `str` or '
