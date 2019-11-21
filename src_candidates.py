@@ -124,6 +124,16 @@ def get_sjd_candidates(
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
 
+        # TODO may need to allow passing of different MLE args to the separate
+        # distribs. ie Dir almost always uses Grad Descent, but MVC anything.
+
+        candidates['dir_mvc_mle'] = {
+            'target_distrib': 'Dirichlet',
+            'transform_distrib': 'MultivariateNormal',
+            'indpendent': False,
+            'mle_args': mle_args_copy,
+            'processes': processes,
+        }
 
         if sjd_args:
             candidates['dir_mvc_mle'].update(sjd_args)
