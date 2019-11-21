@@ -324,7 +324,6 @@ def mle_adam(
                 logging.info('Maimum iterations (%d) reached without convergence.', max_iter)
                 continue_loop = False
 
-            # TODO should we save invalid params and results in the history?
             # Save observed vars of interest
             if num_top_likelihoods <= 0 or not params_history and not loss_history:
                 # return the history of all likelihoods and params.
