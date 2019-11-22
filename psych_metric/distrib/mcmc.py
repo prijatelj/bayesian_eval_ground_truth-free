@@ -1,108 +1,206 @@
 """The Tensorflow optimization of either a distribution or a Bayesian Neural
 Network using MCMC methods.
 """
+import logging
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from psych_metric.distribution_tests import get_tfp_distrib_params
+from psych_metric.distribution_tests import get_num_params
 from psych_metric.distrib.mle_gradient_descent import get_distrib_param_vars
 from psych_metric.distrib.mle_gradient_descent import MLEResults
+from psych_metric.distrib.tfp_mvst import MultivariateStudentT
 
 
-def mcmc_distrib(
+def mcmc_distrib_params(
     distrib_id,
     data,
-    init_params=None,
+    params,
     const_params=None,
-    kernel_id='nuts',
+    kernel_id='NoUTurnSampler',
     kernel_args=None,
+    step_adjust_args=None,
     num_top=1,
     num_samples=int(1e4),
-    burnin=int(1e4),
-    lag=int(1e3),
-    parallel_iter=16,
+    burnin=int(1e5),
+    lag=int(1e4),
+    parallel_iter=10,
     dtype=tf.float32,
     random_seed=None,
     alt_distrib=False,
     constraint_multiplier=1e5,
     sess_config=None,
-    name='MCMC_distrib_params',
 ):
+    """Performs MCMC over the parameter distributions and returns the parameter
+    set with the highest maxmimum likelihood estimate.
+    """
     if kernel_args is None:
         # Ensure that opt args is a dict for use with **
         # TODO decide on default values for the kernel args
-        kernel_args = {
-            'step_size': 0.1 # initial step size
-            'num_leapfrog_steps': 2
-        }
+        if kernel_id == 'RandomWalkMetropolis':
+            kernel_args = {'scale': 1.0}
+        elif kernel_id == 'HamiltonianMonteCarlo':
+            kernel_args = {
+                'step_size': 0.1, # initial step size
+                'num_leapfrog_steps': 2,
+            }
+        elif kernel_id == 'NoUTurnSampler':
+            kernel_args = {
+                'step_size': 0.1, # initial step size
+                'num_leapfrog_steps': 2,
+            }
+
+        # create default step adjust args?
+        if step_adjust_args is None:
+            step_adjust_args = {
+                'num_adaptation_steps': np.floor(burnin * .6),
+            }
     if random_seed:
         # Set random seed if given.
         np.random.seed(random_seed)
         tf.set_random_seed(random_seed)
+    if const_params is None:
+        const_params = {}
 
-    with tf.name_scope(name) as scope:
-        distrib, params = get_distrib_param_vars(
-            distrib_id,
-            init_params,
-            const_params,
+    loss_fn = lambda x: tfp_log_prob(
+        x,
+        const_params,
+        data,
+        get_tfp_distrib(distrib_id),
+        lambda y: unpack_mvst_params(
+            y,
             data.shape[1],
-        )
+            'df' not in const_params,
+            'loc' not in const_params,
+            'scale' not in const_params and 'sigma' not in const_params,
+        ),
+    )
 
-        # TODO Need to give the kernels the actual loss function, not its results
-        neg_log_prob, loss = get_mle_loss(
-            data,
-            distrib,
-            params,
-            const_params,
-            alt_distrib,
-            constraint_multiplier,
-        )
+    # TODO Need to figure out how to update the parameters via this method...
+    kernel = get_mcmc_kernel(loss_fn, kernel_id, kernel_args)
 
-        # TODO Need to figure out how to update the parameters via this method...
-        kernel = get_mcmc_kernel(loss, kernel_id, kernel_args)
+    current_state = pack_mvst_params(params, const_params)
 
-        samples, _ = tfp.mcmc.sample_chain(
-            num_results=num_samples, # ? in this context for the distribs?
-            current_state=distrib,
-            kernel=kernel,
-            num_burnin_steps=burnin,
-            num_steps_between_results=lag,
-            parallel_iterations=parallel_iter,
-        )
+    samples, trace = tfp.mcmc.sample_chain(
+        num_results=num_samples,
+        current_state=current_state,
+        kernel=kernel,
+        num_burnin_steps=burnin,
+        num_steps_between_results=lag,
+        parallel_iterations=parallel_iter,
+    )
 
-    # TODO run session to get the parameters
-    results_dict = {
-        'samples': samples,
-        'params': params,
-        'neg_log_prob': neg_log_prob,
-        #'loss': loss,
-    }
+    # TODO get maximum likelihood estimate parameter from parameter set
+    log_probs = tf.map_fn(
+        loss_fn,
+        samples,
+        parallel_iterations=parallel_iter,
+        back_prop=False,
+    )
 
-    mle_params = run_session(results_dict, num_top, sess_config)
+    with tf.Session(config=sess_config) as sess:
+        sess.run((
+            tf.global_variables_initializer(),
+            tf.local_variables_initializer(),
+        ))
 
-    # TODO Should this return the distribution over the params or just param
-    # set w/ Maxmimum Likelihoo Estimation?
+        iter_results = sess.run({
+            'log_probs': log_probs,
+            'samples': samples,
+            'trace': trace,
+        })
 
-    return mle_params
+    max_idx = np.argmax(iter_results['log_probs'])
+
+    return iter_results['log_probs'][max_idx], iter_results['samples'][max_idx]
 
 
-def get_mcmc_kernel(loss, kernel_id, kernel_args):
+def get_tfp_distrib(distrib_id):
+    distrib_id = distrib_id.lower()
+    if distrib_id == 'dirichlet':
+        return tfp.distributions.Dirichlet
+    if distrib_id == 'multivariatenormal' or distrib_id == 'mvn':
+        return tfp.distributions.MultivariateNormalFullCovariance
+    if distrib_id == 'multivariatestudentt' or distrib_id == 'mvst':
+        return MultivariateStudentT
+
+
+def get_mcmc_kernel(loss_fn, kernel_id, kernel_args, step_adjust_args=None):
     # TODO setup tfp.mcmc.SimpleStepSizeAdaptation
     kernel_id = kernel_id.lower()
 
     if kernel_id == 'randomwalk' or kernel_id == 'randomwalkmetropolis':
-        return tfp.mcmc.RandomWalkMetropolis(loss, **kernel_args)
+        return tfp.mcmc.RandomWalkMetropolis(
+            loss_fn,
+            tfp.mcmc.random_walk_uniform_fn(kernel_args['scale']),
+        )
     if kernel_id == 'nuts' or kernel_id == 'nouturnsampler':
-        return tfp.mcmc.NoUTurnSampler(loss, **kernel_args)
+        nuts = tfp.mcmc.NoUTurnSampler(loss_fn, **kernel_args)
+
+        if step_adjust_args:
+            return tfp.mcmc.SimpleStepSizeAdaptation(nuts, **step_adjust_args)
+        return nuts
     if (
         kernel_id == 'hmc'
         or kernel_id == 'hmcmc'
-        or kernel_id == 'HamiltonianMonteCarlo'
+        or kernel_id == 'hamiltonianmontecarlo'
     ):
-        return tfp.mcmc.HamiltonianMonteCarlo(**kernel_args)
+        hmc = tfp.mcmc.HamiltonianMonteCarlo(loss_fn, **kernel_args)
+
+        if step_adjust_args:
+            return tfp.mcmc.SimpleStepSizeAdaptation(hmc, **step_adjust_args)
+        return hmc
 
     raise ValueError(f'Unexpected value for `kernel_id`: {kernel_id}')
+
+
+def unpack_mvst_params(params, dims, df=True, loc=True, scale=True):
+    """Unpacks the parameters from a 1d-array."""
+    if df and loc and scale:
+        return {
+            'df': params[0],
+            'loc': params[1 : dims + 1],
+            'scale': tf.reshape(params[dims + 1:], [dims, dims]),
+        }
+    if not df and loc and scale:
+        return {
+            'loc': params[:dims],
+            'scale': tf.reshape(params[dims:], [dims, dims]),
+        }
+    if not df and not loc and scale:
+        # Returning tuple to stay consistent w/ other
+        return {'scale': tf.reshape(params, [dims, dims])}
+
+def pack_mvst_params(params, const_params):
+    """Unpacks the parameters from a 1d-array."""
+    arr = []
+    if 'df' not in const_params:
+        arr.append([params['df']])
+
+    if 'loc' not in const_params:
+        arr.append(params['loc'])
+
+    if 'scale' in params and 'scale' not in const_params:
+        arr.append(params['scale'].flatten())
+    elif 'sigma' in params and 'sigma' not in const_params:
+        arr.append(params['sigma'].flatten())
+    elif (
+        'covariance_matrix' in params
+        and 'covariance_matrix' not in const_params
+    ):
+        arr.append(params['covariance_matrix'].flatten())
+
+    return np.concatenate(arr)
+
+
+def tfp_log_prob(params, const_params, data, distrib_class, unpack_params):
+    parameters = unpack_params(params)
+    parameters.update(const_params)
+    distrib = distrib_class(**parameters)
+    # TODO handle parameter constraints
+    return tf.reduce_sum(distrib.log_prob(data), name='tfp_log_prob_sum')
 
 
 def get_mle_loss(
@@ -146,8 +244,14 @@ def get_mle_loss(
 
 
 def run_session(
+    distrib_id,
     results_dict,
+    tf_data,
+    data,
+    params,
+    const_params,
     num_top=1,
+    max_iter=int(1e4),
     sess_config=None,
 ):
     with tf.Session(config=sess_config) as sess:
@@ -156,9 +260,9 @@ def run_session(
             tf.local_variables_initializer(),
         ))
 
-        top_likeilhoods = []
+        top_likelihoods = []
 
-        param_history = []
+        params_history = []
         loss_history = []
         loss_chain = 0
 
@@ -172,7 +276,7 @@ def run_session(
                 if np.isnan(value).any():
                     raise ValueError(f'{param} is NaN!')
 
-            if is_param_constraint_broken(params):
+            if is_param_constraint_broken(params, const_params):
                 # This still counts as an iteration, just nothing to save.
                 if i >= max_iter:
                     logging.info(
@@ -202,10 +306,12 @@ def run_session(
                 loss_history[0] = iter_results['neg_log_prob']
 
             conitnue_loop = to_continue(
+                distrib_id,
                 iter_results['neg_log_prob'],
                 iter_results['params'],
                 params_history,
                 loss_history,
+                i,
                 max_iter,
             )
 
@@ -236,7 +342,7 @@ def is_param_constraint_broken(params, const_params):
     )
 
 
-def top_likelihoods(top_likelihoods, neg_log_prob, params, num_top=1):
+def update_top_likelihoods(top_likelihoods, neg_log_prob, params, num_top=1):
     # Assess if necessary to save the valid likelihoods
     if not top_likelihoods or neg_log_prob < top_likelihoods[-1].neg_log_likelihood:
         # update top likelihoods and their respective params
@@ -254,12 +360,19 @@ def top_likelihoods(top_likelihoods, neg_log_prob, params, num_top=1):
 
 
 def to_continue(
+    distrib_id,
     neg_log_prob,
     params,
     params_history,
     loss_history,
+    loss_chain,
+    iter_num,
     max_iter=1e4,
-    grads=None,
+    grad=None,
+    tol_param=1e-8,
+    tol_loss=1e-8,
+    tol_grad=1e-8,
+    tol_chain=3,
 ):
     """Calculate Termination Conditions"""
     # Calculate parameter difference
@@ -281,7 +394,7 @@ def to_continue(
         param_diff = np.subtract(new_params, prior_params)
 
         if np.linalg.norm(param_diff) < tol_param:
-            logging.info('Parameter convergence in %d iterations.', i)
+            logging.info('Parameter convergence in %d iterations.', iter_num)
             return False
 
     # Calculate loss difference
@@ -289,7 +402,7 @@ def to_continue(
         loss_chain += 1
 
         if loss_chain >= tol_chain:
-            logging.info('Loss convergence in %d iterations.', i)
+            logging.info('Loss convergence in %d iterations.', iter_num)
             return False
     else:
         if loss_chain > 0:
@@ -301,11 +414,11 @@ def to_continue(
         and loss_history
         and (np.linalg.norm(grad) < tol_param).all()
     ):
-        logging.info('Gradient convergence in %d iterations.', i)
+        logging.info('Gradient convergence in %d iterations.', iter_num)
         return False
 
     # Check if at or over maximum iterations
-    if i >= max_iter:
+    if iter_num >= max_iter:
         logging.info('Maimum iterations (%d) reached without convergence.', max_iter)
         return False
 
