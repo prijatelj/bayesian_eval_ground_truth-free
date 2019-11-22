@@ -13,6 +13,7 @@ from psych_metric.distrib.mle_gradient_descent import get_distrib_param_vars
 from psych_metric.distrib.mle_gradient_descent import MLEResults
 from psych_metric.distrib.tfp_mvst import MultivariateStudentT
 
+# TODO add tensorboard for visualizing and keeping track of progress.
 
 def mcmc_distrib_params(
     distrib_id,
@@ -61,8 +62,11 @@ def mcmc_distrib_params(
         # Set random seed if given.
         np.random.seed(random_seed)
         tf.set_random_seed(random_seed)
+
     if const_params is None:
         const_params = {}
+    elif isinstance(const_params, list):
+        const_params = {k:v for k, v in params.items() if k in const_params}
 
     loss_fn = lambda x: tfp_log_prob(
         x,
@@ -173,6 +177,14 @@ def unpack_mvst_params(params, dims, df=True, loc=True, scale=True):
         # Returning tuple to stay consistent w/ other
         return {'scale': tf.reshape(params, [dims, dims])}
 
+    if not df and loc and not scale:
+        # Returning tuple to stay consistent w/ other
+        return {'loc': params}
+
+    if df and not loc and scale:
+        # Returning tuple to stay consistent w/ other
+        return {'df': params[0], 'scale': tf.reshape(params[1:], [dims, dims])}
+
 def pack_mvst_params(params, const_params):
     """Unpacks the parameters from a 1d-array."""
     arr = []
@@ -199,8 +211,17 @@ def tfp_log_prob(params, const_params, data, distrib_class, unpack_params):
     parameters = unpack_params(params)
     parameters.update(const_params)
     distrib = distrib_class(**parameters)
-    # TODO handle parameter constraints
-    return tf.reduce_sum(distrib.log_prob(data), name='tfp_log_prob_sum')
+
+    # TODO handle parameter constraints (use get_mle_loss)
+    log_prob, loss = get_mle_loss(
+        data,
+        distrib,
+        parameters,
+        const_params,
+        neg_loss=False,
+    )
+
+    return tf.reduce_sum(loss, name='tfp_log_prob_sum')
 
 
 def get_mle_loss(
@@ -210,19 +231,27 @@ def get_mle_loss(
     const_params,
     alt_distrib=False,
     constraint_multiplier=1e5,
+    neg_loss=True,
 ):
     """Given a tfp distrib, create the MLE loss."""
     log_prob = distrib.log_prob(value=data)
 
     # Calc neg log likelihood to find minimum of (aka maximize log likelihood)
-    neg_log_prob = -1.0 * tf.reduce_sum(log_prob, name='neg_log_prob_sum')
+    if neg_loss:
+        neg_log_prob = -1.0 * tf.reduce_sum(log_prob, name='neg_log_prob_sum')
+    else:
+        neg_log_prob = tf.reduce_sum(log_prob, name='neg_log_prob_sum')
 
     loss = neg_log_prob
     # Apply param constraints. Add Relu to enforce positive values
     if isinstance(distrib, tfp.distributions.Dirichlet) and alt_distrib:
         if const_params is None or 'precision' not in const_params:
-            loss = loss +  constraint_multiplier \
-                * tf.nn.relu(-params['precision'] + 1e-3)
+            if neg_loss:
+                loss = loss +  constraint_multiplier \
+                    * tf.nn.relu(-params['precision'] + 1e-3)
+            else:
+                loss = loss - constraint_multiplier \
+                    * tf.nn.relu(-params['precision'] + 1e-3)
     elif isinstance(distrib, tfp.distributions.MultivariateStudentTLinearOperator):
         if const_params is None or 'df' not in const_params:
             # If opt Student T, mean is const and Sigma got from df & cov
@@ -233,12 +262,20 @@ def get_mle_loss(
             # for df > 2 when given Covariance_matrix as a const parameter,
             # rather than scale
             if 'covariance_matrix' in const_params:
-                loss = loss + constraint_multiplier \
-                    * tf.nn.relu(-params['df'] + 2 + 1e-3)
+                if neg_loss:
+                    loss = loss + constraint_multiplier \
+                        * tf.nn.relu(-params['df'] + 2 + 1e-3)
+                else:
+                    loss = loss - constraint_multiplier \
+                        * tf.nn.relu(-params['df'] + 2 + 1e-3)
             else:
                 # enforce it to be greater than 0
-                loss = loss + constraint_multiplier \
-                    * tf.nn.relu(-params['df'] + 1e-3)
+                if neg_loss:
+                    loss = loss + constraint_multiplier \
+                        * tf.nn.relu(-params['df'] + 1e-3)
+                else:
+                    loss = loss - constraint_multiplier \
+                        * tf.nn.relu(-params['df'] + 1e-3)
 
     return neg_log_prob, loss
 
