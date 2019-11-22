@@ -4,20 +4,15 @@ distribution of the predictor conditional on the target.
 """
 
 import tensorflow as tf
-import tensorflow as tfp
+import tensorflow_probability as tfp
+
 
 def bnn_mlp_inference(
     dims,
-    num_samples=1e4,
-    burnin=1e4,
-    lag=1e3,
     num_layers=2,
     num_hidden=10,
-    activation='sigmoid',
+    activation=tf.math.sigmoid,
     dtype=tf.float32,
-    parallel_iter=16,
-    hyperbolic=False,
-    random_seed=None,
 ):
     """BNN of a simple MLP model. Input: labels in prob simplex; outputs
     predictor's label in prob simplex.
@@ -26,7 +21,7 @@ def bnn_mlp_inference(
 
     with tf.name_scope('bnn_mlp_transformer') as scope:
         target = tf.placeholder(dtype, [dims], name='target_label')
-        actual_pred = tf.placeholder(dtype, [dims], name='target_label')
+        pred = tf.placeholder(dtype, [dims], name='pred_label')
 
         x = target
         for i in range(num_layers):
@@ -37,37 +32,53 @@ def bnn_mlp_inference(
             )(x)
 
         # output = activation(dot(input, kernel) + bias)
-        pred = tf.keras.layers.Dense(
+        bnn_out = tf.keras.layers.Dense(
             dims,
-            activation=tf.math.sigmoid,
+            activation=activation,
             use_bias=False,
             dtype=dtype,
-            name='pred',
+            name='bnn_output_pred',
         )(x)
 
-        loss = tf.nn.l2_loss(pred - actual_pred)
+    return bnn_out, target, pred
 
-        if hyperbolic:
-            raise NotImplementedError
 
-            kernel = tfp.mcmc.NoUTurnSampler(
-                loss,
-                step_size,
-                seed=random_seed,
-            )
-        else:
-            kernel = tfp.mcmc.RandomWalkMetropolis(
-                loss,
-                seed=random_seed,
-            )
+def foo(
+    bnn_args,
+    num_samples=1e4,
+    burnin=1e4,
+    lag=1e3,
+    parallel_iter=16,
+    hyperbolic=False,
+    random_seed=None,
+):
+    # Create the BNN model
+    bnn_out, target, pred = bnn_mlp_inference(**bnn_args)
 
-        # Train it using RandomWalk or NoUTurnSampler
-        samples, _ = tfp.mcmc.sample_chain(
-            num_results=num_samples,
-            current_state=pred,
-            kernel=kernel,
-            num_burnin_steps=burnin,
-            num_steps_between_results=lag,
-            parallel_iterations=parallel_iter,
+    # Get the loss
+    loss = tf.nn.l2_loss(bnn_out - pred)
+
+    # Get the MCMC Kernel
+    if hyperbolic:
+        raise NotImplementedError
+
+        kernel = tfp.mcmc.NoUTurnSampler(
+            loss,
+            step_size,
+            seed=random_seed,
+        )
+    else:
+        kernel = tfp.mcmc.RandomWalkMetropolis(
+            loss,
+            seed=random_seed,
         )
 
+    # Fit the BNN with the MCMC kernel
+    samples, trace = tfp.mcmc.sample_chain(
+        num_results=num_samples,
+        current_state=bnn_out,
+        kernel=kernel,
+        num_burnin_steps=burnin,
+        num_steps_between_results=lag,
+        parallel_iterations=parallel_iter,
+    )
