@@ -41,10 +41,10 @@ def mcmc_distrib_params(
         # Ensure that opt args is a dict for use with **
         # TODO decide on default values for the kernel args
         if kernel_id == 'RandomWalkMetropolis':
-            kernel_args = {'scale': 1.0}
+            kernel_args = {'scale': 0.5}
         elif kernel_id == 'HamiltonianMonteCarlo':
             kernel_args = {
-                'step_size': 0.1, # initial step size
+                'step_size': 0.001, # initial step size
                 'num_leapfrog_steps': 2,
             }
         elif kernel_id == 'NoUTurnSampler':
@@ -56,7 +56,7 @@ def mcmc_distrib_params(
         # create default step adjust args?
         if step_adjust_args is None:
             step_adjust_args = {
-                'num_adaptation_steps': np.floor(burnin * .6),
+                'num_adaptation_steps': np.floor(burnin * 0.6),
             }
     if random_seed:
         # Set random seed if given.
@@ -82,7 +82,6 @@ def mcmc_distrib_params(
         ),
     )
 
-    # TODO Need to figure out how to update the parameters via this method...
     kernel = get_mcmc_kernel(loss_fn, kernel_id, kernel_args)
 
     current_state = pack_mvst_params(params, const_params)
@@ -118,7 +117,8 @@ def mcmc_distrib_params(
 
     max_idx = np.argmax(iter_results['log_probs'])
 
-    return iter_results['log_probs'][max_idx], iter_results['samples'][max_idx]
+    return iter_results, max_idx
+    #return iter_results['log_probs'][max_idx], iter_results['samples'][max_idx]
 
 
 def get_tfp_distrib(distrib_id):
@@ -168,25 +168,25 @@ def unpack_mvst_params(params, dims, df=True, loc=True, scale=True):
             'loc': params[1 : dims + 1],
             'scale': tf.reshape(params[dims + 1:], [dims, dims]),
         }
+
     if not df and loc and scale:
         return {
             'loc': params[:dims],
             'scale': tf.reshape(params[dims:], [dims, dims]),
         }
+
     if not df and not loc and scale:
-        # Returning tuple to stay consistent w/ other
         return {'scale': tf.reshape(params, [dims, dims])}
 
     if not df and loc and not scale:
-        # Returning tuple to stay consistent w/ other
         return {'loc': params}
 
     if df and not loc and scale:
-        # Returning tuple to stay consistent w/ other
         return {'df': params[0], 'scale': tf.reshape(params[1:], [dims, dims])}
 
+
 def pack_mvst_params(params, const_params):
-    """Unpacks the parameters from a 1d-array."""
+    """Packs the parameters into a 1d-array."""
     arr = []
     if 'df' not in const_params:
         arr.append([params['df']])
