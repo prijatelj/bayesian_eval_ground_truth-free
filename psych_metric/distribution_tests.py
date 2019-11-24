@@ -12,6 +12,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from psych_metric.mvst import MultivariateStudentT
+from psych_metric.distrib import tfp_mvst
 
 @functools.total_ordering
 class MLEResults(object):
@@ -207,6 +208,7 @@ def is_prob_distrib(
 
 
 def mvst_tf_log_prob(x, df, loc, sigma):
+    raise NotImplementedError('This is not properly implemented. Use psych_metric.distrib.tfp_mvst.MultivariateStudentT.log_prob() instead.')
     with tf.name_scope('multivariate_student_t_log_prob') as scope:
         dims = tf.cast(loc.shape[0], tf.float32)
 
@@ -222,6 +224,16 @@ def mvst_tf_log_prob(x, df, loc, sigma):
                 )
             )
         )
+
+
+def get_tfp_distrib(distrib_id):
+    distrib_id = distrib_id.lower()
+    if distrib_id == 'dirichlet':
+        return tfp.distributions.Dirichlet
+    if distrib_id == 'multivariatenormal' or distrib_id == 'mvn':
+        return tfp.distributions.MultivariateNormalFullCovariance
+    if distrib_id == 'multivariatestudentt' or distrib_id == 'mvst':
+        return tfp_mvst.MultivariateStudentT
 
 
 def get_tfp_distrib_params(
