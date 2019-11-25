@@ -9,6 +9,11 @@ from psych_metric.distrib.mle_gradient_descent import get_distrib_param_vars
 from psych_metric.distrib.mle_gradient_descent import MLEResults
 from psych_metric.distrib.tfp_mvst import MultivariateStudentT
 
+
+# TODO this [un]pack step is unnecessary for mcmc, just need to know which
+# params are not const, cuz can give a list of tensors to the current state
+# have that be the state. thus, still requiring an unpacking function, but much
+# simpler, cuz it just needs to know the order of params given.
 def unpack_mvst_params(params, dims, df=True, loc=True, scale=True):
     """Unpacks the parameters from a 1d-array."""
     if df and loc and scale:
