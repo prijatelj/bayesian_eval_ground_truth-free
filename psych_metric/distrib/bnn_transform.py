@@ -50,6 +50,8 @@ def foo(
     lag=1e3,
     parallel_iter=16,
     hyperbolic=False,
+    kernel_id='RandomWalkMetropolis',
+    kernel_args=None,
     random_seed=None,
 ):
     # Create the BNN model
@@ -58,25 +60,15 @@ def foo(
     # Get the loss
     loss = tf.nn.l2_loss(bnn_out - pred)
 
-    # Get the MCMC Kernel
-    if hyperbolic:
-        raise NotImplementedError
+    trainable_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
 
-        kernel = tfp.mcmc.NoUTurnSampler(
-            loss,
-            step_size,
-            seed=random_seed,
-        )
-    else:
-        kernel = tfp.mcmc.RandomWalkMetropolis(
-            loss,
-            seed=random_seed,
-        )
+    # Get the MCMC Kernel
+    get_mcmc_kernel(loss, kernel_id, kernel_args)
 
     # Fit the BNN with the MCMC kernel
     samples, trace = tfp.mcmc.sample_chain(
         num_results=num_samples,
-        current_state=bnn_out,
+        current_state=trainable_vars,
         kernel=kernel,
         num_burnin_steps=burnin,
         num_steps_between_results=lag,
