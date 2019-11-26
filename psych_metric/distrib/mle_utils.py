@@ -14,6 +14,29 @@ from psych_metric.distrib.tfp_mvst import MultivariateStudentT
 # params are not const, cuz can give a list of tensors to the current state
 # have that be the state. thus, still requiring an unpacking function, but much
 # simpler, cuz it just needs to know the order of params given.
+def unpack_mvst_param_list(params, dims, df=True, loc=True, scale=True):
+    param_dict = {}
+    if df:
+        param_dict['df'] = params[0]
+
+        if loc:
+            param_dict['loc'] = params[1]
+
+            if scale:
+                param_dict['scale'] = params[2]
+        elif scale:
+            param_dict['scale'] = params[1]
+    elif loc:
+            param_dict['loc'] = params[0]
+
+            if scale:
+                param_dict['scale'] = params[1]
+    elif scale:
+        param_dict['scale'] = params[0]
+
+    return param_dict
+
+
 def unpack_mvst_params(params, dims, df=True, loc=True, scale=True):
     """Unpacks the parameters from a 1d-array."""
     if df and loc and scale:
