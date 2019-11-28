@@ -12,7 +12,8 @@ def bnn_mlp(
     input_labels,
     num_layers=2,
     num_hidden=10,
-    activation=tf.math.sigmoid,
+    hidden_activation=tf.math.sigmoid,
+    output_activation=tf.math.sigmoid,
     dtype=tf.float32,
 ):
     """BNN of a simple MLP model. Input: labels in prob simplex; outputs
@@ -25,8 +26,9 @@ def bnn_mlp(
         for i in range(num_layers):
             dense_layer = tf.keras.layers.Dense(
                 num_hidden,
-                activation=tf.math.sigmoid,
+                activation=hidden_activation,
                 dtype=dtype,
+                use_bias=False,
             )
             x = dense_layer(x)
             for w in dense_layer.weights:
@@ -35,7 +37,7 @@ def bnn_mlp(
         # output = activation(dot(input, kernel) + bias)
         dense_layer = tf.keras.layers.Dense(
             input_labels.shape[1],
-            activation=activation,
+            activation=output_activation,
             use_bias=False,
             dtype=dtype,
             name='bnn_output_pred',
@@ -47,56 +49,23 @@ def bnn_mlp(
     return bnn_out, tf_vars
 
 
-def bnn_mlp_keras(
-    dims,
-    num_layers=2,
-    num_hidden=10,
-    activation=tf.math.sigmoid,
-    dtype=tf.float32,
-):
-    target = tf.keras.layers.Input(shape=dims)
-
-    x = target
-    for i in range(num_layers):
-        x = tf.keras.layers.Dense(
-            num_hidden,
-            activation=activation,
-            dtype=dtype,
-        )(x)
-
-    # output = activation(dot(input, kernel) + bias)
-    bnn_out = tf.keras.layers.Dense(
-        dims,
-        activation=activation,
-        use_bias=False,
-        dtype=dtype,
-        name='bnn_output_pred',
-    )(x)
-
-    return tf.keras.models.Model(inputs=[target], outputs=[bnn_out])
-
-
-def bnn_mlp_keras_loss(*weights, **kwargs):
-    tf.control_dependencies(weights)
-    #kwargs['model'].set_weights(weights)
-    # given the tf.variables, assign the new values to them
-    for i, w in enumerate(weights):
-        tf.assign(kwargs['tf_vars'][i], weights[i])
-
-    return tf.convert_to_tensor(
-        kwargs['model'].evaluate(kwargs['target'], kwargs['pred']),
-        tf.float32,
-    )
-
-
 def bnn_mlp_loss(*weights, **kwargs):
-    tf.control_dependencies(weights)
-    #kwargs['model'].set_weights(weights)
-    # given the tf.variables, assign the new values to them
-    for i, w in enumerate(weights):
-        tf.assign(kwargs['tf_vars'][i], weights[i])
+    with tf.control_dependencies(weights):
+        # Given the tf.variables, assign the new values to them
+        assign_op = []
+        for i, w in enumerate(weights):
+            assign_op.append(tf.assign(kwargs['tf_vars'][i], w))
 
-    return kwargs['loss']
+        dist = tfp.distributions.MultivariateNormalDiag(
+            tf.zeros(kwargs['bnn_out'].shape[1]),
+            #scale_diag=kwargs['scale_diag'],
+            scale_identity_multiplier=kwargs['scale_identity_multiplier'],
+        )
+
+        with tf.control_dependencies(assign_op):
+            return tf.reduce_sum(
+                dist.log_prob(kwargs['bnn_out'] - kwargs['tf_labels']),
+            name='log_prob_dist_sum')
 
 
 def get_bnn_transform(
@@ -110,6 +79,7 @@ def get_bnn_transform(
     hyperbolic=False,
     kernel_id='RandomWalkMetropolis',
     kernel_args=None,
+    scale_identity_multiplier=1.0,
     random_seed=None,
     dtype=tf.float32,
 ):
@@ -133,22 +103,15 @@ def get_bnn_transform(
     )
 
     # Create the BNN model
-    #bnn_model = bnn_mlp_keras(input_labels.shape[1], **bnn_args)
-    #bnn_model.compile('adam', 'categorical_crossentropy')
     bnn_out, tf_vars = bnn_mlp(tf_input, **bnn_args)
-    loss = tf.reduce_sum(tf.norm(bnn_out - tf_labels), name='l2_loss_sum')
-
-    # Get the tf vars to be updated from the model in order
-    #tf_vars = []
-    #for l in bnn_model.layers:
-    #    for w in l.weights:
-    #        tf_vars.append(w)
 
     # Get loss function
     loss_fn = lambda *w: bnn_mlp_loss(
         *w,
         tf_vars=tf_vars,
-        loss=loss,
+        bnn_out=bnn_out,
+        tf_labels=tf_labels,
+        scale_identity_multiplier=scale_identity_multiplier,
     )
 
     # Get the MCMC Kernel
@@ -167,7 +130,6 @@ def get_bnn_transform(
     results_dict = {
         'samples': samples,
         'trace': trace,
-        'loss': loss,
         'bnn_out': bnn_out,
     }
 
