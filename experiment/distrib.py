@@ -189,16 +189,22 @@ def get_multivariate_normal_full_cov_params(
     elif covariance_matrix is None:
         # Create symmetric matrix from hardcoded uniform distribution.
         params['covariance_matrix'] = np.random.uniform(
-            -0.05,
-            0.05,
+            -0.01,
+            0.01,
             [sample_dim, sample_dim],
         )
+
+        # Ensure a positive diagonal
+        for i in range(sample_dim):
+            params['covariance_matrix'][i, i] = np.absolute(
+                params['covariance_matrix'][i, i],
+            )
 
         # Ensure symmetric about diagonal
         params['covariance_matrix'] = (params['covariance_matrix'] + params['covariance_matrix'].T) / 2
 
         # Ensure positive definite matrix
-        params['covariance_matrix'] += 0.05 * np.eye(sample_dim)
+        params['covariance_matrix'] += 0.01 * np.eye(sample_dim)
     else:
         raise TypeError(
             'Wrong type for `covariance_matrix`. '
