@@ -8,19 +8,60 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 import experiment.distrib
-import psych_metric.supervised_joint_distrib import SupervisedJointDistrib
+from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
 
 
-def get_src_sjd(sjd_id, sjd_args=None):
+def get_src_sjd(sjd_id, dims, sjd_args=None):
     """Returns actual SupervisedJointDistrib."""
     if sjd_id == 'iid_uniform_dirs':
         # two independent Dirichlets whose concentrations are all ones
         sjd_kws = {
-            'target_distrib': tfp.distirbutions.Dirichlet(np.ones(sample_dim)),
-            'transform_distrib': tfp.distirbutions.Dirichlet(
-                np.ones(sample_dim)
+            'target_distrib': tfp.distributions.Dirichlet(np.ones(dims)),
+            'transform_distrib': tfp.distributions.Dirichlet(np.ones(dims)),
+            'independent': True,
+            'sample_dim': dims,
+        }
+
+        if sjd_args:
+            sjd_kws.update(sjd_args)
+
+        return SupervisedJointDistrib(**sjd_kws)
+
+    if sjd_id == 'random_dir_mvn':
+        # two independent Dirichlets whose concentrations are all ones
+        sjd_kws = {
+            'target_distrib': tfp.distributions.Dirichlet(
+                **experiment.distrib.get_dirichlet_params(num_classes=dims),
             ),
-            'indpendent': True,
+            'transform_distrib': tfp.distributions.MultivariateNormalFullCovariance(
+                **experiment.distrib.get_multivariate_normal_full_cov_params(
+                    sample_dim=dims - 1,
+                ),
+            ),
+            'independent': False,
+            'sample_dim': dims,
+        }
+
+        if sjd_args:
+            sjd_kws.update(sjd_args)
+
+        return SupervisedJointDistrib(**sjd_kws)
+
+    if sjd_id == 'basic_small_dir_mvn':
+        # two independent Dirichlets whose concentrations are all ones
+        sjd_kws = {
+            'target_distrib': tfp.distributions.Dirichlet(
+                **experiment.distrib.get_dirichlet_params(np.ones(dims)),
+            ),
+            'transform_distrib': tfp.distributions.MultivariateNormalFullCovariance(
+                **experiment.distrib.get_multivariate_normal_full_cov_params(
+                    loc=1.0,
+                    covariance_matrix=np.eye(dims - 1) * 1e-3,
+                    sample_dim=dims - 1,
+                ),
+            ),
+            'independent': False,
+            'sample_dim': dims,
         }
 
         if sjd_args:
@@ -30,8 +71,8 @@ def get_src_sjd(sjd_id, sjd_args=None):
 
 
 def get_sjd_candidates(
-    sjd_id,
-    sample_dim,
+    sjd_ids,
+    dims,
     mle_args=None,
     processes=16,
     sjd_args=None,
@@ -47,7 +88,7 @@ def get_sjd_candidates(
         The different types of SupervisedJointDistributions candidates to be
         created. Each id is associated with its own set of initialization
         arguments for SupervisedJointDistributions.
-    sample_dim : int
+    dims : int
         The number of dimensions of the sample space. This assumes a discrete
         sample space.
     mle_args : dict, optional
@@ -65,7 +106,7 @@ def get_sjd_candidates(
     # NOTE the dicts exclude
 
     if 'iid_uniform_dirs' in sjd_ids:
-        candidates['iid_uniform_dirs'] = get_src_sjd('iid_uniform_dirs')
+        candidates['iid_uniform_dirs'] = get_src_sjd('iid_uniform_dirs', dims)
     if 'iid_dirs_mean' in sjd_ids:
         # two independent Dirichlets whose concentrations are the means of data
         candidates['iid_dirs_mean'] = {
