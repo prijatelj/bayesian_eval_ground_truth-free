@@ -171,7 +171,7 @@ def get_num_params(distrib, dims):
             'expected `distrib` to be of type `str` or',
             f'`tfp.distributions.Distribution`, not `{type(distrib)}`',
         ]))
-    if not isinstance(distrib, int):
+    if not isinstance(dims, int):
         raise TypeError(
             f'expected `dims` to be of type `int`, not `{type(dims)}`',
         )
