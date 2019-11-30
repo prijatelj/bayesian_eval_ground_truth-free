@@ -47,7 +47,7 @@ def get_src_sjd(sjd_id, dims, sjd_args=None):
 
         return SupervisedJointDistrib(**sjd_kws)
 
-    if sjd_id == 'basic_small_dir_mvn':
+    if sjd_id == 'uniform_dir_small_mvn':
         # two independent Dirichlets whose concentrations are all ones
         sjd_kws = {
             'target_distrib': tfp.distributions.Dirichlet(
@@ -55,8 +55,30 @@ def get_src_sjd(sjd_id, dims, sjd_args=None):
             ),
             'transform_distrib': tfp.distributions.MultivariateNormalFullCovariance(
                 **experiment.distrib.get_multivariate_normal_full_cov_params(
-                    loc=1.0,
-                    covariance_matrix=np.eye(dims - 1) * 1e-3,
+                    loc=0.0,
+                    covariance_matrix=np.eye(dims - 1) * 1e-4,
+                    sample_dim=dims - 1,
+                ),
+            ),
+            'independent': False,
+            'sample_dim': dims,
+        }
+
+        if sjd_args:
+            sjd_kws.update(sjd_args)
+
+        return SupervisedJointDistrib(**sjd_kws)
+
+    if sjd_id == 'tight_dir_small_mvn':
+        # two independent Dirichlets whose concentrations are all ones
+        sjd_kws = {
+            'target_distrib': tfp.distributions.Dirichlet(
+                **experiment.distrib.get_dirichlet_params(np.ones(dims) * 10),
+            ),
+            'transform_distrib': tfp.distributions.MultivariateNormalFullCovariance(
+                **experiment.distrib.get_multivariate_normal_full_cov_params(
+                    loc=0.0,
+                    covariance_matrix=np.eye(dims - 1) * 1e-4,
                     sample_dim=dims - 1,
                 ),
             ),
