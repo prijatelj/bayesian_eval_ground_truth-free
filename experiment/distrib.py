@@ -51,6 +51,7 @@ def get_dirichlet_params(
 
     return params
 
+
 def get_dirichlet_multinomial_params(
     total_count=None,
     concentration=None,
