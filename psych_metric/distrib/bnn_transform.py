@@ -15,6 +15,7 @@ def bnn_mlp(
     num_layers=2,
     num_hidden=10,
     hidden_activation=tf.math.sigmoid,
+    hidden_use_bias=True,
     output_activation=tf.math.sigmoid,
     dtype=tf.float32,
 ):
@@ -30,7 +31,7 @@ def bnn_mlp(
                 num_hidden,
                 activation=hidden_activation,
                 dtype=dtype,
-                use_bias=False,
+                use_bias=hidden_use_bias,
             )
             x = dense_layer(x)
             for w in dense_layer.weights:
