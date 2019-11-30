@@ -3,10 +3,12 @@ distribution to the predictor distribution, which results in the conditional
 distribution of the predictor conditional on the target.
 """
 
+import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from psych_metric.distrib.mcmc import get_mcmc_kernel
+
 
 def bnn_mlp(
     input_labels,
@@ -56,18 +58,44 @@ def bnn_mlp_loss(*weights, **kwargs):
         for i, w in enumerate(weights):
             assign_op.append(tf.assign(kwargs['tf_vars'][i], w))
 
-        diff = tfp.distributions.MultivariateNormalDiag(
+        diff_mvn = tfp.distributions.MultivariateNormalDiag(
             tf.zeros(kwargs['bnn_out'].shape[1]),
-            #scale_diag=kwargs['scale_diag'],
             scale_identity_multiplier=kwargs['scale_identity_multiplier'],
         )
 
         with tf.control_dependencies(assign_op):
-            tf.assign(kwargs['diff'], kwargs['bnn_out'] - kwargs['tf_labels'])
+            diff = kwargs['bnn_out'] - kwargs['tf_labels']
+            kwargs['ops']['diff'] = diff
 
-            return tf.reduce_sum(
-                diff.log_prob(kwargs['diff']),
+            loss = tf.reduce_sum(
+                diff_mvn.log_prob(diff),
             name='log_prob_dist_sum')
+
+            kwargs['ops']['loss'] = loss
+
+            return loss
+
+
+def bnn_all_loss(*weights, **kwargs):
+    # build ANN
+    bnn_out, tf_vars = bnn_mlp(**kwargs['bnn_args'])
+
+    # assign weights
+    assign_op = []
+    for i, w in enumerate(weights):
+        assign_op.append(tf.assign(tf_vars[i], w))
+
+    with tf.control_dependencies(assign_op):
+        # get diff and log prob.
+        diff_mvn = tfp.distributions.MultivariateNormalDiag(
+            tf.zeros(bnn_out.shape[1]),
+            scale_identity_multiplier=kwargs['scale_identity_multiplier'],
+        )
+        diff = bnn_out - kwargs['tf_labels']
+
+        return tf.reduce_sum(
+            diff_mvn.log_prob(diff),
+        name='log_prob_dist_sum')
 
 
 def get_bnn_transform(
@@ -93,34 +121,39 @@ def get_bnn_transform(
         bnn_args = {}
 
     # Data placeholders
+    #tf_input = tf.constant(
     tf_input = tf.placeholder(
-        dtype,
-        [None, input_labels.shape[1]],
+        dtype=dtype,
+        shape=[None, input_labels.shape[1]],
         name='input_label',
     )
+    #tf_labels = tf.constant(
     tf_labels = tf.placeholder(
-        dtype,
-        [None, output_labels.shape[1]],
+        dtype=dtype,
+        shape=[None, output_labels.shape[1]],
         name='output_labels',
     )
 
     # Create the BNN model
-    bnn_out, tf_vars = bnn_mlp(tf_input, **bnn_args)
-    diff = tf.Variable(\
-        [[0,0,0]],
+    _, tf_vars_init = bnn_mlp(tf_input, **bnn_args)
+    """
+    diff = tf.Variable(
+        np.zeros(output_labels.shape),
         trainable=False,
         dtype=dtype,
         name='diff',
     )
+    #"""
+    bnn_args['input_labels'] = tf_input
 
     # Get loss function
-    loss_fn = lambda *w: bnn_mlp_loss(
+    loss_fn = lambda *w: bnn_all_loss(
         *w,
-        tf_vars=tf_vars,
-        bnn_out=bnn_out,
+        #tf_vars=tf_vars,
+        #bnn_out=bnn_out,
+        bnn_args=bnn_args,
         tf_labels=tf_labels,
         scale_identity_multiplier=scale_identity_multiplier,
-        diff=diff,
     )
 
     # Get the MCMC Kernel
@@ -129,7 +162,7 @@ def get_bnn_transform(
     # Fit the BNN with the MCMC kernel
     samples, trace = tfp.mcmc.sample_chain(
         num_results=num_samples,
-        current_state=tf_vars,
+        current_state=tf_vars_init,
         kernel=kernel,
         num_burnin_steps=burnin,
         num_steps_between_results=lag,
@@ -139,8 +172,8 @@ def get_bnn_transform(
     results_dict = {
         'samples': samples,
         'trace': trace,
-        'bnn_out': bnn_out,
-        'diff': diff,
+        #'bnn_out': bnn_out,
+        #'tf_vars': tf_vars,
     }
 
     feed_dict = {
