@@ -56,15 +56,17 @@ def bnn_mlp_loss(*weights, **kwargs):
         for i, w in enumerate(weights):
             assign_op.append(tf.assign(kwargs['tf_vars'][i], w))
 
-        dist = tfp.distributions.MultivariateNormalDiag(
+        diff = tfp.distributions.MultivariateNormalDiag(
             tf.zeros(kwargs['bnn_out'].shape[1]),
             #scale_diag=kwargs['scale_diag'],
             scale_identity_multiplier=kwargs['scale_identity_multiplier'],
         )
 
         with tf.control_dependencies(assign_op):
+            tf.assign(kwargs['diff'], kwargs['bnn_out'] - kwargs['tf_labels'])
+
             return tf.reduce_sum(
-                dist.log_prob(kwargs['bnn_out'] - kwargs['tf_labels']),
+                diff.log_prob(kwargs['diff']),
             name='log_prob_dist_sum')
 
 
@@ -104,6 +106,12 @@ def get_bnn_transform(
 
     # Create the BNN model
     bnn_out, tf_vars = bnn_mlp(tf_input, **bnn_args)
+    diff = tf.Variable(\
+        [[0,0,0]],
+        trainable=False,
+        dtype=dtype,
+        name='diff',
+    )
 
     # Get loss function
     loss_fn = lambda *w: bnn_mlp_loss(
@@ -112,6 +120,7 @@ def get_bnn_transform(
         bnn_out=bnn_out,
         tf_labels=tf_labels,
         scale_identity_multiplier=scale_identity_multiplier,
+        diff=diff,
     )
 
     # Get the MCMC Kernel
@@ -131,6 +140,7 @@ def get_bnn_transform(
         'samples': samples,
         'trace': trace,
         'bnn_out': bnn_out,
+        'diff': diff,
     }
 
     feed_dict = {
