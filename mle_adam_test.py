@@ -10,9 +10,12 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from psych_metric.distrib.mle_utils import MLEResults
+from psych_metric.distrib.mle_gradient_descent import mle_adam
+from psych_metric.distrib import distrib_utils
+
 import experiment.io
 import experiment.distrib
-from psych_metric import distribution_tests
 from predictors import load_prep_data
 
 
@@ -52,12 +55,12 @@ def mle_adam_distribs(
 
         if distrib_id == 'discrete_uniform':
             # NOTE assumes that mle_adam is used and is returning the negative mle
-            distrib_mle[distrib_id] = [distribution_tests.MLEResults(
+            distrib_mle[distrib_id] = [MLEResults(
                 -(np.log(1.0 / (init_params['high'] - init_params['low'] + 1)) * len(labels)),
                 init_params,
             )]
         elif distrib_id == 'continuous_uniform':
-            distrib_mle[distrib_id] = [distribution_tests.MLEResults(
+            distrib_mle[distrib_id] = [MLEResults(
                 -(np.log(1.0 / (init_params['high'] - init_params['low'])) * len(labels)),
                 init_params,
             )]
@@ -68,7 +71,7 @@ def mle_adam_distribs(
             dmu_distrib = tfp.distributions.DirichletMultinomial(**init_params)
             neg_log_likelihood = -1.0 * tf.reduce_sum(dmu_distrib.log_prob(labels))
 
-            distrib_mle[distrib_id] = [distribution_tests.MLEResults(
+            distrib_mle[distrib_id] = [MLEResults(
                 neg_log_likelihood.eval(session=tf.Session()),
                 init_params,
             )]
@@ -79,12 +82,12 @@ def mle_adam_distribs(
             du_distrib = tfp.distributions.Dirichlet(**init_params)
             neg_log_likelihood = -1.0 * tf.reduce_sum(du_distrib.log_prob(labels))
 
-            distrib_mle[distrib_id] = [distribution_tests.MLEResults(
+            distrib_mle[distrib_id] = [MLEResults(
                 neg_log_likelihood.eval(session=tf.Session()),
                 init_params,
             )]
         else:
-            distrib_mle[distrib_id] = distribution_tests.mle_adam(
+            distrib_mle[distrib_id] = mle_adam(
                 distrib_id,
                 labels,
                 init_params,
@@ -101,8 +104,8 @@ def mle_adam_distribs(
                     info_criterions,
                     len(labels)
                 )
-        elif isinstance(distrib_mle[distrib_id], distribution_tests.MLEResults):
-            # TODO, distribution_tests.mle_adam() returns list always.
+        elif isinstance(distrib_mle[distrib_id], MLEResults):
+            # TODO, distrib_utils.mle_adam() returns list always.
             distrib_mle[distrib_id].info_criterion = calc_info_criterion(
                     -distrib_mle[distrib_id].neg_log_likelihood,
                     np.hstack(distrib_mle[distrib_id].params.values()),
@@ -112,7 +115,7 @@ def mle_adam_distribs(
         else:
             raise TypeError(
                 '`distrib_mle` is expected to be either of type list or '
-                + 'distribution_tests.MLEResult, instead was {type(distrib_mle)}'
+                + 'distrib_utils.MLEResult, instead was {type(distrib_mle)}'
             )
 
     return distrib_mle
@@ -123,13 +126,13 @@ def calc_info_criterion(mle, params, criterions, num_samples=None):
     info_criterion = {}
 
     if 'bic' in criterions:
-        info_criterion['bic'] = distribution_tests.bic(mle, len(params), num_samples)
+        info_criterion['bic'] = distrib_utils.bic(mle, len(params), num_samples)
 
     if 'aic' in criterions:
-        info_criterion['aic'] = distribution_tests.aic(mle, len(params))
+        info_criterion['aic'] = distrib_utils.aic(mle, len(params))
 
     if 'hqc' in criterions:
-        info_criterion['hqc'] = distribution_tests.hqc(mle, len(params), num_samples)
+        info_criterion['hqc'] = distrib_utils.hqc(mle, len(params), num_samples)
 
     return info_criterion
 

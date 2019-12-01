@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from psych_metric.distribution_tests import get_tfp_distrib
+from psych_metric.distrib.distrib_utils import get_tfp_distrib
 from psych_metric.distrib import mle_utils
 
 # TODO add tensorboard for visualizing and keeping track of progress.

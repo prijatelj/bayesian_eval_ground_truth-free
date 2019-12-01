@@ -13,11 +13,12 @@ from sklearn.model_selection import KFold, StratifiedKFold
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from psych_metric.distrib import distrib_utils
+from psych_metric.distrib.supervised_joint_distrib import SupervisedJointDistrib
+
 import experiment.io
 import experiment.distrib
 from experiment.kfold import kfold_generator, get_kfold_idx
-from psych_metric import distribution_tests
-from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
 import predictors
 
 
@@ -418,7 +419,7 @@ def log_prob_exps(
             )
 
         # Save parameters
-        results[key] = {'params': distribution_tests.get_sjd_params(candidate)}
+        results[key] = {'params': distrib_utils.get_sjd_params(candidate)}
 
         # Get log prob exp results on in-sample data:
         results[key]['train'] = log_prob_exp(
@@ -478,7 +479,7 @@ def log_prob_exp(
                     continue
                 num_params = candidate.num_params
 
-            value['info_criterion'] = distribution_tests.info_criterion(
+            value['info_criterion'] = distrib_utils.calc_info_criterion(
                 value['log_prob'],
                 info_criterions,
                 num_params,
@@ -601,7 +602,7 @@ def log_prob_test_human_sjd(
         # In sample info criterions
         info_crit = {}
         for rv, log_prob in results[distrib]['train']['log_prob'].items():
-            info_crit[rv] = distribution_tests.calc_info_criterion(
+            info_crit[rv] = distrib_utils.calc_info_criterion(
                 log_prob,
                 num_params[rv],
                 info_criterions,
@@ -623,7 +624,7 @@ def log_prob_test_human_sjd(
         # Out sample info criterions
         info_crit = {}
         for rv, log_prob in results[distrib]['test']['log_prob'].items():
-            info_crit[rv] = distribution_tests.calc_info_criterion(
+            info_crit[rv] = distrib_utils.calc_info_criterion(
                 log_prob,
                 num_params[rv],
                 info_criterions,
