@@ -18,11 +18,12 @@ def bnn_mlp(
     hidden_use_bias=True,
     output_activation=tf.math.sigmoid,
     dtype=tf.float32,
+    tf_device=None,
 ):
     """BNN of a simple MLP model. Input: labels in prob simplex; outputs
     predictor's label in prob simplex.
     """
-    with tf.name_scope('bnn_mlp_transformer') as scope:
+    with tf.device(tf_device), tf.name_scope('bnn_mlp_transformer'):
         tf_vars = []
 
         x = input_labels
@@ -96,7 +97,8 @@ def bnn_all_loss(*weights, **kwargs):
 
         return tf.reduce_sum(
             diff_mvn.log_prob(diff),
-        name='log_prob_dist_sum')
+            name='log_prob_dist_sum',
+        )
 
 
 def get_bnn_transform(
@@ -186,5 +188,53 @@ def bnn_mlp_run_sess(results_dict, feed_dict):
         ))
 
         iter_results = sess.run(results_dict, feed_dict=feed_dict)
+
+    return iter_results
+
+
+def assign_weights_bnn(
+    weights_sets,
+    tf_vars,
+    bnn_out,
+    input_labels,
+    tf_input,
+    output_labels=None,
+    dtype=tf.float32,
+):
+    """Given BNN weights and tensors with data, forward pass through network."""
+    # assign weights to BNN and create a placeholder for each different tensor
+    assign_op = []
+    tf_vars_placeholders = []
+    for i, w in enumerate(weights_sets):
+        weights_placeholder = tf.placeholder(dtype, w.shape[1:])
+        tf_vars_placeholders.append(weights_placeholder)
+        assign_op.append(tf.assign(tf_vars[i], weights_placeholder))
+
+    feed_dict = {tf_input: input_labels}
+    results_list = [bnn_out]
+
+    if output_labels:
+        tf_output = tf.placeholder(
+            dtype=dtype,
+            shape=[None, output_labels.shape[1]],
+            name='output_labels',
+        )
+        results_list.append(bnn_out - tf_output)
+
+        feed_dict[tf_output] = output_labels
+
+    with tf.Session() as sess:
+        sess.run((
+            tf.global_variables_initializer(),
+            tf.local_variables_initializer(),
+        ))
+
+        # Loop through weights and get the outputs
+        iter_results = []
+        for sample_idx in len(weights_sets[0].shape[0]):
+            for i, var_ph in enumerate(tf_vars_placeholders):
+                feed_dict[var_ph] = weights_sets[sample_idx, i]
+
+            iter_results.append(sess.run(results_list, feed_dict=feed_dict))
 
     return iter_results
