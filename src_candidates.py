@@ -7,9 +7,9 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-import experiment.distrib
 from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
 
+import experiment.distrib
 
 def get_src_sjd(sjd_id, dims, sjd_args=None):
     """Returns SupervisedJointDistrib of hardcoded simulation source
