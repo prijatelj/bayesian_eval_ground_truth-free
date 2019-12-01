@@ -9,11 +9,12 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from psych_metric.distrib import distrib_utils
+from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
+
 import experiment.io
 import experiment.distrib
 from experiment.kfold import kfold_generator
-from psych_metric import distribution_tests
-from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
 
 
 def test_identical(
@@ -281,7 +282,7 @@ def test_identical(
             # In sample info criterions
             info_crit = {}
             for rv, log_prob in focus_fold[distrib]['train']['log_prob'].items():
-                info_crit[rv] = distribution_tests.calc_info_criterion(
+                info_crit[rv] = distrib_utils.calc_info_criterion(
                     log_prob,
                     num_params[rv],
                     info_criterions,
@@ -303,7 +304,7 @@ def test_identical(
             # Out sample info criterions
             info_crit = {}
             for rv, log_prob in focus_fold[distrib]['test']['log_prob'].items():
-                info_crit[rv] = distribution_tests.calc_info_criterion(
+                info_crit[rv] = distrib_utils.calc_info_criterion(
                     log_prob,
                     num_params[rv],
                     info_criterions,
