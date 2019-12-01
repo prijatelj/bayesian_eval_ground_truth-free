@@ -3,6 +3,8 @@ the Multivariate Cauchy distirbution as it is the same as the former but with a
 constant 1.0 as the degree of freedom.
 """
 
+# NOTE depracted
+
 import numpy as np
 import scipy
 import tensorflow as tf
@@ -110,10 +112,6 @@ def nelder_mead_mvstudent(
             neg_log_prob,
             **nelder_mead_args,
         )
-
-
-
-
 
         # Add Relu to enforce positive values for param constraints:
         if distrib_id.lower() == 'dirichlet' and alt_distrib:
