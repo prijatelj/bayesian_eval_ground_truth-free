@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
+from psych_metric.distrib.supervised_joint_distrib import SupervisedJointDistrib
 
 import experiment.distrib
 
