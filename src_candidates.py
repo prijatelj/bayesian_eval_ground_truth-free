@@ -12,7 +12,9 @@ from psych_metric.supervised_joint_distrib import SupervisedJointDistrib
 
 
 def get_src_sjd(sjd_id, dims, sjd_args=None):
-    """Returns actual SupervisedJointDistrib."""
+    """Returns SupervisedJointDistrib of hardcoded simulation source
+    distributions.
+    """
     if sjd_id == 'iid_uniform_dirs':
         # two independent Dirichlets whose concentrations are all ones
         sjd_kws = {
@@ -28,7 +30,7 @@ def get_src_sjd(sjd_id, dims, sjd_args=None):
         return SupervisedJointDistrib(**sjd_kws)
 
     if sjd_id == 'random_dir_mvn':
-        # two independent Dirichlets whose concentrations are all ones
+        # Random Dirichlet with random MVN transformation
         sjd_kws = {
             'target_distrib': tfp.distributions.Dirichlet(
                 **experiment.distrib.get_dirichlet_params(num_classes=dims),
@@ -48,7 +50,8 @@ def get_src_sjd(sjd_id, dims, sjd_args=None):
         return SupervisedJointDistrib(**sjd_kws)
 
     if sjd_id == 'uniform_dir_small_mvn':
-        # two independent Dirichlets whose concentrations are all ones
+        # Random Dirichlet with random small MVN transformation. so the
+        # identity transform with some noise.
         sjd_kws = {
             'target_distrib': tfp.distributions.Dirichlet(
                 **experiment.distrib.get_dirichlet_params(np.ones(dims)),
@@ -70,7 +73,8 @@ def get_src_sjd(sjd_id, dims, sjd_args=None):
         return SupervisedJointDistrib(**sjd_kws)
 
     if sjd_id == 'tight_dir_small_mvn':
-        # two independent Dirichlets whose concentrations are all ones
+        # Random Dirichlet with random small MVN transformation. so the
+        # identity transform with some noise over a dirichlet with a precision
         sjd_kws = {
             'target_distrib': tfp.distributions.Dirichlet(
                 **experiment.distrib.get_dirichlet_params(np.ones(dims) * 10),
