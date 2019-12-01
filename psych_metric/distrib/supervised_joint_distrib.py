@@ -12,9 +12,9 @@ from sklearn.neighbors import BallTree
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from psych_metric import distribution_tests
 from psych_metric import mvst
 from psych_metric.distrib import mle_gradient_descent
+from psych_metric.distrib import distrib_utils
 
 # TODO handle continuous distrib of continuous distrib, only discrete atm.
 
@@ -315,7 +315,7 @@ class SupervisedJointDistrib(object):
 
                 if mle_args:
                     data = data.astype(np.float32)
-                    mle_results = mle_gradient_descent(
+                    mle_results = mle_gradient_descent.mle_adam(
                         distrib,
                         np.maximum(data, np.finfo(data.dtype).tiny),
                         init_params={
@@ -772,7 +772,7 @@ class SupervisedJointDistrib(object):
         )
 
         # Set the number of parameters for the target distribution
-        self.target_num_params = distribution_tests.get_num_params(
+        self.target_num_params = distrib_utils.get_num_params(
             target_distrib,
             self.sample_dim,
         )
@@ -795,7 +795,7 @@ class SupervisedJointDistrib(object):
             )
 
         # Set the number of parameters for the transform distribution
-        self.transform_num_params = distribution_tests.get_num_params(
+        self.transform_num_params = distrib_utils.get_num_params(
             transform_distrib,
             self.sample_dim,
         )
@@ -855,7 +855,7 @@ class SupervisedJointDistrib(object):
 
         # Get any and all indices of non-probability distrib samples
         bad_sample_idx = np.argwhere(np.logical_not(
-            distribution_tests.is_prob_distrib(pred_samples),
+            distrib_utils.is_prob_distrib(pred_samples),
         ))
         if len(bad_sample_idx) > 1:
             bad_sample_idx = np.squeeze(bad_sample_idx)
@@ -873,7 +873,7 @@ class SupervisedJointDistrib(object):
             pred_samples[bad_sample_idx] = new_pred
 
             bad_sample_idx = np.argwhere(np.logical_not(
-                distribution_tests.is_prob_distrib(pred_samples),
+                distrib_utils.is_prob_distrib(pred_samples),
             ))
             if len(bad_sample_idx) > 1:
                 bad_sample_idx = np.squeeze(bad_sample_idx)
@@ -1013,20 +1013,20 @@ class SupervisedJointDistrib(object):
         # TODO type checking and exception raising
 
         if 'bic' in criterions:
-            info_criterion['bic'] = distribution_tests.bic(
+            info_criterion['bic'] = distrib_utils.bic(
                 mle,
                 self.num_params,
                 num_samples,
             )
 
         if 'aic' in criterions:
-            info_criterion['aic'] = distribution_tests.aic(
+            info_criterion['aic'] = distrib_utils.aic(
                 mle,
                 self.num_params,
             )
 
         if 'hqc' in criterions:
-            info_criterion['hqc'] = distribution_tests.hqc(
+            info_criterion['hqc'] = distrib_utils.hqc(
                 mle,
                 self.num_params,
                 num_samples,
