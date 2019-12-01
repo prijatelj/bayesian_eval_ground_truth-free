@@ -137,14 +137,6 @@ def get_bnn_transform(
 
     # Create the BNN model
     _, tf_vars_init = bnn_mlp(tf_input, **bnn_args)
-    """
-    diff = tf.Variable(
-        np.zeros(output_labels.shape),
-        trainable=False,
-        dtype=dtype,
-        name='diff',
-    )
-    #"""
     bnn_args['input_labels'] = tf_input
 
     # Get loss function
