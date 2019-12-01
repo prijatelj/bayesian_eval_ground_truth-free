@@ -1,13 +1,43 @@
 """The Tensorflow optimization of either a distribution or a Bayesian Neural
 Network using MCMC methods.
 """
+import functools
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from psych_metric.distrib.mle_gradient_descent import get_distrib_param_vars
-from psych_metric.distrib.mle_gradient_descent import MLEResults
 from psych_metric.distrib.tfp_mvst import MultivariateStudentT
+
+
+@functools.total_ordering
+class MLEResults(object):
+    def _is_valid_operand(self, other):
+        return (
+            hasattr(other, "neg_log_prob")
+            and hasattr(other, "params")
+            and hasattr(other, "info_criterion")
+        )
+
+    def __eq__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        return self.neg_log_prob == other.neg_log_prob
+
+    def __lt__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        return self.neg_log_prob < other.neg_log_prob
+
+    def __init__(
+        self,
+        neg_log_prob: float,
+        params=None,
+        info_criterion=None,
+    ):
+        self.neg_log_prob = neg_log_prob
+        self.params = params
+        self.info_criterion = info_criterion
 
 
 # TODO this [un]pack step is unnecessary for mcmc, just need to know which
@@ -129,7 +159,10 @@ def get_mle_loss(
             else:
                 loss = loss - constraint_multiplier \
                     * tf.nn.relu(-params['precision'] + 1e-3)
-    elif isinstance(distrib, tfp.distributions.MultivariateStudentTLinearOperator):
+    elif (
+        isinstance(distrib, tfp.distributions.MultivariateStudentTLinearOperator)
+        or isinstance(distrib, MultivariateStudentT)
+    ):
         if const_params is None or 'df' not in const_params:
             # If opt Student T, mean is const and Sigma got from df & cov
             # thus enforce df > 2, ow. cov is undefined.
@@ -167,8 +200,24 @@ def run_session(
     num_top=1,
     max_iter=int(1e4),
     sess_config=None,
+    tb_summary_dir=None,
+    tol_param=1e-8,
+    tol_loss=1e-8,
+    tol_grad=1e-8,
+    tol_chain=1,
 ):
+    # TODO if necessary, generalize this so it is not only for MLE_adam
     with tf.Session(config=sess_config) as sess:
+        # Build summary operation
+        if tb_summary_dir:
+            summary_writer = tf.summary.FileWriter(
+                os.path.join(
+                    tb_summary_dir,
+                    str(datetime.now()).replace(':', '-').replace(' ', '_'),
+                ),
+                sess.graph
+            )
+
         sess.run((
             tf.global_variables_initializer(),
             tf.local_variables_initializer(),
@@ -184,6 +233,10 @@ def run_session(
         continue_loop = True
         while continue_loop:
             iter_results = sess.run(results_dict, {tf_data: data})
+            if tb_summary_dir:
+                # Write summary update
+                summary_writer.add_summary(iter_results['summary_op'], i)
+                summary_writer.flush()
 
             # Check if any of the params are NaN. Fail if so.
             for param, value in iter_results['params'].items():
@@ -227,9 +280,15 @@ def run_session(
                 loss_history,
                 i,
                 max_iter,
+                tol_param=tol_param,
+                tol_loss=tol_loss,
+                tol_grad=tol_grad,
+                tol_chain=tol_chain,
             )
 
             i += 1
+    if tb_summary_dir:
+        summary_writer.close()
 
     if num_top < 0:
         #return list(zip(loss_history, params_history))
@@ -258,7 +317,7 @@ def is_param_constraint_broken(params, const_params):
 
 def update_top_likelihoods(top_likelihoods, neg_log_prob, params, num_top=1):
     # Assess if necessary to save the valid likelihoods
-    if not top_likelihoods or neg_log_prob < top_likelihoods[-1].neg_log_likelihood:
+    if not top_likelihoods or neg_log_prob < top_likelihoods[-1].neg_log_prob:
         # update top likelihoods and their respective params
         if num_top == 1:
             top_likelihoods = [MLEResults(neg_log_prob, params)]
