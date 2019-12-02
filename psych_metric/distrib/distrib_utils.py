@@ -11,8 +11,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from psych_metric.mvst import MultivariateStudentT
 from psych_metric.distrib import tfp_mvst
+
 
 @functools.total_ordering
 class MLEResults(object):
@@ -248,26 +248,19 @@ def get_tfp_distrib_params(
     },
 ):
     """Returns the actual distribution parameters of the tfp distribution."""
-    return {k: v for k, v in distrib._parameters if k in valid_params}
+    return {k: v for k, v in distrib._parameters.items() if k in valid_params}
 
 
 def get_sjd_rv_params(candidate, is_target=True):
-    distrib = candidate.target_distrib._parameters if is_target else \
-        candidate.transform_distrib._parameters
+    distrib = candidate.target_distrib if is_target else \
+        candidate.transform_distrib
 
     if isinstance(distrib, tfp.distributions.Distribution):
         params = get_tfp_distrib_params(distrib)
-    elif isinstance(distrib, MultivariateStudentT):
-        params = {
-            'df': distrib.df,
-            'loc': distrib.loc,
-            'sigma': distrib.sigma,
-        }
     else:
         raise TypeError(' '.join([
             'Expected `distrib` to be of types',
-            '`tfp.distributions.Distribution` or',
-            f'`psych_metric.mvst.Multivariate`, not `{type(distrib)}`',
+            f'`tfp.distributions.Distribution` or, not `{type(distrib)}`',
         ]))
 
     return params
