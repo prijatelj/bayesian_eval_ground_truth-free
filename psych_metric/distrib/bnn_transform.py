@@ -155,6 +155,56 @@ def bnn_all_loss(*weights, **kwargs):
         )
 
 
+def bnn_adam(
+    bnn_out,
+    tf_vars,
+    tf_labels,
+    feed_dict,
+    tf_config=None,
+    optimizer_id='adam',
+    optimizer_args=None,
+):
+    """Trains the given ANN with ADAM to be used as the initial weights for the
+    MCMC fitting of the BNN version.
+    """
+    if optimizer_args is None:
+        # Ensure that opt args is a dict for use with **
+        optimizer_args = {}
+
+    # create loss
+    loss = tf.norm(bnn_out - tf_labels, axis=1)
+
+    # Create optimizer
+    if optimizer_id == 'adam':
+        optimizer = tf.train.AdamOptimizer(**optimizer_args)
+    elif optimizer_id == 'nadam':
+        optimizer = tf.contrib.opt.NadamOptimizer(**optimizer_args)
+    else:
+        raise ValueError(f'Unexpected optimizer_id value: {optimizer_id}')
+
+    global_step = tf.Variable(0, name='global_step', trainable=False)
+    grad = optimizer.compute_gradients(loss)
+    train_op = optimizer.apply_gradients(grad, global_step)
+
+    results_dict = {
+        'train_op': train_op,
+        'loss': loss,
+        'grad': grad,
+    }
+
+    with tf.Session(config=tf_config) as sess:
+        sess.run((
+            tf.global_variables_initializer(),
+            tf.local_variables_initializer(),
+        ))
+
+        iter_results = sess.run(results_dict, feed_dict=feed_dict)
+
+        weights = sess.run(tf_vars)
+
+    return weights, iter_results
+
+
 def get_bnn_transform(
     input_labels,
     output_labels,
@@ -190,7 +240,6 @@ def get_bnn_transform(
         name='output_labels',
     )
 
-
     # Create the BNN model
     if tf_vars_init is None:
         _, tf_vars_init = bnn_mlp(tf_input, **bnn_args)
@@ -220,8 +269,6 @@ def get_bnn_transform(
     results_dict = {
         'samples': samples,
         'trace': trace,
-        #'bnn_out': bnn_out,
-        #'tf_vars': tf_vars,
     }
 
     feed_dict = {
