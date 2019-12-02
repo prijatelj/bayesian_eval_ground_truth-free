@@ -142,13 +142,13 @@ def get_sjd_candidates(
         }
         if sjd_args:
             candidates['iid_dirs_mean'].update(sjd_args)
-    if 'iid_dirs_mle' in sjd_ids:
+    if 'iid_dirs_adam' in sjd_ids:
         # two independent Dirichlets whose concentrations are the means of data
         # multiplied by the precisions found via MLE
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
 
-        candidates['iid_dirs_mle'] = {
+        candidates['iid_dirs_adam'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'Dirichlet',
             'indpendent': True,
@@ -156,7 +156,7 @@ def get_sjd_candidates(
             'processes': processes,
         }
         if sjd_args:
-            candidates['iid_dirs_mle'].update(sjd_args)
+            candidates['iid_dirs_adam'].update(sjd_args)
     if 'dir-mean_mvn-umvu' in sjd_ids:
         # target: Dirichlet: concentration is mean of data
         # transform: Multivariate Normal: loc and cov matrix from data
@@ -164,18 +164,19 @@ def get_sjd_candidates(
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateNormal',
             'indpendent': False,
-            'mle_args': mle_args,
+            #'mle_args': mle_args,
             'processes': processes,
         }
         if sjd_args:
             candidates['dir-mean_mvn-umvu'].update(sjd_args)
-    if 'dir-mle_mvn-umvu' in sjd_ids:
+    if 'dir-adam_mvn-umvu' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: Multivariate Normal: loc and cov matrix from data
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
+        mle_args_copy['const_params'] = ['mean']
 
-        candidates['dir-mle_mvn-umvu'] = {
+        candidates['dir-adam_mvn-umvu'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateNormal',
             'indpendent': False,
@@ -183,20 +184,27 @@ def get_sjd_candidates(
             'processes': processes,
         }
         if sjd_args:
-            candidates['dir-mle_mvn-umvu'].update(sjd_args)
-    if 'dir_mvc_mle' in sjd_ids:
+            candidates['dir-adam_mvn-umvu'].update(sjd_args)
+    if 'dir_mvc_adam' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: Multivariate Cauchy: loc and cov matrix initialized from
-        # data and estimated via a MLE method... TODO
+        # data and estimated via a ADAM w/ constant location.
+        raise NotImplementedError('Need to sort out const params and test')
+
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
+        # Const params for Dir w/ ADAM
+        mle_args_copy['const_params'] = ['mean', 'loc']
+        # Const params for MVST to make an MCV w/ ADAM
+        #mle_args_copy['const_params'] = ['loc']
+        #mle_args_copy['params']['df'] = 1.0 # Cauchy is MVST w/ df = 1
 
         # TODO may need to allow passing of different MLE args to the separate
         # distribs. ie Dir almost always uses Grad Descent, but MVC anything.
 
         candidates['dir_mvc_mle'] = {
             'target_distrib': 'Dirichlet',
-            'transform_distrib': 'MultivariateNormal',
+            'transform_distrib': 'MultivariateCauchy',
             'indpendent': False,
             'mle_args': mle_args_copy,
             'processes': processes,
@@ -204,10 +212,14 @@ def get_sjd_candidates(
 
         if sjd_args:
             candidates['dir_mvc_mle'].update(sjd_args)
-    if 'dir_mvst_mle' in sjd_ids:
+    if 'dir_mvst_adam' in sjd_ids:
+        # TODO
+        raise NotImplementedError('Need to sort out const params and create '
+            + 'Coordinate swapping gradient descent optimization with ADAM.')
+    if 'dir-adam_mvst-mcmc' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: Multivariate Student T: loc and cov matrix initialized
-        # from data and estimated via a MLE method... TODO
+        # from data and estimated via a MCMC
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
 
