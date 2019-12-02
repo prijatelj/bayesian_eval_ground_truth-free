@@ -52,6 +52,7 @@ def bnn_mlp(
 
     return bnn_out, tf_vars
 
+
 def bnn_mlp_placeholders(
     input_labels,
     num_layers=2,
@@ -74,10 +75,10 @@ def bnn_mlp_placeholders(
             # Bias
             bias_name = f'hidden_bias_{i}'
             if hidden_use_bias:
-                bias = tf.placeholder(dtype, [x.shape[1], num_hidden], bias_name)
+                bias = tf.placeholder(dtype, [num_hidden], bias_name)
                 tf_placeholders.append(bias)
             else:
-                bias = tf.zeros([x.shape[1], num_hidden], dtype, bias_name)
+                bias = tf.zeros([num_hidden], dtype, bias_name)
 
             # Weights
             weights = tf.placeholder(
@@ -94,12 +95,12 @@ def bnn_mlp_placeholders(
         # output = activation(dot(input, kernel) + bias)
         weights = tf.placeholder(
             dtype,
-            [x.shape[1], num_hidden],
+            [x.shape[1], input_labels.shape[1]],
             'output_weights',
         )
         tf_placeholders.append(weights)
 
-        bnn_out = (x @ weights) + bias
+        bnn_out = (x @ weights) # + bias # No biases on outputs
         if output_activation:
             bnn_out = output_activation(bnn_out)
 
@@ -245,7 +246,7 @@ def bnn_mlp_run_sess(results_dict, feed_dict):
 
 def assign_weights_bnn(
     weights_sets,
-    tf_vars,
+    tf_placeholders,
     bnn_out,
     input_labels,
     tf_input,
@@ -253,14 +254,6 @@ def assign_weights_bnn(
     dtype=tf.float32,
 ):
     """Given BNN weights and tensors with data, forward pass through network."""
-    # assign weights to BNN and create a placeholder for each different tensor
-    assign_op = []
-    tf_vars_placeholders = []
-    for i, w in enumerate(weights_sets):
-        weights_placeholder = tf.placeholder(dtype, w.shape[1:])
-        tf_vars_placeholders.append(weights_placeholder)
-        assign_op.append(tf.assign(tf_vars[i], weights_placeholder))
-
     feed_dict = {tf_input: input_labels}
     results_list = [bnn_out]
 
@@ -280,10 +273,11 @@ def assign_weights_bnn(
             tf.local_variables_initializer(),
         ))
 
-        # Loop through weights and get the outputs
+        # Loop through each set of weights and get BNN outputs
         iter_results = []
         for sample_idx in range(weights_sets[0].shape[0]):
-            for i, var_ph in enumerate(tf_vars_placeholders):
+            # Loop through the different placeholders and assign the values
+            for i, var_ph in enumerate(tf_placeholders):
                 feed_dict[var_ph] = weights_sets[i][sample_idx]
 
             iter_results.append(sess.run(results_list, feed_dict=feed_dict))
