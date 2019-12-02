@@ -710,6 +710,18 @@ def expand_model_args(args):
         raise TypeError(f'`args.mle.optimizer` has expected type NestedNamespace, but instead was of type {type(args.mle.optimizer)} with value: {args.mle.optimizer}')
 
 
+def get_tf_config(cpu_cores=1, cpus=1, gpus=0, allow_soft_placement=True):
+    return tf.ConfigProto(
+        intra_op_parallelism_threads=cpu_cores,
+        inter_op_parallelism_threads=cpu_cores,
+        allow_soft_placement=allow_soft_placement,
+        device_count={
+            'CPU': cpus,
+            'GPU': gpus,
+        } if gpus >= 0 else {'CPU': cpus},
+    )
+
+
 def parse_args(arg_set=None, custom_args=None, description=None):
     """Creates the args to be parsed and the handling for each.
 
@@ -764,14 +776,10 @@ def parse_args(arg_set=None, custom_args=None, description=None):
         logging.basicConfig(level=numeric_level)
 
     # Set the Hardware
-    keras.backend.set_session(tf.Session(config=tf.ConfigProto(
-        intra_op_parallelism_threads=args.cpu_cores,
-        inter_op_parallelism_threads=args.cpu_cores,
-        allow_soft_placement=True,
-        device_count={
-            'CPU': args.cpu,
-            'GPU': args.gpu,
-        } if args.gpu >= 0 else {'CPU': args.cpu},
+    keras.backend.set_session(tf.Session(config=get_tf_config(
+        args.cpu_cores,
+        args.cpu,
+        args.gpu,
     )))
 
     # TODO LOAD the randomseeds from file if it is of type str!!!
