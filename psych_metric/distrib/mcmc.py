@@ -119,7 +119,14 @@ def mcmc_distrib_params(
     #return iter_results['log_probs'][max_idx], iter_results['samples'][max_idx]
 
 
-def get_mcmc_kernel(loss_fn, kernel_id, kernel_args, step_adjust_args=None):
+def get_mcmc_kernel(
+    loss_fn,
+    kernel_id,
+    kernel_args,
+    step_adjust_args=None,
+    dual_avg=False,
+):
+    """Creates the MCMC kernel used to fit a distribution."""
     kernel_id = kernel_id.lower()
 
     if kernel_id == 'randomwalk' or kernel_id == 'randomwalkmetropolis':
@@ -131,6 +138,11 @@ def get_mcmc_kernel(loss_fn, kernel_id, kernel_args, step_adjust_args=None):
         nuts = tfp.mcmc.NoUTurnSampler(loss_fn, **kernel_args)
 
         if step_adjust_args:
+            if dual_avg:
+                return tfp.mcmc.DualAveragingStepSizeAdaptation(
+                    hmc,
+                    **step_adjust_args,
+                )
             return tfp.mcmc.SimpleStepSizeAdaptation(nuts, **step_adjust_args)
         return nuts
     if (
@@ -141,6 +153,11 @@ def get_mcmc_kernel(loss_fn, kernel_id, kernel_args, step_adjust_args=None):
         hmc = tfp.mcmc.HamiltonianMonteCarlo(loss_fn, **kernel_args)
 
         if step_adjust_args:
+            if dual_avg:
+                return tfp.mcmc.DualAveragingStepSizeAdaptation(
+                    hmc,
+                    **step_adjust_args,
+                )
             return tfp.mcmc.SimpleStepSizeAdaptation(hmc, **step_adjust_args)
         return hmc
 
