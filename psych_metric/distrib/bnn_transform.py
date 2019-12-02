@@ -52,6 +52,59 @@ def bnn_mlp(
 
     return bnn_out, tf_vars
 
+def bnn_mlp_placeholders(
+    input_labels,
+    num_layers=2,
+    num_hidden=10,
+    hidden_activation=tf.math.sigmoid,
+    hidden_use_bias=True,
+    output_activation=tf.math.sigmoid,
+    dtype=tf.float32,
+    tf_device=None,
+):
+    """BNN of a simple MLP model. Input: labels in prob simplex; outputs
+    predictor's label in prob simplex. Uses placeholders for the weights of the
+    network.
+    """
+    with tf.device(tf_device), tf.name_scope('bnn_mlp_transformer'):
+        tf_placeholders = []
+
+        x = input_labels
+        for i in range(num_layers):
+            # Bias
+            bias_name = f'hidden_bias_{i}'
+            if hidden_use_bias:
+                bias = tf.placeholder(dtype, [x.shape[1], num_hidden], bias_name)
+                tf_placeholders.append(bias)
+            else:
+                bias = tf.zeros([x.shape[1], num_hidden], dtype, bias_name)
+
+            # Weights
+            weights = tf.placeholder(
+                dtype,
+                [x.shape[1], num_hidden],
+                f'hidden_weights_{i}',
+            )
+            tf_placeholders.append(weights)
+
+            x = (x @ weights) + bias
+            if hidden_activation:
+                x = hidden_activation(x)
+
+        # output = activation(dot(input, kernel) + bias)
+        weights = tf.placeholder(
+            dtype,
+            [x.shape[1], num_hidden],
+            'output_weights',
+        )
+        tf_placeholders.append(weights)
+
+        bnn_out = (x @ weights) + bias
+        if output_activation:
+            bnn_out = output_activation(bnn_out)
+
+    return bnn_out, tf_placeholders
+
 
 def bnn_mlp_loss(*weights, **kwargs):
     with tf.control_dependencies(weights):
@@ -124,13 +177,11 @@ def get_bnn_transform(
         bnn_args = {}
 
     # Data placeholders
-    #tf_input = tf.constant(
     tf_input = tf.placeholder(
         dtype=dtype,
         shape=[None, input_labels.shape[1]],
         name='input_label',
     )
-    #tf_labels = tf.constant(
     tf_labels = tf.placeholder(
         dtype=dtype,
         shape=[None, output_labels.shape[1]],
@@ -231,9 +282,9 @@ def assign_weights_bnn(
 
         # Loop through weights and get the outputs
         iter_results = []
-        for sample_idx in len(weights_sets[0].shape[0]):
+        for sample_idx in range(weights_sets[0].shape[0]):
             for i, var_ph in enumerate(tf_vars_placeholders):
-                feed_dict[var_ph] = weights_sets[sample_idx, i]
+                feed_dict[var_ph] = weights_sets[i][sample_idx]
 
             iter_results.append(sess.run(results_list, feed_dict=feed_dict))
 
