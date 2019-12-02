@@ -20,6 +20,7 @@ import experiment.io
 import experiment.distrib
 from experiment.kfold import kfold_generator, get_kfold_idx
 import predictors
+import src_candidates
 
 
 def load_summary(summary_file):
@@ -408,7 +409,7 @@ def log_prob_exps(
     # iterate through the candidate SJDs to obtain their results
     results = {}
     for key, kws in candidates.items():
-        if not isinstance(kws, SupervisedJointDistrib):
+        if isinstance(kws, SupervisedJointDistrib):
             candidate = kws
         else:
             # fit appropriate SJDs to train data.
@@ -682,19 +683,44 @@ if __name__ == '__main__':
         add_human_sjd_args,
     )
 
-    # TODO first, load in entirety a single eval fold
-    """
+    # Load data once: features, labels, label_bin
+    data = predictors.load_prep_data(
+        args.dataset_id,
+        vars(args.data),
+        args.label_src,
+        args.model.parts,
+    )
+
+    # Get candidates
+    candidates = src_candidates.get_sjd_candidates(
+        [
+            'iid_uniform_dirs',
+            'iid_dirs_mean',
+            'iid_dirs_adam',
+            'dir-mean_mvn-umvu',
+            'dir-adam_mvn-umvu',
+        ],
+        data[1].shape[1],
+        vars(args.mle),
+        vars(args.sjd),
+    )
+
+    #"""
     uh = sjd_kfold_log_prob(
         #sjd_args=vars(args.sjd),
+        candidates,
         dir_path=args.human_sjd.dir_path,
         weights_file=args.human_sjd.weights_file,
         label_src=args.label_src,
         summary_name=args.human_sjd.summary_name,
-        data=None,
+        data=data,
         load_model=True,
-        #info_criterions=args.,
+        info_criterions=['bic', 'hqc', 'aic'],
+        output_path=args.output_dir
     )
-    """
+    #"""
+
+
     # TODO then try with load data ONCE, load one summary of a kfold. use data for all.
     #data=args.human_sjd.dir_path,
 
