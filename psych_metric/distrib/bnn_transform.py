@@ -169,6 +169,7 @@ def get_bnn_transform(
     scale_identity_multiplier=1.0,
     random_seed=None,
     dtype=tf.float32,
+    tf_vars_init=None,
 ):
     if input_labels.shape != output_labels.shape:
         raise ValueError(
@@ -189,15 +190,15 @@ def get_bnn_transform(
         name='output_labels',
     )
 
+
     # Create the BNN model
-    _, tf_vars_init = bnn_mlp(tf_input, **bnn_args)
+    if tf_vars_init is None:
+        _, tf_vars_init = bnn_mlp(tf_input, **bnn_args)
     bnn_args['input_labels'] = tf_input
 
     # Get loss function
     loss_fn = lambda *w: bnn_all_loss(
         *w,
-        #tf_vars=tf_vars,
-        #bnn_out=bnn_out,
         bnn_args=bnn_args,
         tf_labels=tf_labels,
         scale_identity_multiplier=scale_identity_multiplier,
@@ -231,9 +232,9 @@ def get_bnn_transform(
     return results_dict, feed_dict
 
 
-def bnn_mlp_run_sess(results_dict, feed_dict):
+def bnn_mlp_run_sess(results_dict, feed_dict, sess_config=None):
     # TODO run the session.
-    with tf.Session() as sess:
+    with tf.Session(config=sess_config) as sess:
         sess.run((
             tf.global_variables_initializer(),
             tf.local_variables_initializer(),
@@ -252,6 +253,7 @@ def assign_weights_bnn(
     tf_input,
     output_labels=None,
     dtype=tf.float32,
+    sess_config=None
 ):
     """Given BNN weights and tensors with data, forward pass through network."""
     feed_dict = {tf_input: input_labels}
@@ -267,7 +269,7 @@ def assign_weights_bnn(
 
         feed_dict[tf_output] = output_labels
 
-    with tf.Session() as sess:
+    with tf.Session(config=sess_config) as sess:
         sess.run((
             tf.global_variables_initializer(),
             tf.local_variables_initializer(),
