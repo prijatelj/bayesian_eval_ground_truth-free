@@ -138,7 +138,7 @@ def get_sjd_candidates(
         candidates['iid_dirs_mean'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'Dirichlet',
-            'indpendent': True,
+            'independent': True,
         }
         if sjd_args:
             candidates['iid_dirs_mean'].update(sjd_args)
@@ -151,7 +151,7 @@ def get_sjd_candidates(
         candidates['iid_dirs_adam'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'Dirichlet',
-            'indpendent': True,
+            'independent': True,
             'mle_args': mle_args_copy,
             'processes': processes,
         }
@@ -163,7 +163,7 @@ def get_sjd_candidates(
         candidates['dir-mean_mvn-umvu'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateNormal',
-            'indpendent': False,
+            'independent': False,
             #'mle_args': mle_args,
             'processes': processes,
         }
@@ -179,7 +179,7 @@ def get_sjd_candidates(
         candidates['dir-adam_mvn-umvu'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateNormal',
-            'indpendent': False,
+            'independent': False,
             'mle_args': mle_args_copy,
             'processes': processes,
         }
@@ -205,7 +205,7 @@ def get_sjd_candidates(
         candidates['dir_mvc_mle'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateCauchy',
-            'indpendent': False,
+            'independent': False,
             'mle_args': mle_args_copy,
             'processes': processes,
         }
