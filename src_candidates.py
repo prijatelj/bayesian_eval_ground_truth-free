@@ -147,6 +147,7 @@ def get_sjd_candidates(
         # multiplied by the precisions found via MLE
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
+        mle_args_copy['const_params'] = ['mean']
 
         candidates['iid_dirs_adam'] = {
             'target_distrib': 'Dirichlet',
@@ -194,7 +195,7 @@ def get_sjd_candidates(
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
         # Const params for Dir w/ ADAM
-        mle_args_copy['const_params'] = ['mean', 'loc']
+        mle_args_copy['const_params'] = ['mean']
         # Const params for MVST to make an MCV w/ ADAM
         #mle_args_copy['const_params'] = ['loc']
         #mle_args_copy['params']['df'] = 1.0 # Cauchy is MVST w/ df = 1
@@ -202,7 +203,7 @@ def get_sjd_candidates(
         # TODO may need to allow passing of different MLE args to the separate
         # distribs. ie Dir almost always uses Grad Descent, but MVC anything.
 
-        candidates['dir_mvc_mle'] = {
+        candidates['dir_mvc_adam'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateCauchy',
             'independent': False,
@@ -211,7 +212,7 @@ def get_sjd_candidates(
         }
 
         if sjd_args:
-            candidates['dir_mvc_mle'].update(sjd_args)
+            candidates['dir_mvc_adam'].update(sjd_args)
     if 'dir_mvst_adam' in sjd_ids:
         # TODO
         raise NotImplementedError('Need to sort out const params and create '
@@ -224,7 +225,7 @@ def get_sjd_candidates(
         mle_args_copy['alt_distrib'] = True
 
         if sjd_args:
-            candidates['dir_mvst_mle'].update(sjd_args)
+            candidates['dir-adam_mvst-mcmc'].update(sjd_args)
     if 'dir-mle_bnn-euclid' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: BNN in Euclidean space trained via Random Walk.
