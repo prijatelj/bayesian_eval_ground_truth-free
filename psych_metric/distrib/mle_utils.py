@@ -182,7 +182,7 @@ def get_mle_loss(
                     loss = loss - constraint_multiplier \
                         * tf.nn.relu(-params['df'] + 2 + 1e-3)
             else:
-                # enforce it to be greater than 0
+                # enforce df to be greater than 0
                 if neg_loss:
                     loss = loss + constraint_multiplier \
                         * tf.nn.relu(-params['df'] + 1e-3)
