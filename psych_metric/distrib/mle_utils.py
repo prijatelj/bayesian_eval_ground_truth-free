@@ -1,7 +1,10 @@
 """The Tensorflow optimization of either a distribution or a Bayesian Neural
 Network using MCMC methods.
 """
+from datetime import datetime
 import functools
+import logging
+import os
 
 import numpy as np
 import tensorflow as tf
@@ -206,6 +209,9 @@ def run_session(
     tol_grad=1e-8,
     tol_chain=1,
 ):
+    if 'params' not in results_dict:
+        results_dict['params'] = params
+
     # TODO if necessary, generalize this so it is not only for MLE_adam
     with tf.Session(config=sess_config) as sess:
         # Build summary operation
@@ -243,7 +249,7 @@ def run_session(
                 if np.isnan(value).any():
                     raise ValueError(f'{param} is NaN!')
 
-            if is_param_constraint_broken(params, const_params):
+            if is_param_constraint_broken(iter_results['params'], const_params):
                 # This still counts as an iteration, just nothing to save.
                 if i >= max_iter:
                     logging.info(
@@ -302,7 +308,19 @@ def run_session(
 
 
 def is_param_constraint_broken(params, const_params):
-    # param value check if breaks constraints: Skip to next if so.
+    """Check param value for breaking constraints: Skip to next if so.
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary of parameters str identifiers to their values (Not tensors).
+    const_params : dict
+
+    Returns
+    -------
+    bool
+        True if a constraint is broken, False if no constraint is broken.
+    """
     return (
         ('precision' in params and params['precision'] <= 0)
         or (
