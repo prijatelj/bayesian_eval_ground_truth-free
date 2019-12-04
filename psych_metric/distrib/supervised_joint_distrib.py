@@ -80,7 +80,7 @@ def transform_knn_log_prob_single(
 
     # Check which are valid samples. Save indices or new array
     valid_dists = transform_knn_dists[
-        np.where(distirbution_tests.is_prob_distrib(dist_check))[0]
+        np.where(distrib_utils.is_prob_distrib(dist_check))[0]
     ]
 
     # Fit BallTree to the differences valid to the specific target.
@@ -339,7 +339,7 @@ class SupervisedJointDistrib(object):
                     # TODO need to 1) be given a dtype, 2) enforce that in all
                     # data and tensors.
                     data = data.astype(np.float32)
-                    mle_results = mle_gradient_descent(
+                    mle_results = mle_gradient_descent.mle_adam(
                         distrib,
                         np.maximum(data, np.finfo(data.dtype).tiny),
                         init_params={'concentration': np.mean(data, axis=0)},
@@ -372,7 +372,7 @@ class SupervisedJointDistrib(object):
                 # values of scale.
 
                 if mle_args:
-                    mle_results = mle_gradient_descent(
+                    mle_results = mle_gradient_descent.mle_adam(
                         distrib,
                         data,
                         init_params={
@@ -406,7 +406,7 @@ class SupervisedJointDistrib(object):
                 or distrib['distrib_id'] == 'Dirichlet'
                 or distrib['distrib_id'] == 'MultivariateNormal'
             ):
-                return  mle_gradient_descent(
+                return  mle_gradient_descent.mle_adam(
                     distrib['distrib_id'],
                     np.maximum(data, np.finfo(data.dtype).tiny),
                     init_params=distrib['params'],
@@ -700,7 +700,7 @@ class SupervisedJointDistrib(object):
                     '`distrib_id`.',
                 ]))
 
-            self.target_distrib = mle_gradient_descent(
+            self.target_distrib = mle_gradient_descent.mle_adam(
                 distrib['distrib_id'],
                 np.maximum(target, np.finfo(target.dtype).tiny),
                 init_params=distrib['params'],
