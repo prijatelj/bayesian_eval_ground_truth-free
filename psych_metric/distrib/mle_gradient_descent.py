@@ -2,8 +2,6 @@
 functions.
 """
 import logging
-import os
-from datetime import datetime
 
 import numpy as np
 import tensorflow as tf
@@ -157,3 +155,88 @@ def mle_adam(
         sess_config=sess_config,
         tb_summary_dir=tb_summary_dir,
     )
+
+
+#def alternating_adam(
+def coordinate_descent_adam(
+    distrib_id,
+    data,
+    init_params=None,
+    const_params=None,
+    optimizer_args=None,
+    num_top_likelihoods=1,
+    max_iter=10000,
+    tol_param=1e-8,
+    tol_loss=1e-8,
+    tol_grad=1e-8,
+    tb_summary_dir=None,
+    random_seed=None,
+    shuffle_data=True,
+    batch_size=1,
+    name='mle_coordinate_descent_adam',
+    sess_config=None,
+    optimizer_id='adam',
+    tol_chain=1,
+    alt_distrib=False,
+    constraint_multiplier=1e5,
+    dtype=tf.float32,
+    alternation_method='cyclic',
+    max_iter_per_coordinate=False,
+):
+    """Performs Coordinate Descent using ADAM to find the MLE of a distribution
+    on the data where parameters being optimized are focused one at a time
+    while the rest are held constant.
+
+    May do Coordinate Gradient Descent, where a set of parameters are held
+    constant as another set are optimized, and then alternate.
+    """
+    # TODO implement adam with swapping of at least 2 params.
+    raise NotImplementedError
+
+    # Good for MVST when loc is constant, then swap between df and scale
+
+    # Good for MVCauchy when no variable is constant
+    with tf.name_scope(name) as scope:
+        # Create optimizer
+        if optimizer_id == 'adam':
+            optimizer = tf.train.AdamOptimizer(**optimizer_args)
+        elif optimizer_id == 'nadam':
+            optimizer = tf.contrib.opt.NadamOptimizer(**optimizer_args)
+        else:
+            raise ValueError(f'Unexpected optimizer_id value: {optimizer_id}')
+
+        global_step = tf.Variable(0, name='global_step', trainable=False)
+
+        if const_params:
+            grad = optimizer.compute_gradients(
+                loss,
+                [v for k, v in params.items() if k not in const_params],
+            )
+        else:
+            grad = optimizer.compute_gradients(
+                loss,
+                list(params.values()),
+            )
+
+
+        # TODO apply gradients selectively, boolean switch for 2 coord.
+        # iterate through the "coordinates" one at a time.  Full pass on data
+        # each time.
+        train_op = optimizer.apply_gradients(grad, global_step)
+
+
+        # Create the dictionary of tensors whose results are desired
+        results_dict = {
+            'train_op': train_op,
+            'loss': loss,
+            'neg_log_prob': neg_log_prob,
+            'params': params,
+            'grad': grad,
+        }
+
+        if tb_summary_dir:
+            # Visualize the gradients
+            for g in grad:
+                tf.summary.histogram(f'{g[1].name}-grad', g[0])
+
+            results_dict['summary_op'] = tf.summary.merge_all()
