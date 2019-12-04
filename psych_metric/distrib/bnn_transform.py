@@ -331,4 +331,6 @@ def assign_weights_bnn(
 
             iter_results.append(sess.run(results_list, feed_dict=feed_dict))
 
-    return iter_results
+    if output_labels:
+        return iter_results
+    return np.stack(iter_results).squeeze()
