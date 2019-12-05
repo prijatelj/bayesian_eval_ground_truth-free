@@ -722,7 +722,7 @@ class SupervisedJointDistrib(object):
             self.knn_pdf_num_samples,
         )
 
-    def _transform_knn_log_prob(self, target, pred, k=None):
+    def _transform_knn_log_prob(self, target, pred, k=None, processes=None):
         if k is None:
             k = self.num_neighbors
         if processes is None:

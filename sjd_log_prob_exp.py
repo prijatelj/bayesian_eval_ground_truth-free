@@ -707,7 +707,6 @@ if __name__ == '__main__':
 
     #"""
     uh = sjd_kfold_log_prob(
-        #sjd_args=vars(args.sjd),
         candidates,
         dir_path=args.human_sjd.dir_path,
         weights_file=args.human_sjd.weights_file,
