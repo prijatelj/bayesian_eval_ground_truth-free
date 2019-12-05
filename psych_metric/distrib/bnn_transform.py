@@ -72,14 +72,6 @@ def bnn_mlp_placeholders(
 
         x = input_labels
         for i in range(num_layers):
-            # Bias
-            bias_name = f'hidden_bias_{i}'
-            if hidden_use_bias:
-                bias = tf.placeholder(dtype, [num_hidden], bias_name)
-                tf_placeholders.append(bias)
-            else:
-                bias = tf.zeros([num_hidden], dtype, bias_name)
-
             # Weights
             weights = tf.placeholder(
                 dtype,
@@ -88,6 +80,15 @@ def bnn_mlp_placeholders(
             )
             tf_placeholders.append(weights)
 
+            # Bias
+            bias_name = f'hidden_bias_{i}'
+            if hidden_use_bias:
+                bias = tf.placeholder(dtype, [num_hidden], bias_name)
+                tf_placeholders.append(bias)
+            else:
+                bias = tf.zeros([num_hidden], dtype, bias_name)
+
+            # Hidden layer calculation
             x = (x @ weights) + bias
             if hidden_activation:
                 x = hidden_activation(x)
