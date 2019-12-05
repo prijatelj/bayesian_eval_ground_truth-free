@@ -939,6 +939,11 @@ class SupervisedJointDistrib(object):
                 pred = np.maximum(pred, np.finfo(pred.dtype).tiny)
 
             with tf.Session() as sess:
+                sess.run((
+                    tf.global_variables_initializer(),
+                    tf.local_variables_initializer(),
+                ))
+
                 log_prob_pair = sess.run((
                     self.target_distrib.log_prob(target),
                     self.transform_distrib.log_prob(pred)
