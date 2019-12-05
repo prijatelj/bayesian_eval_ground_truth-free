@@ -278,7 +278,7 @@ def run_session(
                 params_history[0] = iter_results['params']
                 loss_history[0] = iter_results['neg_log_prob']
 
-            conitnue_loop = to_continue(
+            continue_loop = to_continue(
                 distrib_id,
                 iter_results['neg_log_prob'],
                 iter_results['params'],
