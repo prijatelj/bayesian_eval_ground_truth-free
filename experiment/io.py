@@ -645,6 +645,14 @@ def add_sjd_args(parser):
         dest='sjd.knn_num_samples',
     )
 
+    sjd.add_argument(
+        '--processes',
+        default=1,
+        type=int,
+        help='The number of processes to use for KNN density estimation.',
+        dest='sjd.processes',
+    )
+
 
 def check_argv(value, arg, optional_arg=True):
     """Checks if the arg was given and checks if its value is one in the given
