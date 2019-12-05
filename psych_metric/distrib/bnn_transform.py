@@ -163,6 +163,7 @@ def bnn_adam(
     tf_config=None,
     optimizer_id='adam',
     optimizer_args=None,
+    epochs=1,
 ):
     """Trains the given ANN with ADAM to be used as the initial weights for the
     MCMC fitting of the BNN version.
@@ -189,7 +190,7 @@ def bnn_adam(
     results_dict = {
         'train_op': train_op,
         'loss': loss,
-        'grad': grad,
+        #'grad': grad,
     }
 
     with tf.Session(config=tf_config) as sess:
@@ -198,7 +199,8 @@ def bnn_adam(
             tf.local_variables_initializer(),
         ))
 
-        iter_results = sess.run(results_dict, feed_dict=feed_dict)
+        for i in range(epochs):
+            iter_results = sess.run(results_dict, feed_dict=feed_dict)
 
         weights = sess.run(tf_vars)
 
