@@ -671,8 +671,8 @@ class SupervisedJointDistrib(object):
         if isinstance(distrib, str):
             if (
                 distrib != 'MultivariateNormal'
-                or distrib != 'MultivariateCauchy'
-                or distrib != 'MultivariateStudentT'
+                and distrib != 'MultivariateCauchy'
+                and distrib != 'MultivariateStudentT'
             ):
                 raise ValueError(' '.join([
                     'Currently only "MultivariateNormal",',
