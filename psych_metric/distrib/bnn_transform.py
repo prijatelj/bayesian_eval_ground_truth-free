@@ -150,7 +150,8 @@ def bnn_all_loss(*weights, **kwargs):
         )
         diff = bnn_out - kwargs['tf_labels']
 
-        return tf.reduce_sum(
+        # NOTE trying to see if it needs to negative log prob!
+        return kwargs['diff_scale'] * tf.reduce_sum(
             diff_mvn.log_prob(diff),
             name='log_prob_dist_sum',
         )
@@ -223,6 +224,8 @@ def get_bnn_transform(
     random_seed=None,
     dtype=tf.float32,
     tf_vars_init=None,
+    tf_input=None,
+    diff_scale=1.0,
 ):
     if input_labels.shape != output_labels.shape:
         raise ValueError(
@@ -232,11 +235,12 @@ def get_bnn_transform(
         bnn_args = {}
 
     # Data placeholders
-    tf_input = tf.placeholder(
-        dtype=dtype,
-        shape=[None, input_labels.shape[1]],
-        name='input_label',
-    )
+    if tf_input is None:
+        tf_input = tf.placeholder(
+            dtype=dtype,
+            shape=[None, input_labels.shape[1]],
+            name='input_label',
+        )
     tf_labels = tf.placeholder(
         dtype=dtype,
         shape=[None, output_labels.shape[1]],
@@ -254,6 +258,7 @@ def get_bnn_transform(
         bnn_args=bnn_args,
         tf_labels=tf_labels,
         scale_identity_multiplier=scale_identity_multiplier,
+        diff_scale=diff_scale, # for ease of negating the log prob, use -1.0
     )
 
     # Get the MCMC Kernel
