@@ -227,7 +227,7 @@ def get_bnn_transform(
     tf_input=None,
     diff_scale=1.0,
     step_adjust_id='Simple',
-    step_adjust_fraction=None,
+    num_adaptation_steps=None,
 ):
     if input_labels.shape != output_labels.shape:
         raise ValueError(
@@ -264,13 +264,13 @@ def get_bnn_transform(
     )
 
     # Get the MCMC Kernel
-    if step_adjust_fraction is not None:
+    if num_adaptation_steps is not None:
         kernel = get_mcmc_kernel(
             loss_fn,
             kernel_id,
             kernel_args,
             step_adjust_id,
-            {'num_adaptation_steps': np.ceil(step_adjust_fraction * burnin)},
+            num_adaptation_steps,
         )
     else:
         kernel = get_mcmc_kernel(loss_fn, kernel_id, kernel_args)
