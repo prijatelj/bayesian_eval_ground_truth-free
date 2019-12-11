@@ -123,8 +123,8 @@ def get_mcmc_kernel(
     loss_fn,
     kernel_id,
     kernel_args,
+    step_adjust_id='Simple',
     step_adjust_args=None,
-    dual_avg=False,
 ):
     """Creates the MCMC kernel used to fit a distribution."""
     kernel_id = kernel_id.lower()
@@ -138,9 +138,9 @@ def get_mcmc_kernel(
         nuts = tfp.mcmc.NoUTurnSampler(loss_fn, **kernel_args)
 
         if step_adjust_args:
-            if dual_avg:
+            if step_adjust_id == 'DualAveraging':
                 return tfp.mcmc.DualAveragingStepSizeAdaptation(
-                    hmc,
+                    nuts,
                     **step_adjust_args,
                 )
             return tfp.mcmc.SimpleStepSizeAdaptation(nuts, **step_adjust_args)
@@ -153,7 +153,7 @@ def get_mcmc_kernel(
         hmc = tfp.mcmc.HamiltonianMonteCarlo(loss_fn, **kernel_args)
 
         if step_adjust_args:
-            if dual_avg:
+            if step_adjust_id == 'DualAveraging':
                 return tfp.mcmc.DualAveragingStepSizeAdaptation(
                     hmc,
                     **step_adjust_args,
