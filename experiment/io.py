@@ -12,6 +12,10 @@ import keras
 import tensorflow as tf
 
 
+# TODO currently NestedNamespace still requires all args to be uniquely
+# identified, so should probably just use argparse subparsers.
+
+#TODO need to fix the issue where argparse help expansion crashes
 class NestedNamespace(argparse.Namespace):
     """An extension of the Namespace allowing for nesting of namespaces.
 
