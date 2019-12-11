@@ -291,7 +291,7 @@ if __name__ == '__main__':
             args.mcmc.num_adaptation_steps = np.ceil(
                 args.mcmc.sample_chain.burnin * args.mcmc.step_adjust_fraction
             )
-        del args.mcmc.step_adjust_fraction
+    del args.mcmc.step_adjust_fraction
 
     # make mcmc_args contain most args for get_bnn_transform()
     mcmc_args = vars(args.mcmc)
@@ -315,6 +315,8 @@ if __name__ == '__main__':
 
     # save params:
     if results['is_accepted_total'] > 0:
+        os.makedirs(args.data.dataset_filepath, exist_ok=True)
+
         results['log_prob_max'] = iter_results['trace'].accepted_results.target_log_prob.max()
         results['log_prob_argmax'] = iter_results['trace'].accepted_results.target_log_prob.argmax()
 
@@ -328,31 +330,70 @@ if __name__ == '__main__':
         # target log prob line plot
         plt.plot(iter_results['trace'].accepted_results.target_log_prob)
         plt.savefig(
-            os.path.join(args.dataset_filepath, 'target_log_prob.png'),
+            os.path.join(args.data.dataset_filepath, 'target_log_prob.png'),
             bbox_inches='tight',
             dpi=300,
         )
+
+        # pacf of target log prob:
+        #plt.plot(
+
+        # Save initial weights
+        if args.adam_epochs > 0:
+            io.save_json(
+                os.path.join(args.data.dataset_filepath, 'weights_adam_inital.json'),
+                local_res['weights'],
+            )
 
         weights_sets = [w[iter_results['trace'].is_accepted]
             for w in iter_results['samples']]
 
         bnn_ph, tf_placeholders = bnn_transform.bnn_mlp_placeholders(**vars(args.bnn))
 
-        # max, min, & median, target log prob accepted.
+        # max target log prob accepted.
+        io.save_json(
+            os.path.join(args.data.dataset_filepath, 'weights_max_log_prob.json'),
+            [
+                weights_sets[0][results['log_prob_argmax']],
+                weights_sets[1][results['log_prob_argmax']],
+                weights_sets[2][results['log_prob_argmax']],
+            ],
+        )
+        # min target log prob accepted.
+        io.save_json(
+            os.path.join(args.data.dataset_filepath, 'weights_min_log_prob.json'),
+            [
+                weights_sets[0][results['log_prob_argmin']],
+                weights_sets[1][results['log_prob_argmin']],
+                weights_sets[2][results['log_prob_argmin']],
+            ],
+        )
 
         # First accepted, if not already saved
         if results['log_prob_argmax'] != 0 and results['log_prob_argmin'] != 0:
             io.save_json(
-                os.path.join(args.dataset_filepath, 'weights_first_accept.json'),
-                weights_sets[0],
+                os.path.join(args.data.dataset_filepath, 'weights_first_accept.json'),
+                [weights_sets[0][0], weights_sets[1][0], weights_sets[2][0]],
             )
+        # TODO perhaps save the picture zoomed in w/o the initial spike that
+        # tends to occur?
+        #else:
+        #    plt.plot(iter_results['trace'].accepted_results.target_log_prob[10:])
+        #    plt.savefig(
+        #        os.path.join(args.data.dataset_filepath, 'target_log_prob.png'),
+        #        bbox_inches='tight',
+        #        dpi=300,
+        #    )
 
         # Last accepted, if not already saved
         if results['log_prob_argmax'] != mcmc_args['num_samples'] - 1 \
             and results['log_prob_argmin'] != mcmc_args['num_samples'] - 1:
-            pass
+            io.save_json(
+                os.path.join(args.data.dataset_filepath, 'weights_first_accept.json'),
+                [weights_sets[0][-1], weights_sets[1][-1], weights_sets[2][-1]],
+            )
 
     io.save_json(
-        os.path.join(args.dataset_filepath, 'bnn_mcmc_results.json'),
+        os.path.join(args.data.dataset_filepath, 'bnn_mcmc_results.json'),
         results,
     )
