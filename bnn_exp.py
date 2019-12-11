@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -186,11 +187,21 @@ def add_mcmc_args(parser):
 
     mcmc.add_argument(
         '--step_adjust_fraction',
-        default=0.6,
+        default=None,
         type=float,
         help=' '.join([
             'The percent or fraction of burnin samples to be used to adjust',
             'the step size.',
+        ]),
+        dest='mcmc.step_adjust_fraction',
+    )
+
+    mcmc.add_argument(
+        '--num_adaptation_steps',
+        default=None,
+        type=float,
+        help=' '.join([
+            'The exact number of steps used to determine the step size.',
         ]),
         dest='mcmc.step_adjust_fraction',
     )
@@ -218,7 +229,7 @@ def add_bnn_transform_args(parser):
         default=10,
         type=int,
         help='The number of units per hidden layer in the BNN.',
-        dest='bnn.num_layers',
+        dest='bnn.num_hidden',
     )
 
     bnn.add_argument(
@@ -267,6 +278,21 @@ if __name__ == '__main__':
         args.bnn.output_activation = None
         del args.bnn.linear_outputs
 
+    # check num adaptation steps
+    if args.mcmc.step_adjust_id is not None:
+        if args.mcmc.step_adjust_fraction is None:
+            if args.mcmc.num_adaptation_steps is None:
+                raise ValueError(
+                    'Step adjust requires either the fraction or the exact '
+                    + 'num adaptation steps.'
+                )
+
+        else:
+            args.mcmc.num_adaptation_steps = np.ceil(
+                args.mcmc.sample_chain.burnin * args.mcmc.step_adjust_fraction
+            )
+        del args.mcmc.step_adjust_fraction
+
     # make mcmc_args contain most args for get_bnn_transform()
     mcmc_args = vars(args.mcmc)
     mcmc_args.update(vars(mcmc_args.pop('sample_chain')))
@@ -282,18 +308,51 @@ if __name__ == '__main__':
     )
     iter_results = local_res.pop('iter_results')
 
-    # create output directory
-
-    # create visualizations
-    # target log prob line plot
-
-    # save total and mean is accepted
+    results = {}
+    results['mcmc_args'] = mcmc_args
+    results['is_accepted_total'] = iter_results['trace'].is_accepted.sum()
+    results['is_accepted_mean'] = iter_results['trace'].is_accepted.mean()
 
     # save params:
-    if iter_results['trace'].is_accepted.sum() > 0:
+    if results['is_accepted_total'] > 0:
+        results['log_prob_max'] = iter_results['trace'].accepted_results.target_log_prob.max()
+        results['log_prob_argmax'] = iter_results['trace'].accepted_results.target_log_prob.argmax()
+
+        results['log_prob_min'] = iter_results['trace'].accepted_results.target_log_prob.min()
+        results['log_prob_argmin'] = iter_results['trace'].accepted_results.target_log_prob.argmin()
+
+        #results['target_log_prob'] = iter_results['trace'].accepted_results.target_log_prob
+        plt.plot(iter_results['trace'].accepted_results.target_log_prob)
+
+        # create visualizations
+        # target log prob line plot
+        plt.plot(iter_results['trace'].accepted_results.target_log_prob)
+        plt.savefig(
+            os.path.join(args.dataset_filepath, 'target_log_prob.png'),
+            bbox_inches='tight',
+            dpi=300,
+        )
+
         weights_sets = [w[iter_results['trace'].is_accepted]
             for w in iter_results['samples']]
 
-        # initial
-        #last accepted
-        #max, min, & median, target log prob accepted.
+        bnn_ph, tf_placeholders = bnn_transform.bnn_mlp_placeholders(**vars(args.bnn))
+
+        # max, min, & median, target log prob accepted.
+
+        # First accepted, if not already saved
+        if results['log_prob_argmax'] != 0 and results['log_prob_argmin'] != 0:
+            io.save_json(
+                os.path.join(args.dataset_filepath, 'weights_first_accept.json'),
+                weights_sets[0],
+            )
+
+        # Last accepted, if not already saved
+        if results['log_prob_argmax'] != mcmc_args['num_samples'] - 1 \
+            and results['log_prob_argmin'] != mcmc_args['num_samples'] - 1:
+            pass
+
+    io.save_json(
+        os.path.join(args.dataset_filepath, 'bnn_mcmc_results.json'),
+        results,
+    )
