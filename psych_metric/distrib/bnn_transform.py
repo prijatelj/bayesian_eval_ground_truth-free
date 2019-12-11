@@ -270,7 +270,7 @@ def get_bnn_transform(
             kernel_id,
             kernel_args,
             step_adjust_id,
-            {'num_adaptation_steps': step_adjust_fraction * burnin},
+            {'num_adaptation_steps': np.ceil(step_adjust_fraction * burnin)},
         )
     else:
         kernel = get_mcmc_kernel(loss_fn, kernel_id, kernel_args)
