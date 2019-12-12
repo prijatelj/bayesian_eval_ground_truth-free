@@ -11,6 +11,7 @@ import json
 import tensorflow as tf
 import tensorflow_probability as tfp
 from psych_metric.distrib import bnn_transform
+from statsmodels.tsa.stattools import acf, pacf
 
 import src_candidates
 from experiment import io
@@ -258,7 +259,20 @@ if __name__ == '__main__':
             default=15,
             type=int,
             help='The number of epochs for ADAM initialization of the BNN.',
-            dest='adam_epochs',
+        )
+
+        parser.add_argument(
+            '--checkpoint_count',
+            default=5,
+            type=int,
+            help='The number of weights to be saved from each trace.',
+        )
+
+        parser.add_argument(
+            '--bnn_sample_pics',
+            default=3,
+            type=int,
+            help='The number of samples to visualize per checkpoint.',
         )
 
     args = io.parse_args(custom_args=add_custom_args)
@@ -288,15 +302,19 @@ if __name__ == '__main__':
                 )
 
         else:
-            args.mcmc.num_adaptation_steps = np.ceil(
+            args.mcmc.num_adaptation_steps = int(np.ceil(
                 args.mcmc.sample_chain.burnin * args.mcmc.step_adjust_fraction
-            )
+            ))
     del args.mcmc.step_adjust_fraction
 
     # make mcmc_args contain most args for get_bnn_transform()
     mcmc_args = vars(args.mcmc)
     mcmc_args.update(vars(mcmc_args.pop('sample_chain')))
     mcmc_args['kernel_args'] = vars(mcmc_args.pop('kernel'))
+
+    # Create directory
+    output_dir = args.data.dataset_filepath
+    output_dir = io.create_dirs(output_dir)
 
     # Run sample chain
     local_res = bnn_mcmc(
@@ -312,88 +330,133 @@ if __name__ == '__main__':
     results['mcmc_args'] = mcmc_args
     results['is_accepted_total'] = iter_results['trace'].is_accepted.sum()
     results['is_accepted_mean'] = iter_results['trace'].is_accepted.mean()
+    results['adam_epochs'] = args.adam_epochs
+    results['checkpoint_count'] = args.checkpoint_count
 
     # save params:
-    if results['is_accepted_total'] > 0:
-        os.makedirs(args.data.dataset_filepath, exist_ok=True)
-
+    if results['is_accepted_total'] <= 0:
+        io.save_json(
+            os.path.join(output_dir, 'bnn_mcmc_results.json'),
+            results,
+        )
+    else:
         results['log_prob_max'] = iter_results['trace'].accepted_results.target_log_prob.max()
         results['log_prob_argmax'] = iter_results['trace'].accepted_results.target_log_prob.argmax()
 
         results['log_prob_min'] = iter_results['trace'].accepted_results.target_log_prob.min()
         results['log_prob_argmin'] = iter_results['trace'].accepted_results.target_log_prob.argmin()
 
-        #results['target_log_prob'] = iter_results['trace'].accepted_results.target_log_prob
-        plt.plot(iter_results['trace'].accepted_results.target_log_prob)
-
         # create visualizations
         # target log prob line plot
         plt.plot(iter_results['trace'].accepted_results.target_log_prob)
         plt.savefig(
-            os.path.join(args.data.dataset_filepath, 'target_log_prob.png'),
+            os.path.join(output_dir, 'target_log_prob.png'),
             bbox_inches='tight',
             dpi=300,
         )
 
         # pacf of target log prob:
-        #plt.plot(
+        if not (iter_results['trace'].accepted_results.target_log_prob == iter_results['trace'].accepted_results.target_log_prob[0]).all():
+            pd.DataFrame(acf(
+                iter_results['trace'].accepted_results.target_log_prob,
+                nlags=int(np.ceil(len(iter_results['trace'].accepted_results.target_log_prob) / 2))
+            )).plot(kind='bar')
+            plt.savefig(
+                os.path.join(output_dir, 'acf_log_prob.png'),
+                bbox_inches='tight',
+                dpi=300,
+            )
+
+            pd.DataFrame(pacf(
+                iter_results['trace'].accepted_results.target_log_prob,
+                nlags=int(np.ceil(len(iter_results['trace'].accepted_results.target_log_prob) / 10))
+            )).plot(kind='bar')
+            plt.savefig(
+                os.path.join(output_dir, 'pacf_log_prob.png'),
+                bbox_inches='tight',
+                dpi=300,
+            )
+
+        # TODO perhaps save the picture zoomed in w/o the initial spike that
+        # tends to occur?
 
         # Save initial weights
         if args.adam_epochs > 0:
             io.save_json(
-                os.path.join(args.data.dataset_filepath, 'weights_adam_inital.json'),
+                os.path.join(output_dir, 'weights_adam_inital.json'),
                 local_res['weights'],
             )
 
         weights_sets = [w[iter_results['trace'].is_accepted]
             for w in iter_results['samples']]
 
-        bnn_ph, tf_placeholders = bnn_transform.bnn_mlp_placeholders(**vars(args.bnn))
-
-        # max target log prob accepted.
-        io.save_json(
-            os.path.join(args.data.dataset_filepath, 'weights_max_log_prob.json'),
-            [
-                weights_sets[0][results['log_prob_argmax']],
-                weights_sets[1][results['log_prob_argmax']],
-                weights_sets[2][results['log_prob_argmax']],
-            ],
-        )
-        # min target log prob accepted.
-        io.save_json(
-            os.path.join(args.data.dataset_filepath, 'weights_min_log_prob.json'),
-            [
-                weights_sets[0][results['log_prob_argmin']],
-                weights_sets[1][results['log_prob_argmin']],
-                weights_sets[2][results['log_prob_argmin']],
-            ],
-        )
-
-        # First accepted, if not already saved
-        if results['log_prob_argmax'] != 0 and results['log_prob_argmin'] != 0:
+        if results['is_accepted_total'] <= args.checkpoint_count:
+            # save all of the weights, or the entire trace
             io.save_json(
-                os.path.join(args.data.dataset_filepath, 'weights_first_accept.json'),
-                [weights_sets[0][0], weights_sets[1][0], weights_sets[2][0]],
+                os.path.join(output_dir, f'trace.json'),
+                iter_results['trace'],
             )
-        # TODO perhaps save the picture zoomed in w/o the initial spike that
-        # tends to occur?
-        #else:
-        #    plt.plot(iter_results['trace'].accepted_results.target_log_prob[10:])
-        #    plt.savefig(
-        #        os.path.join(args.data.dataset_filepath, 'target_log_prob.png'),
-        #        bbox_inches='tight',
-        #        dpi=300,
-        #    )
+        else:
+            if args.checkpoint_count <= 2:
+                chkpt_idx = [0]
+                if results['is_accepted_total'] > 1:
+                    chkpt_idx.append(results['is_accepted_total'] - 1)
+            else:
+                chkpt_idx = [
+                    i for i in range(results['is_accepted_total'])
+                    if i % np.ceil(results['is_accepted_total']
+                    / (args.checkpoint_count - 1)) == 0
+                ]
 
-        # Last accepted, if not already saved
-        if results['log_prob_argmax'] != mcmc_args['num_samples'] - 1 \
-            and results['log_prob_argmin'] != mcmc_args['num_samples'] - 1:
-            io.save_json(
-                os.path.join(args.data.dataset_filepath, 'weights_first_accept.json'),
-                [weights_sets[0][-1], weights_sets[1][-1], weights_sets[2][-1]],
+            # Save last accepted weights, first accepted weights already saved
+            if results['is_accepted_total'] - 1 != chkpt_idx[-1]:
+                chkpt_idx.append(results['is_accepted_total'] - 1)
+
+            for i in chkpt_idx:
+                io.save_json(
+                    os.path.join(output_dir, f'weights_{i}_idx.json'),
+                    [w[i] for w in weights_sets],
+                )
+
+        # max target log prob accepted, if not already saved
+        io.save_json(
+            os.path.join(output_dir, 'weights_max_log_prob.json'),
+            [w[results['log_prob_argmax']] for w in iter_results['samples']],
+        )
+        # min target log prob accepted, if not already saved
+        io.save_json(
+            os.path.join(output_dir, 'weights_min_log_prob.json'),
+            [w[results['log_prob_argmin']] for w in iter_results['samples']],
+        )
+
+        # BNN output of a few samples
+        if args.bnn_sample_pics > 0:
+            bnn_ph, tf_placeholders = bnn_transform.bnn_mlp_placeholders(
+                **vars(args.bnn),
+            )
+            np_density = bnn_transform.assign_weights_bnn(
+                weights_sets,
+                tf_placeholders,
+                bnn_ph,
+                local_res['ss0'],
+                local_res['tf_input'],
+                sess_config=local_res['cpu_config'],
             )
 
-    io.save_json(
-        os.path.join(args.data.dataset_filepath, 'bnn_mcmc_results.json'),
-        results,
-    )
+            """
+            for i in range(args.bnn_sample_pics):
+                #visualization_snippets.overlaid_pairplot(pd.DataFrame(
+                visualization_snippets.pair_plot_info(pd.DataFrame(
+                    np_density[:, i, :]
+                ))
+                plt.savefig(
+                    os.path.join(output_dir, f'sample_{i}.png'),
+                    bbox_inches='tight',
+                    dpi=300,
+                )
+            """
+
+        io.save_json(
+            os.path.join(output_dir, 'bnn_mcmc_results.json'),
+            results,
+        )
