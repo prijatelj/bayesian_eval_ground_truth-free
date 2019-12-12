@@ -24,8 +24,6 @@ def corr_2d_heatmap(df, suptitle=None):
     if isinstance(suptitle, str):
         t=f.suptitle(suptitle, fontsize=14)
 
-    plt.show()
-
 
 def many_jointplots(df, title=None, axes_lim=None, diag_kind='kde'):
     plot_kws = {'edgecolor': 'k', 'linewidth': 0.5}
@@ -50,7 +48,6 @@ def many_jointplots(df, title=None, axes_lim=None, diag_kind='kde'):
     if isinstance(title, str):
         t = pp.fig.suptitle(title, fontsize=14)
 
-    plt.show()
 
 def scatter3d(df, cols):
     fig = plt.figure(figsize=(8, 6))
@@ -65,8 +62,6 @@ def scatter3d(df, cols):
     ax.set_ylabel(cols[1])
     ax.set_zlabel(cols[2])
 
-    plt.show()
-
 
 def aligned_hists(df, bins=10, title=None, xaxis_label=None, yaxis_label=None):
     fig, axes = plt.subplots()
@@ -80,8 +75,6 @@ def aligned_hists(df, bins=10, title=None, xaxis_label=None, yaxis_label=None):
         fig.text(0.5, 0.04, xaxis_label, ha='center')
     if isinstance(yaxis_label, str):
         fig.text(0.04, 0.5, yaxis_label, va='center', rotation='vertical')
-
-    plt.show()
 
 
 def func_on_scatter(
@@ -123,8 +116,6 @@ def func_on_scatter(
 
     if isinstance(title, str):
         t = pp.fig.suptitle(title, fontsize=14)
-
-    plt.show()
 
 
 def hist_func(
@@ -203,8 +194,6 @@ def hist_func(
         fig.text(0.5, 0.04, xaxis_label, ha='center')
     if isinstance(yaxis_label, str):
         fig.text(0.04, 0.5, yaxis_label, va='center', rotation='vertical')
-
-    plt.show()
 
 
 def pair_plot_info(
@@ -291,4 +280,13 @@ def pair_plot_info(
     if isinstance(title, str):
         t = pg.fig.suptitle(title, fontsize=14)
 
-    plt.show()
+
+def overlaid_pairplot(dfs, *args, **kwargs):
+    """Creates a pair plot of overlaid data."""
+
+    # TODO create / get joint axes for each plot
+
+    # TODO get optional
+
+    for df in dfs:
+        pair_plot_info(df, *args, **kwargs)
