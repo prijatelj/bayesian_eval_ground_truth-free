@@ -60,6 +60,7 @@ def bnn_mlp_placeholders(
     hidden_activation=tf.math.sigmoid,
     hidden_use_bias=True,
     output_activation=tf.math.sigmoid,
+    output_use_bias=False,
     dtype=tf.float32,
     tf_device=None,
 ):
@@ -101,7 +102,13 @@ def bnn_mlp_placeholders(
         )
         tf_placeholders.append(weights)
 
-        bnn_out = (x @ weights) # + bias # No biases on outputs
+        if output_use_bias:
+            bias = tf.placeholder(dtype, [input_labels.shape[1]], 'output_bias')
+            tf_placeholders.append(bias)
+        else:
+            bias = tf.zeros([num_hidden], dtype, bias_name)
+
+        bnn_out = (x @ weights) + bias # + bias # No biases on outputs
         if output_activation:
             bnn_out = output_activation(bnn_out)
 
