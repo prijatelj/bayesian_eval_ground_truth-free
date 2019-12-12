@@ -123,6 +123,32 @@ def save_json(
         )
 
 
+def create_dirs(filepath, overwrite=False):
+    """Ensures the directory path exists. Creates a sub folder with current
+    datetime if it exists and overwrite is False.
+    """
+    # Check if dir already exists
+    if not overwrite and os.path.isdir(filepath):
+        logging.warning(' '.join([
+            '`overwrite` is False to prevent overwriting existing directories',
+            'and there is an existing file at the given filepath:',
+            f'`{filepath}`',
+        ]))
+
+        # NOTE beware possibility of a program writing the same file in parallel
+        filepath = os.path.join(
+            filepath,
+            datetime.now().strftime('_%Y-%m-%d_%H-%M-%S'),
+        )
+        os.makedirs(filepath, exist_ok=True)
+
+        logging.warning(f'The filepath has been changed to: {filepath}')
+    else:
+        os.makedirs(filepath, exist_ok=True)
+
+    return filepath
+
+
 def add_hardware_args(parser):
     """Adds the arguments detailing the hardware to be used."""
     # TODO consider packaging as a dict/NestedNamespace
