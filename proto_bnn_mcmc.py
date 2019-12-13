@@ -220,7 +220,7 @@ if __name__ == '__main__':
         init_state, loss = adam_init(
             data,
             targets,
-            args.num_hidden,
+            args.bnn.num_hidden,
             data.shape[1],
             args.adam_epochs,
             cpus=args.cpu,
