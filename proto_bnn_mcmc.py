@@ -261,7 +261,7 @@ if __name__ == '__main__':
             burnin=args.mcmc.sample_chain.burnin,
             lag=args.mcmc.sample_chain.lag,
             step_size=args.mcmc.kernel.step_size, # 5e-4
-            num_leapfrog_steps=args.mcmc.sample_chain.num_leapfrog_steps, # 5
+            num_leapfrog_steps=args.mcmc.kernel.num_leapfrog_steps, # 5
             num_adaptation_steps=args.mcmc.num_adaptation_steps,
             config=config,
         )
