@@ -108,7 +108,7 @@ def add_mcmc_args(parser):
         default=1000,
         type=int,
         help='The number of samples obtained from the MCMC sample chain.',
-        dest='mcmc.sample_chain.num_samples',
+        dest='mcmc.sample_chain.num_results',
     )
 
     sample_chain.add_argument(
