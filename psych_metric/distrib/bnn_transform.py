@@ -106,9 +106,9 @@ def bnn_mlp_placeholders(
             bias = tf.placeholder(dtype, [input_labels.shape[1]], 'output_bias')
             tf_placeholders.append(bias)
         else:
-            bias = tf.zeros([num_hidden], dtype, bias_name)
+            bias = tf.zeros([input_labels.shape[1]], dtype, bias_name)
 
-        bnn_out = (x @ weights) + bias # + bias # No biases on outputs
+        bnn_out = (x @ weights) + bias
         if output_activation:
             bnn_out = output_activation(bnn_out)
 
