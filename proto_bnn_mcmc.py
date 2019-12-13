@@ -247,7 +247,7 @@ if __name__ == '__main__':
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
         plt.close()
 
-        pd.DataFrame(acf(output[1].accepted_results.target_log_prob[:int(args.num_results / 4)])).plot(kind='bar')
+        pd.DataFrame(acf(output[1].accepted_results.target_log_prob[:int(args.sample_chain.num_results / 4)])).plot(kind='bar')
         plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
         plt.close()
 
@@ -270,7 +270,7 @@ if __name__ == '__main__':
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
         plt.close()
 
-        pd.DataFrame(acf(output[1].accepted_results.target_log_prob[:int(args.num_results / 4)])).plot(kind='bar')
+        pd.DataFrame(acf(output[1].accepted_results.target_log_prob[:int(args.sample_chain.num_results / 4)])).plot(kind='bar')
         plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
         plt.close()
 
