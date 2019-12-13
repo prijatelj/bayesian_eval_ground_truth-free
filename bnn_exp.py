@@ -104,7 +104,7 @@ def add_mcmc_args(parser):
     )
 
     sample_chain.add_argument(
-        '--num_samples',
+        '--num_results',
         default=1000,
         type=int,
         help='The number of samples obtained from the MCMC sample chain.',
@@ -132,9 +132,9 @@ def add_mcmc_args(parser):
 
     sample_chain.add_argument(
         '--parallel_iter',
-        default=10,
+        default=1,
         type=int,
-        help='The number of parallel iterations for the MCMC sample chain.',
+        help='The number of MCMC sample chains to run in parallel.',
         dest='mcmc.sample_chain.parallel_iter',
     )
 
@@ -204,7 +204,7 @@ def add_mcmc_args(parser):
         help=' '.join([
             'The exact number of steps used to determine the step size.',
         ]),
-        dest='mcmc.step_adjust_fraction',
+        dest='mcmc.num_adaptation_steps',
     )
 
     # TODO consider adding the entire parameter set as args.
@@ -248,33 +248,33 @@ def add_bnn_transform_args(parser):
     )
 
 
+def add_custom_args(parser):
+    add_mcmc_args(parser)
+    add_bnn_transform_args(parser)
+
+    parser.add_argument(
+        '--adam_epochs',
+        default=0,
+        type=int,
+        help='The number of epochs for ADAM initialization of the BNN.',
+    )
+
+    parser.add_argument(
+        '--checkpoint_count',
+        default=5,
+        type=int,
+        help='The number of weights to be saved from each trace.',
+    )
+
+    parser.add_argument(
+        '--bnn_sample_pics',
+        default=3,
+        type=int,
+        help='The number of samples to visualize per checkpoint.',
+    )
+
 
 if __name__ == '__main__':
-    def add_custom_args(parser):
-        add_mcmc_args(parser)
-        add_bnn_transform_args(parser)
-
-        parser.add_argument(
-            '--adam_epochs',
-            default=15,
-            type=int,
-            help='The number of epochs for ADAM initialization of the BNN.',
-        )
-
-        parser.add_argument(
-            '--checkpoint_count',
-            default=5,
-            type=int,
-            help='The number of weights to be saved from each trace.',
-        )
-
-        parser.add_argument(
-            '--bnn_sample_pics',
-            default=3,
-            type=int,
-            help='The number of samples to visualize per checkpoint.',
-        )
-
     args = io.parse_args(custom_args=add_custom_args)
 
     # handle kernel args when RWM: change step_size to scale
