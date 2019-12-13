@@ -239,7 +239,7 @@ if __name__ == '__main__':
             num_results=args.mcmc.sample_chain.num_results,
             burnin=args.mcmc.sample_chain.burnin,
             lag=args.mcmc.sample_chain.lag,
-            rwm_scale=args.mcmc.sample_chain.step_size,
+            rwm_scale=args.mcmc.kernel.step_size,
             config=config,
         )
 
@@ -260,7 +260,7 @@ if __name__ == '__main__':
             num_results=args.mcmc.sample_chain.num_results,
             burnin=args.mcmc.sample_chain.burnin,
             lag=args.mcmc.sample_chain.lag,
-            step_size=args.mcmc.sample_chain.step_size, # 5e-4
+            step_size=args.mcmc.kernel.step_size, # 5e-4
             num_leapfrog_steps=args.mcmc.sample_chain.num_leapfrog_steps, # 5
             num_adaptation_steps=args.mcmc.num_adaptation_steps,
             config=config,
@@ -283,7 +283,7 @@ if __name__ == '__main__':
             num_results=args.mcmc.sample_chain.num_results,
             burnin=args.mcmc.sample_chain.burnin,
             lag=args.mcmc.sample_chain.lag,
-            step_size=args.mcmc.sample_chain.step_size, # 5e-4
+            step_size=args.mcmc.kernel.step_size, # 5e-4
             config=config,
         )
 
