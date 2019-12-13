@@ -17,6 +17,7 @@ def bnn_mlp(
     hidden_activation=tf.math.sigmoid,
     hidden_use_bias=True,
     output_activation=tf.math.sigmoid,
+    output_use_bias=False,
     dtype=tf.float32,
     tf_device=None,
 ):
@@ -42,7 +43,7 @@ def bnn_mlp(
         dense_layer = tf.keras.layers.Dense(
             input_labels.shape[1],
             activation=output_activation,
-            use_bias=False,
+            use_bias=output_use_bias,
             dtype=dtype,
             name='bnn_output_pred',
         )
