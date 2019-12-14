@@ -243,11 +243,10 @@ if __name__ == '__main__':
             config=config,
         )
 
-        acf_lag = {
-            '0.5': np.where(np.abs(output[1].accepted_results.target_log_prob) < 0.5)[0][:10],
-            '0.1': np.where(np.abs(output[1].accepted_results.target_log_prob) < 0.1)[0][:10],
-            '0.01': np.where(np.abs(output[1].accepted_results.target_log_prob) < 0.01)[0][:10],
-        }
+        acf_log_prob = acf(
+            output[1].accepted_results.target_log_prob,
+            nlags=int(args.mcmc.sample_chain.num_results / 4),
+        )
 
         plt.plot(output[1].accepted_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
@@ -272,11 +271,10 @@ if __name__ == '__main__':
             config=config,
         )
 
-        acf_lag = {
-            '0.5': np.where(np.abs(output[1].accepted_results.target_log_prob) < 0.5)[0][:10],
-            '0.1': np.where(np.abs(output[1].accepted_results.target_log_prob) < 0.1)[0][:10],
-            '0.01': np.where(np.abs(output[1].accepted_results.target_log_prob) < 0.01)[0][:10],
-        }
+        acf_log_prob = acf(
+            output[1].accepted_results.target_log_prob,
+            nlags=int(args.mcmc.sample_chain.num_results / 4),
+        )
 
         plt.plot(output[1].accepted_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
@@ -299,11 +297,10 @@ if __name__ == '__main__':
             config=config,
         )
 
-        acf_lag = {
-            '0.5': np.where(np.abs(output[1].target_log_prob) < 0.5)[0][:10],
-            '0.1': np.where(np.abs(output[1].target_log_prob) < 0.1)[0][:10],
-            '0.01': np.where(np.abs(output[1].target_log_prob) < 0.01)[0][:10],
-        }
+        acf_log_prob = acf(
+            output[1].target_log_prob,
+            nlags=int(args.mcmc.sample_chain.num_results / 4),
+        )
 
         plt.plot(output[1].target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
@@ -318,6 +315,11 @@ if __name__ == '__main__':
         new_starting_state,
     )
 
+    acf_lag = {
+        '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
+        '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
+        '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
+    }
     io.save_json(
         os.path.join(output_dir, 'acf_lag.json'),
         acf_lag,
