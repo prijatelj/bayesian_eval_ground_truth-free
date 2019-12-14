@@ -23,5 +23,5 @@ python3 proto_bnn_mcmc.py
     --gpu 1 \
     --kernel_id 'NoUTurnSampler' \
     --num_results 1000000 \
-    --step_size 0.0005
+    --step_size 0.0005 \
     --log_level 'INFO'
