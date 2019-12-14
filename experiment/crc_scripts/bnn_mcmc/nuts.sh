@@ -13,8 +13,7 @@ BASE_PATH="$HOME/Public/psych_metric"
 module add conda
 source activate "$HOME/TF-1.15"
 
-python3 proto_bnn_mcmc.py
-    "$BASE_PATH/MCMC/NUTS/nuts_10s_10u_1e4a_1e6nr_5e-4ss/" \
+python3 proto_bnn_mcmc.py "$BASE_PATH/MCMC/NUTS/nuts_10s_10u_1e4a_1e6nr_5e-4ss/" \
     --num_hidden 10 \
     --num_samples 10 \
     --adam_epochs 10000 \
