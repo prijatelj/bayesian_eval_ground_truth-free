@@ -23,8 +23,8 @@ python3 proto_bnn_mcmc.py
     --gpu 1 \
     --kernel_id 'HamiltonianMonteCarlo' \
     --num_results 1000000 \
-    --step_size 0.0005
-    --num_leapfrog_steps 5
+    --step_size 0.0005 \
+    --num_leapfrog_steps 5 \
     --lag 5 \
     --burnin 10000000 \
     --log_level 'INFO'
