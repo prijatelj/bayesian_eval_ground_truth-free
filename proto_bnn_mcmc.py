@@ -287,6 +287,15 @@ if __name__ == '__main__':
             config=config,
         )
 
-        #plt.plot(output[1].accepted_results.target_log_prob)
-        #plt.show()
-        #plt.close()
+        plt.plot(output[1].target_log_prob)
+        plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
+        plt.close()
+
+        pd.DataFrame(acf(output[1].target_log_prob[:int(args.mcmc.sample_chain.num_results / 4)])).plot(kind='bar')
+        plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
+        plt.close()
+
+    io.save_json(
+        os.path.join(output_dir, 'last_weights.json'),
+        new_starting_state,
+    )
