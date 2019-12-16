@@ -243,6 +243,9 @@ if __name__ == '__main__':
             config=config,
         )
 
+        accept_total = output[1].is_accepted.sum()
+        accept_rate = output[1].is_accepted.mean()
+
         acf_log_prob = acf(
             output[1].accepted_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -271,6 +274,9 @@ if __name__ == '__main__':
             config=config,
         )
 
+        accept_total = output[1].is_accepted.sum()
+        accept_rate = output[1].is_accepted.mean()
+
         acf_log_prob = acf(
             output[1].accepted_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -297,6 +303,10 @@ if __name__ == '__main__':
             config=config,
         )
 
+        # TODO need to ensure NUTS has `.is_accepted` property in its trace
+        accept_total = output[1].is_accepted.sum()
+        accept_rate = output[1].is_accepted.mean()
+
         acf_log_prob = acf(
             output[1].target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -316,6 +326,8 @@ if __name__ == '__main__':
     )
 
     acf_lag = {
+        'accept_total': accept_total,
+        'accept_rate': accept_rate,
         '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
         '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
         '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
