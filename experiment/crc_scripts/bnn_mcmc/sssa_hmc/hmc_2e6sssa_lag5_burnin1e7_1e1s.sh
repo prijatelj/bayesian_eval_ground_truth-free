@@ -26,3 +26,4 @@ python3 proto_bnn_mcmc.py "$BASE_PATH/MCMC/HMC/SSSA/hmc_2e6sssa_10u_1e7burn_5lag
     --burnin 10000000 \
     --num_adaptation_steps 2000000 \
     --log_level 'INFO'
+    --log_file "$BASE_PATH/logs/mcmc/hmc/"
