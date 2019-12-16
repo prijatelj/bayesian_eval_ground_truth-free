@@ -169,7 +169,7 @@ def add_mcmc_args(parser):
     kernel.add_argument(
         '--num_leapfrog_steps',
         default=10,
-        type=float,
+        type=int,
         help='The number of leap frog steps for HMC.',
         dest='mcmc.kernel.num_leapfrog_steps',
     )
