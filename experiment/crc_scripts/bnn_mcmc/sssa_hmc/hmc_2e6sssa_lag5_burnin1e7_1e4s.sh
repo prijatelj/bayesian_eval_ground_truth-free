@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #$ -pe smp 16        # Specify parallel environment and legal core size
-#$ -N 4_hmc_sssa       # Specify job name
+#$ -N hmc_4_sssa       # Specify job name
 #$ -q long
 #$ -o logs/mcmc/hmc/logs/
 #$ -e logs/mcmc/hmc/logs/
