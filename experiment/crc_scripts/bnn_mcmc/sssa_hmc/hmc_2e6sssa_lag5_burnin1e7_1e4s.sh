@@ -2,8 +2,7 @@
 
 #$ -pe smp 16        # Specify parallel environment and legal core size
 #$ -N 4_hmc_sssa       # Specify job name
-#$ -q gpu
-#$ -l gpu_card=1
+#$ -q long
 #$ -o logs/mcmc/hmc/logs/
 #$ -e logs/mcmc/hmc/logs/
 
