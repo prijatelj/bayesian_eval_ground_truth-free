@@ -274,15 +274,20 @@ if __name__ == '__main__':
             config=config,
         )
 
-        accept_total = output[1].is_accepted.sum()
-        accept_rate = output[1].is_accepted.mean()
+        if args.mcmc.num_adaptation_steps > 0:
+            mcmc_results = output[1].inner_results
+        else:
+            mcmc_results = output[1]
+
+        accept_total = mcmc_results.is_accepted.sum()
+        accept_rate = mcmc_results.is_accepted.mean()
 
         acf_log_prob = acf(
-            output[1].accepted_results.target_log_prob,
+            mcmc_results.accepted_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
 
-        plt.plot(output[1].accepted_results.target_log_prob)
+        plt.plot(mcmc_results.accepted_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
         plt.close()
 
