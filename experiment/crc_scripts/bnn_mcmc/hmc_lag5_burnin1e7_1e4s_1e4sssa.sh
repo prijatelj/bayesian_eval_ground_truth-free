@@ -17,7 +17,7 @@ python3 proto_bnn_mcmc.py \
     "$BASE_PATH/MCMC/HMC/hmc_1e4s_10u_1e4a_1e7burn_5lag_1e6nr_5e-4ss_5nlfs_2e6sssa/" \
     --num_hidden 10 \
     --num_samples 10000 \
-    --adam_epochs 10000 \
+    #--adam_epochs 10000 \
     --cpu 1 \
     --cpu_cores 16 \
     --gpu 1 \
