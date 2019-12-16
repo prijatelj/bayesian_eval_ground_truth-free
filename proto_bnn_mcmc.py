@@ -1,4 +1,5 @@
 """Prototyping bnn mcmc on CRC."""
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -208,7 +209,7 @@ if __name__ == '__main__':
     # Create directory
     output_dir = args.data.dataset_filepath
     output_dir = io.create_dirs(output_dir)
-
+    logging.info('Created the output directories')
 
     data, targets, sample_log_prob, init_state = setup_rwm_sim(
         width=args.bnn.num_hidden,
@@ -216,7 +217,10 @@ if __name__ == '__main__':
         scale_identity_multiplier=args.mcmc.diff_scale,
     )
 
+    logging.info('Setup the simulation data and the log prob function')
+
     if args.adam_epochs > 0:
+        logging.info('Starting ADAM initialization training')
         init_state, loss = adam_init(
             data,
             targets,
@@ -227,8 +231,11 @@ if __name__ == '__main__':
             cpu_cores=args.cpu_cores,
             gpus=args.gpu,
         )
+        logging.info('Finished ADAM initialization training')
 
     config = io.get_tf_config(args.cpu, args.cpu_cores, 0)
+
+    logging.info('Starting MCMC training')
 
     if args.mcmc.kernel_id == 'RandomWalkMetropolis':
         output, new_starting_state = run_rwm(
@@ -324,6 +331,8 @@ if __name__ == '__main__':
         pd.DataFrame(acf_log_prob).plot(kind='bar')
         plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
         plt.close()
+
+    logging.info('Finished MCMC training and specific kernel data saving.')
 
     io.save_json(
         os.path.join(output_dir, 'last_weights.json'),
