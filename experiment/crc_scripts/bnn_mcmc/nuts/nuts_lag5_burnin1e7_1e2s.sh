@@ -24,4 +24,4 @@ python3 proto_bnn_mcmc.py "$BASE_PATH/MCMC/NUTS/nuts_10u_1e6nr_1e7burn_5lag_5e-4
     --lag 5 \
     --burnin 10000000 \
     --log_level 'INFO' \
-    --log_file "$BASE_PATH/logs/mcmc/nuts/"
+    --log_file "$BASE_PATH/logs/mcmc/nuts/nuts_2.log"
