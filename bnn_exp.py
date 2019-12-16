@@ -200,7 +200,7 @@ def add_mcmc_args(parser):
     mcmc.add_argument(
         '--num_adaptation_steps',
         default=None,
-        type=float,
+        type=int,
         help=' '.join([
             'The exact number of steps used to determine the step size.',
         ]),
