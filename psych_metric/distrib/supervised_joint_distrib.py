@@ -4,6 +4,7 @@ distribution and that the prediction output can be obtained with some error by
 a transformation function of the target distribution.
 """
 from copy import deepcopy
+import logging
 from multiprocessing import Pool
 
 import numpy as np
@@ -862,7 +863,10 @@ class SupervisedJointDistrib(object):
         num_bad_samples = len(bad_sample_idx)
 
         while num_bad_samples > 0:
-            print(f'Bad Times: num bad samples = {num_bad_samples}')
+            logging.Info(
+                'SJD: Number of samples outside of simplex to be replaced: %d',
+                num_bad_samples,
+            )
 
             # rerun session w/ enough samples to replace bad samples and some.
             new_pred = self.tf_sample_sess.run(
