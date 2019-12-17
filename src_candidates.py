@@ -190,8 +190,6 @@ def get_sjd_candidates(
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: Multivariate Cauchy: loc and cov matrix initialized from
         # data and estimated via a ADAM w/ constant location.
-        raise NotImplementedError('Need to sort out const params and test')
-
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
         # Const params for Dir w/ ADAM
