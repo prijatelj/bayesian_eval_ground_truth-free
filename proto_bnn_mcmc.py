@@ -217,6 +217,11 @@ if __name__ == '__main__':
         scale_identity_multiplier=args.mcmc.diff_scale,
     )
 
+    io.save_json(
+        os.path.join(output_dir, 'data.json'),
+        {'input': data, 'output': targets},
+    )
+
     logging.info('Setup the simulation data and the log prob function')
 
     if args.adam_epochs > 0:
