@@ -445,7 +445,6 @@ def log_prob_exp(
     candidate,
     target,
     pred,
-    num_params,
     info_criterions=None,
 ):
     """Calculates the log probability of the candidate SupervisedJointDistrib
@@ -453,9 +452,8 @@ def log_prob_exp(
 
     Parameters
     ----------
-    candidates : dict(str: SupervisedJointDistrib)
-        Dict containing the string identifier of each SJD model to their
-        respective instance of a SupervisedJointDistrib.
+    candidates : SupervisedJointDistrib
+        instance of a SupervisedJointDistrib whose log prob is to be estimated.
     target : np.ndarray
     pred : np.ndarray
     info_criterions : list(str), optional
