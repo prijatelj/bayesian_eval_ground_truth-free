@@ -254,6 +254,7 @@ if __name__ == '__main__':
             rwm_scale=args.mcmc.kernel.step_size,
             config=config,
         )
+        logging.info('Finished RandomWalkMetropolis')
 
         accept_total = output[1].is_accepted.sum()
         accept_rate = output[1].is_accepted.mean()
@@ -263,6 +264,7 @@ if __name__ == '__main__':
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
 
+        logging.info('Starting RandomWalkMetropolis specific visuals')
         plt.plot(output[1].accepted_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
         plt.close()
@@ -285,6 +287,7 @@ if __name__ == '__main__':
             num_adaptation_steps=args.mcmc.num_adaptation_steps,
             config=config,
         )
+        logging.info('Finished HamiltonianMonteCarlo')
 
         if args.mcmc.num_adaptation_steps > 0:
             mcmc_results = output[1].inner_results
@@ -299,6 +302,7 @@ if __name__ == '__main__':
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
 
+        logging.info('Starting HamiltonianMonteCarlo specific visuals')
         plt.plot(mcmc_results.accepted_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
         plt.close()
@@ -319,6 +323,7 @@ if __name__ == '__main__':
             step_size=args.mcmc.kernel.step_size, # 5e-4
             config=config,
         )
+        logging.info('Finished NoUTurnSampler')
 
         # TODO need to ensure NUTS has `.is_accepted` property in its trace
         accept_total = output[1].is_accepted.sum()
@@ -329,6 +334,7 @@ if __name__ == '__main__':
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
 
+        logging.info('Starting NoUTurnSampler specific visuals')
         plt.plot(output[1].target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
         plt.close()
