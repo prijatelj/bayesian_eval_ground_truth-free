@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -pe smp 16        # Specify parallel environment and legal core size
+#$ -pe smp 24        # Specify parallel environment and legal core size
 #$ -N nuts_3       # Specify job name
 #$ -q long
 #$ -o logs/mcmc/nuts/logs/
@@ -15,11 +15,11 @@ source activate "$HOME/TF-1.15"
 python3 proto_bnn_mcmc.py "$BASE_PATH/MCMC/NUTS/nuts_10u_1e6nr_1e7burn_5lag_5e-4ss_1e3s/" \
     --num_samples 1000 \
     --cpu 1 \
-    --cpu_cores 16 \
+    --cpu_cores 24 \
     --gpu 0 \
     --num_hidden 10 \
     --kernel_id 'NoUTurnSampler' \
-    --num_results 1000000 \
+    --num_results 1000 \
     --step_size 0.0005 \
     --lag 5 \
     --burnin 10000000 \
