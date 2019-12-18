@@ -466,7 +466,7 @@ def log_prob_exp(
 
     if info_criterions:
         # Calculate any information criterions (target, pred, joint)
-        for var, value in results:
+        for var, value in results.items():
             # Get appropriate number of parameters from the SJD
             if var == 'target':
                 num_params = candidate.target_num_params
