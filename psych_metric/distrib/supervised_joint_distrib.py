@@ -863,7 +863,7 @@ class SupervisedJointDistrib(object):
         num_bad_samples = len(bad_sample_idx)
 
         while num_bad_samples > 0:
-            logging.Info(
+            logging.info(
                 'SJD: Number of samples outside of simplex to be replaced: %d',
                 num_bad_samples,
             )
