@@ -110,6 +110,7 @@ def run_hmc(
     step_size=5e-4,
     num_leapfrog_steps=5,
     num_adaptation_steps=None,
+    step_adjust_id='Simple',
     config=None,
 ):
     kernel=tfp.mcmc.HamiltonianMonteCarlo(
@@ -118,10 +119,16 @@ def run_hmc(
         num_leapfrog_steps=num_leapfrog_steps,
     )
     if num_adaptation_steps:
-        kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-            kernel,
-            num_adaptation_steps=num_adaptation_steps,
-        )
+        if step_adjust_id == 'Simple':
+            kernel = tfp.mcmc.SimpleStepSizeAdaptation(
+                kernel,
+                num_adaptation_steps=num_adaptation_steps,
+            )
+        else:
+            kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
+                kernel,
+                num_adaptation_steps=num_adaptation_steps,
+            )
 
     return sample_chain_run(
         data,
@@ -145,12 +152,44 @@ def run_nuts(
     burnin=0,
     lag=0,
     step_size=5e-4,
+    num_adaptation_steps=None,
+    step_adjust_id='Simple',
     config=None,
 ):
     kernel = tfp.mcmc.NoUTurnSampler(
         target_log_prob_fn=lambda x,y,z,q: sample_log_prob((x,y,z,q),data,targets),
         step_size=step_size,
     )
+
+    if num_adaptation_steps:
+        # TODO setup NUTS to use adaptative step sizes
+        trans_kernel = tfp.mcmc.TransformedTransistionKernel(
+            inner_kernel=kernel,
+            bijector=tfp.bijectors.Identity(),
+        )
+
+        if step_adjust_id == 'Simple':
+            kernel = tfp.mcmc.SimpleStepSizeAdaptation(
+                inner_kernel=trans_kernel,
+                num_adaptation_steps=num_adaptation_steps,
+                target_accept_prob=0.75,
+                step_size_setter_fn=lambda pkr, new_step_size: pkr._replace(
+                    inner_results=pkr.inner_results._replace(step_size=new_step_size)
+                ),
+                step_size_getter_fn=lambda pkr: pkr.inner_results.step_size,
+                log_accept_prob_getter_fn=lambda pkr: pkr.inner_results.log_accept_ratio,
+            )
+        else:
+            kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
+                inner_kernel=trans_kernel,
+                num_adaptation_steps=num_adaptation_steps,
+                target_accept_prob=0.75,
+                step_size_setter_fn=lambda pkr, new_step_size: pkr._replace(
+                    inner_results=pkr.inner_results._replace(step_size=new_step_size)
+                ),
+                step_size_getter_fn=lambda pkr: pkr.inner_results.step_size,
+                log_accept_prob_getter_fn=lambda pkr: pkr.inner_results.log_accept_ratio,
+            )
 
     return sample_chain_run(
         data,
@@ -286,6 +325,7 @@ if __name__ == '__main__':
             num_leapfrog_steps=args.mcmc.kernel.num_leapfrog_steps, # 5
             num_adaptation_steps=args.mcmc.num_adaptation_steps,
             config=config,
+            step_adjust_id=args.mcmc.step_adjust_id,
         )
         logging.info('Finished HamiltonianMonteCarlo')
 
@@ -322,20 +362,26 @@ if __name__ == '__main__':
             lag=args.mcmc.sample_chain.lag,
             step_size=args.mcmc.kernel.step_size, # 5e-4
             config=config,
+            num_adaptation_steps=args.mcmc.num_adaptation_steps,
+            step_adjust_id=args.mcmc.step_adjust_id,
         )
         logging.info('Finished NoUTurnSampler')
 
-        # TODO need to ensure NUTS has `.is_accepted` property in its trace
-        accept_total = output[1].is_accepted.sum()
-        accept_rate = output[1].is_accepted.mean()
+        if args.mcmc.num_adaptation_steps > 0:
+            mcmc_results = output[1].inner_results
+        else:
+            mcmc_results = output[1]
+
+        accept_total = mcmc_results.is_accepted.sum()
+        accept_rate = mcmc_results.is_accepted.mean()
 
         acf_log_prob = acf(
-            output[1].target_log_prob,
+            mcmc_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
 
         logging.info('Starting NoUTurnSampler specific visuals')
-        plt.plot(output[1].target_log_prob)
+        plt.plot(mcmc_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
         plt.close()
 
