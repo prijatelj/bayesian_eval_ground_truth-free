@@ -480,8 +480,8 @@ def log_prob_exp(
 
             value['info_criterion'] = distrib_utils.calc_info_criterion(
                 value['log_prob'],
-                info_criterions,
                 num_params,
+                info_criterions,
                 len(target),
             )
 
