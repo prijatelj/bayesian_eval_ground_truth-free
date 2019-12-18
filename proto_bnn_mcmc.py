@@ -163,7 +163,7 @@ def run_nuts(
 
     if num_adaptation_steps > 0:
         # TODO setup NUTS to use adaptative step sizes
-        trans_kernel = tfp.mcmc.TransformedTransistionKernel(
+        trans_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=kernel,
             bijector=tfp.bijectors.Identity(),
         )
