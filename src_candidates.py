@@ -100,8 +100,8 @@ def get_sjd_candidates(
     sjd_ids,
     dims,
     mle_args=None,
-    processes=16,
     sjd_args=None,
+    processes=16,
 ):
     """Creates the dictionary of candidate identifers to their
     SupervisedJointDistrib initialization arguments. This is a convenience

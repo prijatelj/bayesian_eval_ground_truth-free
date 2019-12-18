@@ -701,6 +701,7 @@ if __name__ == '__main__':
         data[1].shape[1],
         vars(args.mle),
         vars(args.sjd),
+        processes=args.cpu_cores,
     )
 
     #"""
