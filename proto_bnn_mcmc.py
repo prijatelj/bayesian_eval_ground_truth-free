@@ -165,7 +165,7 @@ def run_nuts(
         # TODO setup NUTS to use adaptative step sizes
         trans_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=kernel,
-            bijector=[tfp.bijectors.Identity()] * len(init_state.shape),
+            bijector=[tfp.bijectors.Identity()] * len(init_state),
         )
 
         if step_adjust_id == 'Simple':
