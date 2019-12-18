@@ -681,6 +681,11 @@ if __name__ == '__main__':
         add_human_sjd_args,
     )
 
+    # NOTE be aware that the defaults of SJD args will overwrite src candidates
+    del args.sjd.target_distrib
+    del args.sjd.transform_distrib
+    del args.sjd.independent
+
     # Load data once: features, labels, label_bin
     data = predictors.load_prep_data(
         args.dataset_id,
