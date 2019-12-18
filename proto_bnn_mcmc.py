@@ -368,7 +368,8 @@ if __name__ == '__main__':
         logging.info('Finished NoUTurnSampler')
 
         if args.mcmc.num_adaptation_steps > 0:
-            mcmc_results = output[1].inner_results
+            # Need to extract from Adaptive step and from Transformed kernels
+            mcmc_results = output[1].inner_results.inner_results
         else:
             mcmc_results = output[1]
 
