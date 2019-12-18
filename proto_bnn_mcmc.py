@@ -152,7 +152,7 @@ def run_nuts(
     burnin=0,
     lag=0,
     step_size=5e-4,
-    num_adaptation_steps=None,
+    num_adaptation_steps=0,
     step_adjust_id='Simple',
     config=None,
 ):
@@ -161,7 +161,7 @@ def run_nuts(
         step_size=step_size,
     )
 
-    if num_adaptation_steps:
+    if num_adaptation_steps > 0:
         # TODO setup NUTS to use adaptative step sizes
         trans_kernel = tfp.mcmc.TransformedTransistionKernel(
             inner_kernel=kernel,
