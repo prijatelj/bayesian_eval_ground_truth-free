@@ -163,23 +163,11 @@ def run_nuts(
 
     if num_adaptation_steps > 0:
         # TODO setup NUTS to use adaptative step sizes
-        #trans_kernel = tfp.mcmc.TransformedTransitionKernel(
-        #    inner_kernel=kernel,
-        #    bijector=[tfp.bijectors.Identity()] * len(init_state),
-        #)
+        trans_kernel = tfp.mcmc.TransformedTransitionKernel(
+            inner_kernel=kernel,
+            bijector=[tfp.bijectors.Identity()] * len(init_state),
+        )
 
-        if num_adaptation_steps:
-            if step_adjust_id == 'Simple':
-                kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-                    kernel,
-                    num_adaptation_steps=num_adaptation_steps,
-                )
-            else:
-                kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
-                    kernel,
-                    num_adaptation_steps=num_adaptation_steps,
-                )
-        """
         if step_adjust_id == 'Simple':
             kernel = tfp.mcmc.SimpleStepSizeAdaptation(
                 inner_kernel=trans_kernel,
@@ -202,7 +190,6 @@ def run_nuts(
                 step_size_getter_fn=lambda pkr: pkr.inner_results.step_size,
                 log_accept_prob_getter_fn=lambda pkr: pkr.inner_results.log_accept_ratio,
             )
-        """
 
     return sample_chain_run(
         data,
