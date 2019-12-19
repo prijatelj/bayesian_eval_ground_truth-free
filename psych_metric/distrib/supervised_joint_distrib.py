@@ -915,10 +915,10 @@ class SupervisedJointDistrib(object):
             estimate of the probability of the 2nd random variable's pdf. Only
             used if the 2nd random variable is dependent upon 1st, meaning we
             use a stochastic transform funciton.
-        joint : bool
-            If True then returns the joint log probability p(target, pred),
+        return_individuals : bool
+            If False then returns the joint log probability p(target, pred),
             otherwise returns a tuple/list of the two random variables
-            individual log probabilities.
+            individual log probabilities, and their joint.
 
         Returns
         -------

@@ -456,7 +456,7 @@ def log_prob_exp(
     info_criterions : list(str), optional
     """
     # Calculate the log probability (log likelihood)
-    log_probs = candidate.log_prob(target, pred)
+    log_probs = candidate.log_prob(target, pred, return_individuals=True)
     results = {var:{'log_prob': log_probs[i]} for i, var in
         enumerate(['joint', 'target', 'transform'])
     }
