@@ -175,9 +175,6 @@ def old_mean_results(log_prob_results, info_criterions=None):
 
 def mean_results(log_prob_results, info_criterions=None):
     """Average the results"""
-    # TODO make an updated mean_results, this is for the older format.
-    raise NotImplementedError
-
     # Obtain mean log prob for both datasets and all distribs
     results = {}
     for candidate in log_prob_results[0].keys():
