@@ -942,16 +942,10 @@ class SupervisedJointDistrib(object):
                 pred = pred.astype(self.dtype)
                 pred = np.maximum(pred, np.finfo(pred.dtype).tiny)
 
-            with tf.Session() as sess:
-                sess.run((
-                    tf.global_variables_initializer(),
-                    tf.local_variables_initializer(),
-                ))
-
-                log_prob_pair = sess.run((
-                    self.target_distrib.log_prob(target),
-                    self.transform_distrib.log_prob(pred)
-                ))
+            log_prob_pair = self.tf_sample_sess.run((
+                self.target_distrib.log_prob(target),
+                self.transform_distrib.log_prob(pred)
+            ))
 
             if return_individuals:
                 return (
@@ -963,7 +957,7 @@ class SupervisedJointDistrib(object):
             return log_prob_pair[0] + log_prob_pair[1]
 
         log_prob_target = self.target_distrib.log_prob(target).eval(
-            session=tf.Session(),
+            session=self.tf_sample_sess,
         )
 
         # Calculate the log prob of the stochastic transform function
