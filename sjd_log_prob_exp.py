@@ -188,19 +188,19 @@ def mean_results(log_prob_results, info_criterions=None):
 
             for distrib in {'joint', 'target', 'transform'}:
                 # mean log prob
-                results[candidate][dataset]['log_prob'][distrib] = np.mean([
-                    fold[candidate][dataset]['log_prob'][distrib]
+                results[candidate][dataset][distrib]['log_prob'] = np.mean([
+                    fold[candidate][dataset][distrib]['log_prob']
                     for fold in log_prob_results
                 ])
 
                 # mean info criterions
                 if not info_criterions:
                     continue
-                results[candidate][dataset]['info_criterion'][distrib] = {}
+                results[candidate][dataset][distrib]['info_criterion'] = {}
 
                 for ic in info_criterions:
-                    results[candidate][dataset]['info_criterion'][distrib][ic] = np.mean([
-                        fold[candidate][dataset]['info_criterion'][distrib][ic]
+                    results[candidate][dataset][distrib]['info_criterion'][ic] = np.mean([
+                        fold[candidate][dataset][distrib]['info_criterion'][ic]
                         for fold in log_prob_results
                     ])
 
@@ -720,6 +720,8 @@ if __name__ == '__main__':
     )
 
     #"""
+    info_criterions = ['bic', 'hqc', 'aic']
+
     uh = sjd_kfold_log_prob(
         candidates,
         dir_path=args.human_sjd.dir_path,
@@ -728,11 +730,14 @@ if __name__ == '__main__':
         summary_name=args.human_sjd.summary_name,
         data=data,
         load_model=True,
-        info_criterions=['bic', 'hqc', 'aic'],
+        info_criterions=info_criterions,
         output_path=args.output_dir
     )
     #"""
 
+
+    # Save the results to file
+    experiment.io.save_json(args.output_dir, mean_results(uh, info_criterions))
 
     # TODO then try with load data ONCE, load one summary of a kfold. use data for all.
     #data=args.human_sjd.dir_path,
