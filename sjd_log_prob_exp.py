@@ -188,7 +188,7 @@ def mean_results(log_prob_results, info_criterions=None):
 
             for distrib in {'joint', 'target', 'transform'}:
                 # mean log prob
-                results[candidate][dataset][distrib]['log_prob'] = np.mean([
+                results[candidate][dataset]['log_prob'][distrib] = np.mean([
                     fold[candidate][dataset][distrib]['log_prob']
                     for fold in log_prob_results
                 ])
@@ -196,10 +196,10 @@ def mean_results(log_prob_results, info_criterions=None):
                 # mean info criterions
                 if not info_criterions:
                     continue
-                results[candidate][dataset][distrib]['info_criterion'] = {}
+                results[candidate][dataset]['info_criterion'][distrib] = {}
 
                 for ic in info_criterions:
-                    results[candidate][dataset][distrib]['info_criterion'][ic] = np.mean([
+                    results[candidate][dataset]['info_criterion'][distrib][ic] = np.mean([
                         fold[candidate][dataset][distrib]['info_criterion'][ic]
                         for fold in log_prob_results
                     ])
