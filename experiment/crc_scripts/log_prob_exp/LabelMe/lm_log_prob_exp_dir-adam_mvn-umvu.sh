@@ -21,7 +21,7 @@ python3 sjd_log_prob_exp.py \
     "$BASE_PATH/psych_metric/datasets/crowd_layer/crowd_layer_data/" \
     --dataset_id 'LabelMe' \
     --label_src 'frequency' \
-    --output_dir "$BASE_PATH/results/sjd/1114_exp_test/LabelMe/sjd_fq_dir-adam_mvn_umvu.json" \
+    --output_dir "$BASE_PATH/results/sjd/1114_exp_test/LabelMe/fq/sjd_dir-adam_mvn_umvu.json" \
     --weights_file 'vgg16.h5' \
     --dir_path "$BASE_PATH/results/predictors/early_stop/fq/LabelMe/vgg16/1114023021/2019-11-08_20-09-30/5_fold_cv/" \
     --cpu_cores 16 \
