@@ -731,7 +731,7 @@ if __name__ == '__main__':
         data=data,
         load_model=True,
         info_criterions=info_criterions,
-        output_path=args.output_dir
+        #output_path=args.output_dir
     )
     #"""
 
