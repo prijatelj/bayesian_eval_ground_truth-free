@@ -135,10 +135,12 @@ def get_sjd_candidates(
         candidates['iid_uniform_dirs'] = get_src_sjd('iid_uniform_dirs', dims)
     if 'iid_dirs_mean' in sjd_ids:
         # two independent Dirichlets whose concentrations are the means of data
+        # TODO copy sjd_args first, then modify to fit correct candidate.
         candidates['iid_dirs_mean'] = {
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'Dirichlet',
             'independent': True,
+            'mle_args': None,
         }
         if sjd_args:
             candidates['iid_dirs_mean'].update(sjd_args)
