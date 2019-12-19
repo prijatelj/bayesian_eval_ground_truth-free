@@ -674,6 +674,15 @@ def add_human_sjd_args(parser):
         dest='human_sjd.summary_name',
     )
 
+    # just adding a this script specific argument
+    parser.add_argument(
+        '--src_candidates',
+        default=None,
+        nargs='+',
+        type=str,
+        help='The premade candidate SJDs to be tested.'
+    )
+
 
 if __name__ == '__main__':
     args = experiment.io.parse_args(
@@ -695,15 +704,18 @@ if __name__ == '__main__':
         args.model.parts,
     )
 
-    # Get candidates
-    candidates = src_candidates.get_sjd_candidates(
-        [
+    if args.src_candidates is None:
+        args.src_candidates = [
             'iid_uniform_dirs',
             'iid_dirs_mean',
             'iid_dirs_adam',
             'dir-mean_mvn-umvu',
             'dir-adam_mvn-umvu',
         ],
+
+    # Get candidates
+    candidates = src_candidates.get_sjd_candidates(
+        args.src_candidates,
         data[1].shape[1],
         vars(args.mle),
         vars(args.sjd),
