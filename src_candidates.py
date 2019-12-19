@@ -135,15 +135,13 @@ def get_sjd_candidates(
         candidates['iid_uniform_dirs'] = get_src_sjd('iid_uniform_dirs', dims)
     if 'iid_dirs_mean' in sjd_ids:
         # two independent Dirichlets whose concentrations are the means of data
-        # TODO copy sjd_args first, then modify to fit correct candidate.
-        candidates['iid_dirs_mean'] = {
+        candidates['iid_dirs_mean'] = sjd_args.copy() if sjd_args else {}
+        candidates['iid_dirs_mean'].update({
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'Dirichlet',
             'independent': True,
             'mle_args': None,
-        }
-        if sjd_args:
-            candidates['iid_dirs_mean'].update(sjd_args)
+        })
     if 'iid_dirs_adam' in sjd_ids:
         # two independent Dirichlets whose concentrations are the means of data
         # multiplied by the precisions found via MLE
@@ -151,27 +149,25 @@ def get_sjd_candidates(
         mle_args_copy['alt_distrib'] = True
         mle_args_copy['const_params'] = ['mean']
 
-        candidates['iid_dirs_adam'] = {
+        candidates['iid_dirs_adam'] = sjd_args.copy() if sjd_args else {}
+        candidates['iid_dirs_adam'].update({
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'Dirichlet',
             'independent': True,
             'mle_args': mle_args_copy,
             'processes': processes,
-        }
-        if sjd_args:
-            candidates['iid_dirs_adam'].update(sjd_args)
+        })
     if 'dir-mean_mvn-umvu' in sjd_ids:
         # target: Dirichlet: concentration is mean of data
         # transform: Multivariate Normal: loc and cov matrix from data
-        candidates['dir-mean_mvn-umvu'] = {
+        candidates['dir-mean_mvn-umvu'] = sjd_args.copy() if sjd_args else {}
+        candidates['dir-mean_mvn-umvu'].update({
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateNormal',
             'independent': False,
-            #'mle_args': mle_args,
+            'mle_args': None,
             'processes': processes,
-        }
-        if sjd_args:
-            candidates['dir-mean_mvn-umvu'].update(sjd_args)
+        })
     if 'dir-adam_mvn-umvu' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: Multivariate Normal: loc and cov matrix from data
@@ -179,15 +175,14 @@ def get_sjd_candidates(
         mle_args_copy['alt_distrib'] = True
         mle_args_copy['const_params'] = ['mean']
 
-        candidates['dir-adam_mvn-umvu'] = {
+        candidates['dir-adam_mvn-umvu'] = sjd_args.copy() if sjd_args else {}
+        candidates['dir-adam_mvn-umvu'].update({
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateNormal',
             'independent': False,
             'mle_args': mle_args_copy,
             'processes': processes,
-        }
-        if sjd_args:
-            candidates['dir-adam_mvn-umvu'].update(sjd_args)
+        })
     if 'dir_mvc_adam' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: Multivariate Cauchy: loc and cov matrix initialized from
@@ -203,16 +198,14 @@ def get_sjd_candidates(
         # TODO may need to allow passing of different MLE args to the separate
         # distribs. ie Dir almost always uses Grad Descent, but MVC anything.
 
-        candidates['dir_mvc_adam'] = {
+        candidates['dir_mvc_adam'] = sjd_args.copy() if sjd_args else {}
+        candidates['dir_mvc_adam'].update({
             'target_distrib': 'Dirichlet',
             'transform_distrib': 'MultivariateCauchy',
             'independent': False,
             'mle_args': mle_args_copy,
             'processes': processes,
-        }
-
-        if sjd_args:
-            candidates['dir_mvc_adam'].update(sjd_args)
+        })
     if 'dir_mvst_adam' in sjd_ids:
         # TODO
         raise NotImplementedError('Need to sort out const params and create '
@@ -224,8 +217,6 @@ def get_sjd_candidates(
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
 
-        if sjd_args:
-            candidates['dir-adam_mvst-mcmc'].update(sjd_args)
     if 'dir-mle_bnn-euclid' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: BNN in Euclidean space trained via Random Walk.
@@ -233,8 +224,6 @@ def get_sjd_candidates(
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
 
-        if sjd_args:
-            candidates['dir-mle_bnn-euclid'].update(sjd_args)
     if 'dir-mle_bnn-hyperbolic-nuts' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: BNN in Hyperbolic space trained via NUTS.
@@ -242,8 +231,6 @@ def get_sjd_candidates(
         mle_args_copy = mle_args.copy()
         mle_args_copy['alt_distrib'] = True
 
-        if sjd_args:
-            candidates['dir-mle_bnn-hyperbolic-nuts'].update(sjd_args)
     # TODO opt. estimation methods: Nelder-Mead, Simmulated Annealing, MCMC,
     # Gradient descent
     # TODO optional hyperbolic transform or clipped euclidean w/ resampling
