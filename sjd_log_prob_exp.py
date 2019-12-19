@@ -685,6 +685,7 @@ if __name__ == '__main__':
     del args.sjd.target_distrib
     del args.sjd.transform_distrib
     del args.sjd.independent
+    del args.sjd.mle_args
 
     # Load data once: features, labels, label_bin
     data = predictors.load_prep_data(
