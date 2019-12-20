@@ -22,18 +22,18 @@ def setup_rwm_sim(
 ):
     rdm = src_candidates.get_src_sjd('tight_dir_small_mvn', 4)
     s = rdm.sample(sample_size)
-    data= (s[0] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
-    targets= (s[1] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
+    data = (s[0] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
+    targets = (s[1] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
 
     dim = data.shape[1]
 
     def sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):
         bnn_data = tf.convert_to_tensor(data.astype(np.float32),dtype=tf.float32)
-        bnn_target = tf.convert_to_tensor(targets.astype(np.float32),dtype=tf.float32)
+        #bnn_target = tf.convert_to_tensor(targets.astype(np.float32),dtype=tf.float32)
         hidden_weights, hidden_bias, output_weights, output_bias = params
         hidden = tf.nn.sigmoid(bnn_data @ hidden_weights + hidden_bias)
         output = hidden @ output_weights + output_bias
-        return tf.reduce_sum(tfp.distributions.MultivariateNormalDiag(loc=tf.zeros([dim]),scale_identity_multiplier=scale_identity_multiplier).log_prob(output-targets))
+        return tf.reduce_sum(tfp.distributions.MultivariateNormalDiag(loc=tf.zeros([data.shape[1]]),scale_identity_multiplier=scale_identity_multiplier).log_prob(output-targets))
 
     init_state = [
         np.random.normal(scale=12**0.5 , size=(dim,width)).astype(np.float32),
@@ -50,7 +50,7 @@ def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0):
     tf_in = tf.placeholder(dtype=tf.float32, shape=[None, data.shape[1]])
     tf_out = tf.placeholder(dtype=tf.float32, shape=[None, data.shape[1]])
 
-    feed_dict = {tf_in:data, tf_out:targets}
+    feed_dict = {tf_in: data, tf_out: targets}
 
     bnn_out, tf_vars = bnn_transform.bnn_mlp(
         tf_in,
@@ -65,6 +65,7 @@ def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0):
         tf_out,
         feed_dict,
         epochs=epochs,
+        tf_config=config,
     )
 
     return new_state, iter_results['loss']
@@ -81,15 +82,12 @@ def run_rwm(
     rwm_scale=2e-4,
     config=None,
 ):
-    kernel=tfp.mcmc.RandomWalkMetropolis(
+    kernel = tfp.mcmc.RandomWalkMetropolis(
         target_log_prob_fn=lambda x,y,z,q: sample_log_prob((x,y,z,q),data,targets),
         new_state_fn = tfp.mcmc.random_walk_normal_fn(scale=rwm_scale),
     )
 
     return sample_chain_run(
-        data,
-        targets,
-        sample_log_prob,
         init_state,
         kernel,
         num_results,
@@ -113,7 +111,7 @@ def run_hmc(
     step_adjust_id='Simple',
     config=None,
 ):
-    kernel=tfp.mcmc.HamiltonianMonteCarlo(
+    kernel = tfp.mcmc.HamiltonianMonteCarlo(
         target_log_prob_fn=lambda x,y,z,q: sample_log_prob((x,y,z,q),data,targets),
         step_size=step_size,
         num_leapfrog_steps=num_leapfrog_steps,
@@ -131,9 +129,6 @@ def run_hmc(
             )
 
     return sample_chain_run(
-        data,
-        targets,
-        sample_log_prob,
         init_state,
         kernel,
         num_results,
@@ -192,9 +187,6 @@ def run_nuts(
             )
 
     return sample_chain_run(
-        data,
-        targets,
-        sample_log_prob,
         init_state,
         kernel,
         num_results,
@@ -205,9 +197,6 @@ def run_nuts(
 
 
 def sample_chain_run(
-    data,
-    targets,
-    sample_log_prob,
     init_state,
     kernel,
     num_results=10000,
@@ -342,6 +331,8 @@ if __name__ == '__main__':
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
 
+        # TODO save step size
+
         logging.info('Starting HamiltonianMonteCarlo specific visuals')
         plt.plot(mcmc_results.accepted_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
@@ -380,6 +371,10 @@ if __name__ == '__main__':
             mcmc_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
+
+        # TODO save step size
+
+        # TODO save num leap step
 
         logging.info('Starting NoUTurnSampler specific visuals')
         plt.plot(mcmc_results.target_log_prob)
