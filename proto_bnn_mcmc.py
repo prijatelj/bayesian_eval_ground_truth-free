@@ -29,11 +29,11 @@ def setup_rwm_sim(
 
     def sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):
         bnn_data = tf.convert_to_tensor(data.astype(np.float32),dtype=tf.float32)
-        #bnn_target = tf.convert_to_tensor(targets.astype(np.float32),dtype=tf.float32)
+        bnn_target = tf.convert_to_tensor(targets.astype(np.float32),dtype=tf.float32)
         hidden_weights, hidden_bias, output_weights, output_bias = params
         hidden = tf.nn.sigmoid(bnn_data @ hidden_weights + hidden_bias)
         output = hidden @ output_weights + output_bias
-        return tf.reduce_sum(tfp.distributions.MultivariateNormalDiag(loc=tf.zeros([data.shape[1]]),scale_identity_multiplier=scale_identity_multiplier).log_prob(output-targets))
+        return tf.reduce_sum(tfp.distributions.MultivariateNormalDiag(loc=tf.zeros([data.shape[1]]),scale_identity_multiplier=scale_identity_multiplier).log_prob(output-bnn_target))
 
     init_state = [
         np.random.normal(scale=12**0.5 , size=(dim,width)).astype(np.float32),
