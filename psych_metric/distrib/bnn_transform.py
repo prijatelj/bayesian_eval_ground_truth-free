@@ -174,7 +174,7 @@ def bnn_adam(
     optimizer_id='adam',
     optimizer_args=None,
     epochs=1,
-    init_vars=None,,
+    init_vars=None,
 ):
     """Trains the given ANN with ADAM to be used as the initial weights for the
     MCMC fitting of the BNN version.
@@ -345,7 +345,8 @@ def assign_weights_bnn(
     dtype=tf.float32,
     sess_config=None
 ):
-    """Given BNN weights and tensors with data, forward pass through network."""
+    """Given BNN weights and tensors with data, forward pass through network.
+    """
     feed_dict = {tf_input: input_labels}
     results_list = [bnn_out]
 
@@ -367,12 +368,28 @@ def assign_weights_bnn(
 
         # Loop through each set of weights and get BNN outputs
         iter_results = []
-        for sample_idx in range(weights_sets[0].shape[0]):
-            # Loop through the different placeholders and assign the values
-            for i, var_ph in enumerate(tf_placeholders):
-                feed_dict[var_ph] = weights_sets[i][sample_idx]
+        if isinstance(weights_sets[0], np.ndarray):
+            # list of the weight's np.ndarrays whose first idx is the samples
+            for sample_idx in range(weights_sets[0].shape[0]):
+                # Loop through the different placeholders and assign the values
+                for i, var_ph in enumerate(tf_placeholders):
+                    feed_dict[var_ph] = weights_sets[i][sample_idx]
 
-            iter_results.append(sess.run(results_list, feed_dict=feed_dict))
+                iter_results.append(sess.run(
+                    results_list,
+                    feed_dict=feed_dict,
+                ))
+        elif isinstance(weights_sets[0], list):
+            # a sample list of weights lists that contain the np.ndarrays
+            for sample_idx in range(len(weights_sets)):
+                # Loop through the different placeholders and assign the values
+                for i, var_ph in enumerate(tf_placeholders):
+                    feed_dict[var_ph] = weights_sets[sample_idx][i]
+
+                iter_results.append(sess.run(
+                    results_list,
+                    feed_dict=feed_dict,
+                ))
 
     if output_labels:
         return iter_results
