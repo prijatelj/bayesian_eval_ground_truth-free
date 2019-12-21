@@ -250,12 +250,19 @@ def sjd_kfold_log_prob(
         data = predictors.load_prep_data(**data)
 
     results = []
+    fold_count = 0
     for ls_item in os.listdir(dir_path):
         dir_p = os.path.join(dir_path, ls_item)
 
         # Skip file if not a directory
         if not os.path.isdir(dir_p):
             continue
+
+        fold_count += 1
+        logging.info(
+            'Starting analysis of the %d fold.',
+             fold_count,
+        )
 
         model, features, labels = load_eval_fold(
             dir_p,
@@ -693,6 +700,7 @@ if __name__ == '__main__':
     del args.sjd.independent
     del args.sjd.mle_args
 
+    logging.info('Loading data and saving')
     # Load data once: features, labels, label_bin
     data = predictors.load_prep_data(
         args.dataset_id,
@@ -710,6 +718,7 @@ if __name__ == '__main__':
             'dir-adam_mvn-umvu',
         ],
 
+    logging.info('Getting candidates')
     # Get candidates
     candidates = src_candidates.get_sjd_candidates(
         args.src_candidates,
@@ -721,6 +730,8 @@ if __name__ == '__main__':
 
     #"""
     info_criterions = ['bic', 'hqc', 'aic']
+
+    logging.info('Running the SJD Kfold experiment.')
 
     uh = sjd_kfold_log_prob(
         candidates,
