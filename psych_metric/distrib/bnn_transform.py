@@ -174,9 +174,17 @@ def bnn_adam(
     optimizer_id='adam',
     optimizer_args=None,
     epochs=1,
+    init_vars=None,,
 ):
     """Trains the given ANN with ADAM to be used as the initial weights for the
     MCMC fitting of the BNN version.
+
+    Parameters
+    ----------
+    init_vars:  dict
+        A dictionary like feed_dict that will be temporarily added to the
+        feed_dict for the first epoch to serve as the initial values of given
+        tensorflow variables in tf_vars.
     """
     if optimizer_args is None:
         # Ensure that opt args is a dict for use with **
@@ -203,6 +211,10 @@ def bnn_adam(
         #'grad': grad,
     }
 
+    if init_vars:
+        feed_dict = feed_dict.copy()
+        feed_dict.update(init_vars)
+
     with tf.Session(config=tf_config) as sess:
         sess.run((
             tf.global_variables_initializer(),
@@ -210,6 +222,10 @@ def bnn_adam(
         ))
 
         for i in range(epochs):
+            if i == 1 and init_vars:
+                # remove initialization vars from the feed dict on 2nd epoch
+                for v in init_vars:
+                    del feed_dict[v]
             iter_results = sess.run(results_dict, feed_dict=feed_dict)
 
         weights = sess.run(tf_vars)
