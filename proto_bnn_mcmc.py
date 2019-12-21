@@ -292,6 +292,8 @@ if __name__ == '__main__':
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
 
+        final_step_size = args.mcmc.kernel.step_size
+
         logging.info('Starting RandomWalkMetropolis specific visuals')
         plt.plot(output[1].accepted_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
@@ -320,8 +322,10 @@ if __name__ == '__main__':
 
         if args.mcmc.num_adaptation_steps > 0:
             mcmc_results = output[1].inner_results
+            final_step_size = output[1].new_step_size[-1]
         else:
             mcmc_results = output[1]
+            final_step_size = args.mcmc.kernel.step_size
 
         accept_total = mcmc_results.is_accepted.sum()
         accept_rate = mcmc_results.is_accepted.mean()
@@ -330,8 +334,6 @@ if __name__ == '__main__':
             mcmc_results.accepted_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
-
-        # TODO save step size
 
         logging.info('Starting HamiltonianMonteCarlo specific visuals')
         plt.plot(mcmc_results.accepted_results.target_log_prob)
@@ -361,8 +363,10 @@ if __name__ == '__main__':
         if args.mcmc.num_adaptation_steps > 0:
             # Need to extract from Adaptive step and from Transformed kernels
             mcmc_results = output[1].inner_results.inner_results
+            final_step_size = output[1].new_step_size[-1]
         else:
             mcmc_results = output[1]
+            final_step_size = args.mcmc.kernel.step_size
 
         accept_total = mcmc_results.is_accepted.sum()
         accept_rate = mcmc_results.is_accepted.mean()
@@ -371,10 +375,6 @@ if __name__ == '__main__':
             mcmc_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
-
-        # TODO save step size
-
-        # TODO save num leap step
 
         logging.info('Starting NoUTurnSampler specific visuals')
         plt.plot(mcmc_results.target_log_prob)
@@ -398,6 +398,7 @@ if __name__ == '__main__':
         '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
         '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
         '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
+        'final_step_size': final_step_size,
     }
     io.save_json(
         os.path.join(output_dir, 'acf_lag.json'),
