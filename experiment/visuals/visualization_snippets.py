@@ -25,11 +25,12 @@ def corr_2d_heatmap(df, suptitle=None):
         t=f.suptitle(suptitle, fontsize=14)
 
 
-def many_jointplots(df, title=None, axes_lim=None, diag_kind='kde'):
+def many_jointplots(df, title=None, axes_lim=None, diag_kind='kde', color=None):
     plot_kws = {'edgecolor': 'k', 'linewidth': 0.5}
 
     pp = sns.pairplot(
         df,
+        c=color,
         size=1.8,
         aspect=1.8,
         plot_kws=plot_kws,
@@ -204,12 +205,16 @@ def pair_plot_info(
     diag_kws=None,
     lower_kws=None,
     upper_kws=None,
+    pair_grid_args=None,
 ):
     """Creates a paired plot with hist/kde down the diagonal, scatter plot on
     the upper right triangle, and density plot on the lower right triangle.
     """
+    if pair_grid_args is None:
+        pair_grid_args = {}
+
     sns.set_style("whitegrid")
-    pg = sns.PairGrid(df)
+    pg = sns.PairGrid(df, **pair_grid_args)
 
     # Set diagonal hist or kde
     if diag_kind == 'kde':
