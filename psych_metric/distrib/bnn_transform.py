@@ -335,6 +335,24 @@ def bnn_mlp_run_sess(results_dict, feed_dict, sess_config=None):
     return iter_results
 
 
+def reformat_chained_weights(weight_data, multiple_chains=True):
+    """Reformats possibly parallelized sample chain weights in list of list of
+    np.ndarrays where the first list is total samples, second is the order of
+    the weights, and the np.ndarrays are the individual weight values.
+    """
+    weights = []
+
+    if multiple_chains:
+        for i in range(len(weight_data[0][0])):
+            for chain in weight_data:
+                weights.append([np.array(w[i]) for w in chain])
+    else:
+        for i in range(len(weight_data[0])):
+            weights.append([np.array(w[i]) for w in weight_data])
+
+    return weights
+
+
 def assign_weights_bnn(
     weights_sets,
     tf_placeholders,
