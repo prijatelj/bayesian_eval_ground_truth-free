@@ -79,6 +79,49 @@ def bnn_mcmc(
     return locals()
 
 
+def get_bnn_output(
+    last_weights,
+    path=None,
+    data=None,
+):
+    # NOTE mostly just for remembering how to do this later on.
+    if path and data is None and targets is None:
+        with open(os.path.join(path, 'data.json'), 'r') as f:
+            data = json.load(f)
+            targets = np.array(data['output'])
+            data = np.array(data['input'])
+
+    if path and last_weights is None:
+        with open(os.path.join(path, 'last_weights.json'), 'r') as f:
+            last_weights = [np.array(w, dtype=np.float32) for w in json.load(f)]
+
+
+    tf_in = tf.placeholder(
+        dtype=tf.float32,
+        shape=[None, data.shape[1]],
+        name='input_label',
+    )
+
+    if bnn_ph is None and tf_ph is None:
+        bnn_ph, tf_ph = bnn_transform.bnn_mlp_placeholders(
+            data,
+            1,
+            10,
+            output_use_bias=True,
+            output_activation=None,
+        )
+
+    bnn_output = bnn_transform.assign_weights_bnn(
+        [last_weights],
+        tf_ph,
+        bnn_ph,
+        data,
+        tf_in,
+    )
+
+    return bnn_output
+
+
 def add_mcmc_args(parser):
     """Adds the MCMC related args."""
     mcmc = parser.add_argument_group(
