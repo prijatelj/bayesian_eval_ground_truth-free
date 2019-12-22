@@ -203,21 +203,48 @@ def sample_chain_run(
     burnin=0,
     lag=0,
     config=None,
+    parallel=1,
 ):
-    samples, trace = tfp.mcmc.sample_chain(
-        num_results=num_results,
-        current_state=init_state,
-        kernel=kernel,
-        num_burnin_steps=burnin,
-        num_steps_between_results=lag,
-        parallel_iterations=1,
-    )
+    if parallel <= 1:
+        samples, trace = tfp.mcmc.sample_chain(
+            num_results=num_results,
+            current_state=init_state,
+            kernel=kernel,
+            num_burnin_steps=burnin,
+            num_steps_between_results=lag,
+            parallel_iterations=1,
+        )
+        with tf.Session(config=config) as sess:
+            sess.run((
+                tf.global_variables_initializer(),
+                tf.local_variables_initializer(),
+            ))
 
-    with tf.Session(config=config) as sess:
-        output = sess.run([samples,trace])
-        new_starting_state = [x[-1] for x in output[0]]
+            output = sess.run([samples,trace])
+            new_starting_state = [x[-1] for x in output[0]]
 
-    return output, new_starting_state
+        return output, new_starting_state
+    else:
+        # create multiple of the same chains, w/ diff seeds, gets samples fast
+        chains_results = []
+        for i in range(parallel):
+            chains_results.append(tfp.mcmc.sample_chain(
+                num_results=num_results,
+                current_state=init_state,
+                kernel=kernel,
+                num_burnin_steps=burnin,
+                num_steps_between_results=lag,
+                parallel_iterations=1,
+            ))
+
+        with tf.Session(config=config) as sess:
+            sess.run((
+                tf.global_variables_initializer(),
+                tf.local_variables_initializer(),
+            ))
+            output = sess.run(chains_results)
+
+        return output
 
 
 def add_custom_args(parser):
