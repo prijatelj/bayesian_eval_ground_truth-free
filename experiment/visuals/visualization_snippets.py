@@ -50,14 +50,14 @@ def many_jointplots(df, title=None, axes_lim=None, diag_kind='kde', color=None):
         t = pp.fig.suptitle(title, fontsize=14)
 
 
-def scatter3d(df, cols):
+def scatter3d(df, cols, **scatter_kws):
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
 
     xs = df[cols[0]]
     ys = df[cols[1]]
     zs = df[cols[2]]
-    ax.scatter(xs, ys, zs, s=50, alpha=0.6, edgecolors='w')
+    ax.scatter(xs, ys, zs, s=50, alpha=0.5, edgecolors='w', **scatter_kws)
 
     ax.set_xlabel(cols[0])
     ax.set_ylabel(cols[1])
