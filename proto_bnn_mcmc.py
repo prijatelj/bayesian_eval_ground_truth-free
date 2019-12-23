@@ -15,18 +15,30 @@ from psych_metric.distrib import bnn_transform
 import src_candidates
 
 
+def mcmc_sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):
+    bnn_data = tf.convert_to_tensor(data.astype(np.float32),dtype=tf.float32)
+    bnn_target = tf.convert_to_tensor(targets.astype(np.float32),dtype=tf.float32)
+
+    hidden_weights, hidden_bias, output_weights, output_bias = params
+    hidden = tf.nn.sigmoid(bnn_data @ hidden_weights + hidden_bias)
+
+    output = hidden @ output_weights + output_bias
+
+    return tf.reduce_sum(tfp.distributions.MultivariateNormalDiag(loc=tf.zeros([data.shape[1]]),scale_identity_multiplier=scale_identity_multiplier).log_prob(output-bnn_target))
+
+
 def setup_rwm_sim(
     width=10,
     sample_size=10,
     scale_identity_multiplier=0.01,
+    dim=4,
 ):
-    rdm = src_candidates.get_src_sjd('tight_dir_small_mvn', 4)
+    rdm = src_candidates.get_src_sjd('tight_dir_small_mvn', dim)
     s = rdm.sample(sample_size)
     data = (s[0] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
     targets = (s[1] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
 
-    dim = data.shape[1]
-
+    """
     def sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):
         bnn_data = tf.convert_to_tensor(data.astype(np.float32),dtype=tf.float32)
         bnn_target = tf.convert_to_tensor(targets.astype(np.float32),dtype=tf.float32)
@@ -34,6 +46,7 @@ def setup_rwm_sim(
         hidden = tf.nn.sigmoid(bnn_data @ hidden_weights + hidden_bias)
         output = hidden @ output_weights + output_bias
         return tf.reduce_sum(tfp.distributions.MultivariateNormalDiag(loc=tf.zeros([data.shape[1]]),scale_identity_multiplier=scale_identity_multiplier).log_prob(output-bnn_target))
+    """
 
     init_state = [
         np.random.normal(scale=12**0.5 , size=(dim,width)).astype(np.float32),
@@ -41,7 +54,8 @@ def setup_rwm_sim(
         np.random.normal(scale=0.48**0.5 , size=(width,dim)).astype(np.float32),
         np.zeros([dim], dtype=np.float32)]
 
-    return data, targets, sample_log_prob, init_state
+    #return data, targets, sample_log_prob, init_state
+    return data, targets, mcmc_sample_log_prob, init_state
 
 
 def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0):
@@ -257,6 +271,13 @@ def add_custom_args(parser):
         help='The number of src simulation samples.',
     )
 
+    parser.add_argument(
+        '--dim',
+        default=3,
+        type=int,
+        help='The number of dimensions of the discrete distribution data (input and output).',
+    )
+
 
 if __name__ == '__main__':
     args = io.parse_args(custom_args=add_custom_args)
@@ -270,6 +291,7 @@ if __name__ == '__main__':
         width=args.bnn.num_hidden,
         sample_size=args.num_samples,
         scale_identity_multiplier=args.mcmc.diff_scale,
+        dim=args.dim,
     )
 
     io.save_json(
