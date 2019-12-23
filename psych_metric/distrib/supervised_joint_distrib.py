@@ -84,6 +84,8 @@ def transform_knn_log_prob_single(
         np.where(distrib_utils.is_prob_distrib(dist_check))[0]
     ]
 
+    # TODO should check if number of valid_dists >> k, otherwise not accurate estimate.
+
     # Fit BallTree to the differences valid to the specific target.
     knn_tree = BallTree(valid_dists)
 
@@ -693,20 +695,23 @@ class SupervisedJointDistrib(object):
                 np.cov(differences, bias=False, rowvar=False),
             )
         if isinstance(distrib, dict):
-            if distrib['distrib_id'] != 'MultivariateNormal':
+            if distrib['distrib_id'] == 'MultivariateNormal':
+                self.target_distrib = mle_gradient_descent.mle_adam(
+                    distrib['distrib_id'],
+                    np.maximum(target, np.finfo(target.dtype).tiny),
+                    init_params=distrib['params'],
+                    **mle_args,
+                )
+            elif distrib['distrib_id'] == 'bnn':
+                raise NotImplementedError('the necessary conditional '
+                    + 'distribution bnn transform class does not yet exist.')
+            else: #distrib['distrib_id'] != 'MultivariateNormal':
                 raise ValueError(' '.join([
                     'Currently only "MultivariateNormal" is supported for the',
                     'transform distribution as proof of concept.',
                     f'{distrib["distrib_id"]} is not a supported value for key',
                     '`distrib_id`.',
                 ]))
-
-            self.target_distrib = mle_gradient_descent.mle_adam(
-                distrib['distrib_id'],
-                np.maximum(target, np.finfo(target.dtype).tiny),
-                init_params=distrib['params'],
-                **mle_args,
-            )
         else:
             raise TypeError('`distrib` is expected to be of type `str` or '
                 + f'`dict` not `{type(distrib)}`')
