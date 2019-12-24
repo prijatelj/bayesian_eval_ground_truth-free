@@ -12,12 +12,12 @@ from psych_metric.distrib.mcmc import get_mcmc_kernel
 
 def bnn_mlp(
     input_labels,
-    num_layers=2,
+    num_layers=1,
     num_hidden=10,
     hidden_activation=tf.math.sigmoid,
     hidden_use_bias=True,
-    output_activation=tf.math.sigmoid,
-    output_use_bias=False,
+    output_activation=None, #, tf.math.sigmoid,
+    output_use_bias=True, # False,
     dtype=tf.float32,
     tf_device=None,
 ):
