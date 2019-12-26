@@ -1,6 +1,7 @@
 """Prototyping bnn mcmc on CRC."""
 import logging
 import os
+import json
 
 import matplotlib.pyplot as plt
 import numpy as np
