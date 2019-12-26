@@ -25,9 +25,9 @@ python3 proto_bnn_mcmc.py \
     --log_file "$BASE_PATH/logs/mcmc/lm/fq/1114/hmc_1e6.log" \
     --log_level 'INFO' \
     --kernel_id 'HamiltonianMonteCarlo' \
-    --step_size 0.00018
+    --step_size 0.00018 \
     --num_leapfrog_steps 5 \
     --num_results 10000 \
     --burnin  12808\
     --lag 12808 \
-    --parallel_chains 14 \
+    --parallel_chains 14
