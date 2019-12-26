@@ -24,7 +24,7 @@ python3 proto_bnn_mcmc.py \
     --gpu 0 \
     --log_file "$BASE_PATH/logs/mcmc/lm/fq/1114/hmc_1e6.log" \
     --log_level 'INFO' \
-    --kernel_id 'HamiltonianMonteCarlo' \'
+    --kernel_id 'HamiltonianMonteCarlo' \
     --step_size 0.00018
     --num_leapfrog_steps 5 \
     --num_results 10000 \

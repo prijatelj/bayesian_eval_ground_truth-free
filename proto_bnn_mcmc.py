@@ -315,7 +315,7 @@ if __name__ == '__main__':
     args = io.parse_args(custom_args=add_custom_args)
 
     # Create directory
-    output_dir = args.data.dataset_filepath
+    output_dir = args.output_dir
     output_dir = io.create_dirs(output_dir)
     logging.info('Created the output directories')
 
