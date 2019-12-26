@@ -323,8 +323,8 @@ if __name__ == '__main__':
     if os.path.isfile(args.data.dataset_filepath):
         with open(args.data.dataset_filepath, 'r') as f:
             data = json.load(f)
-            targets = data['output']
-            data = data['output']
+            targets = np.array(data['output'], dtype=np.float32)
+            data = np.array(data['input'], dtype=np.float32)
 
         sample_log_prob = mcmc_sample_log_prob
 
