@@ -58,7 +58,7 @@ def setup_rwm_sim(
     return data, targets, mcmc_sample_log_prob, init_state
 
 
-def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0):
+def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0, init_vars=None):
     config = io.get_tf_config(cpus, cpu_cores, gpus)
 
     tf_in = tf.placeholder(dtype=tf.float32, shape=[None, data.shape[1]])
@@ -73,6 +73,10 @@ def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0):
         output_activation=None,
         output_use_bias=True,
     )
+
+    if init_vars is not None:
+        init_vars = {tf_vars[i]:init_vars[i] for i in range(len(init_vars))}
+
     new_state, iter_results = bnn_transform.bnn_adam(
         bnn_out,
         tf_vars,
@@ -80,6 +84,7 @@ def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0):
         feed_dict,
         epochs=epochs,
         tf_config=config,
+        init_vars=init_vars,
     )
 
     return new_state, iter_results['loss']
@@ -95,6 +100,7 @@ def run_rwm(
     lag=0,
     rwm_scale=2e-4,
     config=None,
+    parallel=1,
 ):
     kernel = tfp.mcmc.RandomWalkMetropolis(
         target_log_prob_fn=lambda x,y,z,q: sample_log_prob((x,y,z,q),data,targets),
@@ -108,6 +114,7 @@ def run_rwm(
         burnin,
         lag,
         config=config,
+        parallel=parallel,
     )
 
 
@@ -124,6 +131,7 @@ def run_hmc(
     num_adaptation_steps=None,
     step_adjust_id='Simple',
     config=None,
+    parallel=1,
 ):
     kernel = tfp.mcmc.HamiltonianMonteCarlo(
         target_log_prob_fn=lambda x,y,z,q: sample_log_prob((x,y,z,q),data,targets),
@@ -149,6 +157,7 @@ def run_hmc(
         burnin,
         lag,
         config=config,
+        parallel=parallel,
     )
 
 
@@ -164,6 +173,7 @@ def run_nuts(
     num_adaptation_steps=0,
     step_adjust_id='Simple',
     config=None,
+    parallel=1,
 ):
     kernel = tfp.mcmc.NoUTurnSampler(
         target_log_prob_fn=lambda x,y,z,q: sample_log_prob((x,y,z,q),data,targets),
@@ -207,6 +217,7 @@ def run_nuts(
         burnin,
         lag,
         config=config,
+        parallel=parallel,
     )
 
 
@@ -239,6 +250,7 @@ def sample_chain_run(
 
         return output, new_starting_state
     else:
+        # NOTE parallel chains saves only is_accepted for trace_fn
         # create multiple of the same chains, w/ diff seeds, gets samples fast
         chains_results = []
         for i in range(parallel):
@@ -249,6 +261,7 @@ def sample_chain_run(
                 num_burnin_steps=burnin,
                 num_steps_between_results=lag,
                 parallel_iterations=1,
+                trace_fn=lambda current_state, kernel_results: kernel_results.is_accepted,
             ))
 
         with tf.Session(config=config) as sess:
@@ -278,6 +291,25 @@ def add_custom_args(parser):
         help='The number of dimensions of the discrete distribution data (input and output).',
     )
 
+    parser.add_argument(
+        '--parallel_chains',
+        default=1,
+        type=int,
+        help='The number of chains to be run in parallel for sampling.',
+    )
+
+    parser.add_argument(
+        '--bnn_weights_file',
+        default=None,
+        help='Path to the bnn weights file.',
+    )
+
+    #parser.add_argument(
+    #    '--no_visuals',
+    #    default=None,
+    #    help='Does not save visuals.',
+    #)
+
 
 if __name__ == '__main__':
     args = io.parse_args(custom_args=add_custom_args)
@@ -287,22 +319,39 @@ if __name__ == '__main__':
     output_dir = io.create_dirs(output_dir)
     logging.info('Created the output directories')
 
-    data, targets, sample_log_prob, init_state = setup_rwm_sim(
-        width=args.bnn.num_hidden,
-        sample_size=args.num_samples,
-        scale_identity_multiplier=args.mcmc.diff_scale,
-        dim=args.dim,
-    )
+    if os.path.isfile(args.data.dataset_filepath):
+        with open(args.data.dataset_filepath, 'r') as f:
+            data = json.load(f)
+            targets = data['output']
+            data = data['output']
 
-    io.save_json(
-        os.path.join(output_dir, 'data.json'),
-        {'input': data, 'output': targets},
-    )
+        sample_log_prob = mcmc_sample_log_prob
+
+        if not isinstance(args.bnn_weights_file, str):
+            raise TypeError('bnn_weights_file must be provided when dataset_filepath is given')
+
+        with open(args.bnn_weights_file, 'r') as f:
+            init_state = json.load(f)
+            init_state = [np.array(x, dtype=np.float32) for x in init_state]
+    else:
+        data, targets, sample_log_prob, init_state = setup_rwm_sim(
+            width=args.bnn.num_hidden,
+            sample_size=args.num_samples,
+            scale_identity_multiplier=args.mcmc.diff_scale,
+            dim=args.dim,
+        )
+
+        io.save_json(
+            os.path.join(output_dir, 'data.json'),
+            {'input': data, 'output': targets},
+        )
 
     logging.info('Setup the simulation data and the log prob function')
 
     if args.adam_epochs > 0:
         logging.info('Starting ADAM initialization training')
+        if args.bnn_weights_file:
+            init_vars = init_state
         init_state, loss = adam_init(
             data,
             targets,
@@ -312,6 +361,7 @@ if __name__ == '__main__':
             cpus=args.cpu,
             cpu_cores=args.cpu_cores,
             gpus=args.gpu,
+            init_vars=init_vars
         )
         logging.info('Finished ADAM initialization training')
 
@@ -353,7 +403,7 @@ if __name__ == '__main__':
         plt.close()
 
     elif args.mcmc.kernel_id == 'HamiltonianMonteCarlo':
-        output, new_starting_state = run_hmc(
+        output = run_hmc(
             data,
             targets,
             sample_log_prob,
@@ -366,32 +416,48 @@ if __name__ == '__main__':
             num_adaptation_steps=args.mcmc.num_adaptation_steps,
             config=config,
             step_adjust_id=args.mcmc.step_adjust_id,
+            parallel=args.parallel_chains,
         )
         logging.info('Finished HamiltonianMonteCarlo')
 
-        if args.mcmc.num_adaptation_steps > 0:
-            mcmc_results = output[1].inner_results
-            final_step_size = output[1].new_step_size[-1]
+        if args.parallel_chains <= 1:
+            output, new_starting_state = output
+
+            if args.mcmc.num_adaptation_steps > 0:
+                mcmc_results = output[1].inner_results
+                final_step_size = output[1].new_step_size[-1]
+            else:
+                mcmc_results = output[1]
+                final_step_size = args.mcmc.kernel.step_size
+
+            accept_total = mcmc_results.is_accepted.sum()
+            accept_rate = mcmc_results.is_accepted.mean()
+
+            acf_log_prob = acf(
+                mcmc_results.accepted_results.target_log_prob,
+                nlags=int(args.mcmc.sample_chain.num_results / 4),
+            )
+
+            logging.info('Starting HamiltonianMonteCarlo specific visuals')
+            plt.plot(mcmc_results.accepted_results.target_log_prob)
+            plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
+            plt.close()
+
+            pd.DataFrame(acf_log_prob).plot(kind='bar')
+            plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
+            plt.close()
         else:
-            mcmc_results = output[1]
-            final_step_size = args.mcmc.kernel.step_size
+            sampled_weights = {}
+            for i in range(0, len(output)):
+                sampled_weights[i] = {}
+                sampled_weights[i]['weights'] = output[i][0][0]
+                # the trace is only boolean is_accepted
+                sampled_weights[i]['is_accepted'] = output[i][0][1]
 
-        accept_total = mcmc_results.is_accepted.sum()
-        accept_rate = mcmc_results.is_accepted.mean()
-
-        acf_log_prob = acf(
-            mcmc_results.accepted_results.target_log_prob,
-            nlags=int(args.mcmc.sample_chain.num_results / 4),
-        )
-
-        logging.info('Starting HamiltonianMonteCarlo specific visuals')
-        plt.plot(mcmc_results.accepted_results.target_log_prob)
-        plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
-        plt.close()
-
-        pd.DataFrame(acf_log_prob).plot(kind='bar')
-        plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+            io.save_json(
+                os.path.join(output_dir, 'sampled_weights.json'),
+                sampled_weights,
+            )
 
     elif args.mcmc.kernel_id == 'NoUTurnSampler':
         output, new_starting_state = run_nuts(
@@ -436,20 +502,22 @@ if __name__ == '__main__':
 
     logging.info('Finished MCMC training and specific kernel data saving.')
 
-    io.save_json(
-        os.path.join(output_dir, 'last_weights.json'),
-        new_starting_state,
-    )
 
-    acf_lag = {
-        'accept_total': accept_total,
-        'accept_rate': accept_rate,
-        '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
-        '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
-        '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
-        'final_step_size': final_step_size,
-    }
-    io.save_json(
-        os.path.join(output_dir, 'acf_lag.json'),
-        acf_lag,
-    )
+    if args.parallel_chains <= 1:
+        io.save_json(
+            os.path.join(output_dir, 'last_weights.json'),
+            new_starting_state,
+        )
+
+        acf_lag = {
+            'accept_total': accept_total,
+            'accept_rate': accept_rate,
+            '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
+            '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
+            '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
+            'final_step_size': final_step_size,
+        }
+        io.save_json(
+            os.path.join(output_dir, 'acf_lag.json'),
+            acf_lag,
+        )
