@@ -4,8 +4,8 @@
 #$ -N lm_lpe_dir_adam
 #$ -q gpu
 #$ -l gpu_card=1
-#$ -o logs/lm/fq/lpe/logs/
-#$ -e logs/lm/fq/lpe/logs/
+#$ -o logs/log_prob_exp/lm/fq/logs/
+#$ -e logs/log_prob_exp/lm/fq/logs/
 
 BASE_PATH="$HOME/Public/psych_metric"
 
