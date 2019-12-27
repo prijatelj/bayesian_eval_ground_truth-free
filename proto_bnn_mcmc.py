@@ -451,9 +451,9 @@ if __name__ == '__main__':
             sampled_weights = {}
             for i in range(0, len(output)):
                 sampled_weights[i] = {}
-                sampled_weights[i]['weights'] = output[i][0][0]
+                sampled_weights[i]['weights'] = output[i].all_states
                 # the trace is only boolean is_accepted
-                sampled_weights[i]['is_accepted'] = output[i][0][1]
+                sampled_weights[i]['is_accepted'] = output[i].trace
 
             io.save_json(
                 os.path.join(output_dir, 'sampled_weights.json'),
