@@ -3,8 +3,8 @@
 #$ -pe smp 16
 #$ -N lm_lpe_dir_mean
 #$ -q long
-#$ -o logs/lm/fq/lpe/logs/
-#$ -e logs/lm/fq/lpe/logs/
+#$ -o logs/log_prob_exp/lm/fq/logs/
+#$ -e logs/log_prob_exp/lm/fq/logs/
 
 BASE_PATH="$HOME/Public/psych_metric"
 
@@ -24,6 +24,6 @@ python3 sjd_log_prob_exp.py \
     --weights_file 'vgg16.h5' \
     --dir_path "$BASE_PATH/results/predictors/early_stop/fq/LabelMe/vgg16/1114023021/2019-11-08_20-09-30/5_fold_cv/" \
     --cpu_cores 16 \
-    --log_file "$BASE_PATH/logs/log_prob_exp/lb/fq/dir-mean_mvn-umvue.log" \
+    --log_file "$BASE_PATH/logs/log_prob_exp/lm/fq/dir-mean_mvn-umvue.log" \
     --log_level 'INFO' \
     --src_candidates 'dir-mean_mvn-umvu'
