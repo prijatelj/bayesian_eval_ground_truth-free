@@ -21,9 +21,13 @@ def euclid_knn_log_prob(samples, knn, k, knn_density_num_samples):
     # log(k) - log(n) - log(volume)
     log_prob = np.log(k) - np.log(knn_density_num_samples)
 
+    volume = samples.shape[1] * (np.log(np.pi) / 2 + np.log(radius)) \
+            - scipy.special.gammaln(samples.shape[1] / 2 + 1)
+
     # calculate the n sphere volume being contained w/in the n simplex
-    return log_prob - (samples.shape[1] * (np.log(np.pi) / 2 + np.log(radius))
-        - scipy.special.gammaln(samples.shape[1] / 2 + 1))
+    #return log_prob - (samples.shape[1] * (np.log(np.pi) / 2 + np.log(radius))
+    #    - scipy.special.gammaln(samples.shape[1] / 2 + 1))
+    return log_prob - volume
 
 
 def euclid_transform_knn_log_prob_single(
@@ -34,6 +38,10 @@ def euclid_transform_knn_log_prob_single(
     n_neighbors=1, # 1 is lowest bias
     n_jobs=1,
 ):
+    """Calculate the log prob of a single sample of a conditional probability
+    using a Euclidean simplex space conditional prob model and KNN to estimate
+    the density.
+    """
     # Find valid differences from saved set: `self.transform_knn_dists`
     # to test validity, convert target sample to simplex space.
     simplex_trgt = simplex_transform.to(trgt)
