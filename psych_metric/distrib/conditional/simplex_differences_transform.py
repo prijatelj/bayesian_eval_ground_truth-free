@@ -4,7 +4,6 @@ import logging
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
 
 from psych_metric.distrib import distrib_utils
@@ -78,18 +77,15 @@ class DifferencesTransform(object):
         self._create_sample_attributes(sess_config)
         self._create_log_prob_attributes(sess_config)
 
-        # TODO create knn dnesity samples
-        # Relies on also sampling from the given distrib....
-        #self.knn_density_samples = self.sample(knn_density_num_samples)
+        self.knn_density_samples = self.distrib.sample(
+            knn_density_num_samples,
+        ).eval(session=tf.Session(config=sess_config))
 
     def _create_sample_attributes(self, sess_config=None):
         """Creates the Tensorflow session and ops for sampling."""
         self.tf_sample_sess = tf.Session(config=sess_config)
 
         # TODO consider adding dimension param to define placeholder shape.
-
-        #num_samples = tf.placeholder(tf.int32, name='num_samples')
-        #self.tf_given_samples = self.target_distrib.sample(num_samples)
         self.tf_given_samples = tf.placeholder(
             tf.int32,
             name='given_samples',
@@ -251,6 +247,7 @@ class DifferencesTransform(object):
         """
 
     def tf_log_prob(self, given_samples, conditional_samples):
+        """Create Tensorflow graph for log prob calculation"""
         # Convert the samples into the n-1 simplex basis.
         # TODO the casts here may be unnecessrary! Check this.
         given_simplex_samples = tf.cast(
@@ -271,14 +268,6 @@ class DifferencesTransform(object):
     def sample(self, given_samples):
         # give input samples to be transformed (defines num of samples)
         # have number of transforms per single input sample (default = 1)
-
-
-
-        # TODO how to do this so the resampling is done for euclidean?
-        # TODO resample prediciton only, (of course) keeping given_samples
-
-
-
         pred_samples = self.tf_sample_sess.run(
             [self.tf_pred_samples],
             feed_dict={
@@ -291,37 +280,34 @@ class DifferencesTransform(object):
         # would be more optimal. This is next step if necessary.
 
         # Get any and all indices of non-probability distrib samples
-        bad_sample_idx = np.argwhere(np.logical_not(
+        bad_sample_idx = np.squeeze(np.argwhere(np.logical_not(
             distrib_utils.is_prob_distrib(pred_samples),
-        ))
-        if len(bad_sample_idx) > 1:
-            bad_sample_idx = np.squeeze(bad_sample_idx)
+        )), axis=1)
         num_bad_samples = len(bad_sample_idx)
 
         while num_bad_samples > 0:
             logging.info(
-                'Number of samples outside of simplex to be replaced: %d',
+                'Number of improper probability samples to be replaced: %d',
                 num_bad_samples,
             )
 
             # TODO the resampling needs to resample only the transform given the same input sample.
-            # rerun session w/ enough samples to replace bad samples and some.
+            # rerun session w/ enough samples to replace bad samples
             new_pred = self.tf_sample_sess.run(
                 self.tf_pred_samples,
-                feed_dict={self.tf_num_samples: num_bad_samples},
-                #self.tf_given_samples: given_samples},
+                feed_dict={
+                    self.tf_given_samples: given_samples[bad_sample_idx],
+                },
             )
 
             pred_samples[bad_sample_idx] = new_pred
 
-            bad_sample_idx = np.argwhere(np.logical_not(
+            bad_sample_idx = np.squeeze(np.argwhere(np.logical_not(
                 distrib_utils.is_prob_distrib(pred_samples),
-            ))
-            if len(bad_sample_idx) > 1:
-                bad_sample_idx = np.squeeze(bad_sample_idx)
+            )), axis=1)
             num_bad_samples = len(bad_sample_idx)
 
-        return given_samples + self.distrib.sample(len(given_samples))
+        return pred_samples
 
     def log_prob(
         self,
@@ -340,14 +326,9 @@ class DifferencesTransform(object):
                 given_samples,
                 conditional_samples,
                 self.simplex_transform,
-                self.knn_density_samples, # TODO may need given externally
+                self.knn_density_samples,
                 n_neighbors,
                 n_jobs,
             )
         raise NotImplementedError('Hyperbolic knn density not implemented.')
         #return knn_density.hyperbolic_transform_knn_log_prob(
-
-# TODO MV Normal
-# TODO MV Student T
-# TODO MV Cauchy
-# TODO Multivariate Kernel Density Estimate (tophat or gaussian).
