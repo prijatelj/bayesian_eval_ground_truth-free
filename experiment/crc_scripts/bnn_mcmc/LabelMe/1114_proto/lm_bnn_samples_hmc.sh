@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #$ -pe smp 24
-#$ -N lmHMC_1e6
+#$ -N lmHMC_2e5
 #$ -q long
 #$ -o logs/mcmc/lm/fq/1114/logs/
 #$ -e logs/mcmc/lm/fq/1114/logs/
@@ -19,10 +19,10 @@ conda activate tf-1.15
 python3 proto_bnn_mcmc.py \
     "$BASE_PATH/results/sjd/1114_exp_test/LabelMe/fq_train_set_human_pred_simplex_labels.json" \
     --bnn_weights_file "$BASE_PATH/results/sjd/1114_exp_test/LabelMe/bnn_nuts_weights_converged.json" \
-    --output_dir "$BASE_PATH/results/sjd/1114_exp_test/LabelMe/fq/bnn_samples_1e6/" \
+    --output_dir "$BASE_PATH/results/sjd/1114_exp_test/LabelMe/fq/bnn_samples_2e5/" \
     --cpu_cores 24 \
     --gpu 0 \
-    --log_file "$BASE_PATH/logs/mcmc/lm/fq/1114/hmc_1e6.log" \
+    --log_file "$BASE_PATH/logs/mcmc/lm/fq/1114/hmc_2e5.log" \
     --log_level 'INFO' \
     --kernel_id 'HamiltonianMonteCarlo' \
     --step_size 0.00018 \
@@ -30,4 +30,4 @@ python3 proto_bnn_mcmc.py \
     --num_results 10000 \
     --burnin  12808\
     --lag 12808 \
-    --parallel_chains 14
+    --parallel_chains 20
