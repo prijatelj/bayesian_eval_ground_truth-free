@@ -25,8 +25,6 @@ def euclid_knn_log_prob(samples, knn, k, knn_density_num_samples):
             - scipy.special.gammaln(samples.shape[1] / 2 + 1)
 
     # calculate the n sphere volume being contained w/in the n simplex
-    #return log_prob - (samples.shape[1] * (np.log(np.pi) / 2 + np.log(radius))
-    #    - scipy.special.gammaln(samples.shape[1] / 2 + 1))
     return log_prob - volume
 
 
