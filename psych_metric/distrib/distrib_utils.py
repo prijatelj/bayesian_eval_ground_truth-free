@@ -206,6 +206,18 @@ def is_prob_distrib(
 
     return sums_to_one & in_range
 
+def tf_is_prob_distrib(vector, axis=1):
+    """Checks if the vector is a valid discrete probability distribution."""
+    # check if each row sums to 1
+    # NOTE does not use isclose() as its numpy equivalent does!
+    sample_sum = tf.reduce_sum(vector, axis)
+    sums_to_one = tf.equal(sample_sum, 1)
+
+    # check if all values are w/in range
+    in_range = tf.reduce_all(vector >= 0, axis) == tf.reduce_all(vector <= 1, axis)
+
+    return tf.logical_and(sums_to_one, in_range)
+
 
 def mvst_tf_log_prob(x, df, loc, sigma):
     raise NotImplementedError('This is not properly implemented. Use psych_metric.distrib.tfp_mvst.MultivariateStudentT.log_prob() instead.')
