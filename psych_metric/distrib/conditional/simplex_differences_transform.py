@@ -136,6 +136,9 @@ class DifferencesTransform(object):
             # TODO do check on distribution sample space being as expected.
             return distrib
 
+        if mle_args is None:
+            mle_args = {}
+
         # differences = given - conditional
         differences = np.array([
             self.simplex_transform.to(given_samples[i])
