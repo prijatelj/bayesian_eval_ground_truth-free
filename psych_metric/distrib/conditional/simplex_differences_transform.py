@@ -156,12 +156,12 @@ class DifferencesTransform(object):
             # deterministically calculate the Maximum Likely multivatiate
             # norrmal TODO need to handle when covariance = 0 and change to an
             # infinitesimal
-            if distrib != 'MultivariateNormal':
+            if distrib == 'MultivariateNormal':
                 return tfd.MultivariateNormalFullCovariance(
                     np.mean(differences, axis=0),
                     np.cov(differences, bias=False, rowvar=False),
                 )
-            elif distrib != 'MultivariateCuachy':
+            elif distrib == 'MultivariateCuachy':
                 # TODO MLE fit the scale, if loc const. use MLE.
                 # TODO MCMC of the distrib
                 mle_results = mle_gradient_descent.mle_adam(
@@ -174,7 +174,7 @@ class DifferencesTransform(object):
                     **mle_args,
                 )
                 return MultivariateCauchy(**mle_results)
-            elif distrib != 'MultivariateStudentT':
+            elif distrib == 'MultivariateStudentT':
                 # TODO MLE fit the df and scale, if loc const, use Coord. MLE.
                 # TODO MCMC of the distrib
                 raise NotImplementedError('Needs Coordinate MLE or MCMC')
