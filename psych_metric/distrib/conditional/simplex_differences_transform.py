@@ -9,8 +9,8 @@ from tensorflow_probability import distributions as tfd
 from psych_metric.distrib import distrib_utils
 from psych_metric.distrib import mle_gradient_descent
 from psych_metric.distrib.empirical_density import knn_density
-from psych_metric.distrib.simplex import EuclideanSimplexTransform
-from psych_metric.distrib.simplex import HyperbolicSimplexTransform
+from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
+from psych_metric.distrib.simplex.hyperbolic import HyperbolicSimplexTransform
 from psych_metric.distrib.tfp_mvst import MultivariateStudentT
 from psych_metric.distrib.tfp_mvst import MultivariateCauchy
 

@@ -60,10 +60,6 @@ def transform_from(vectors, transform_matrix, origin_adjust):
     #return (vectors @ transform_matrix.T) + origin_adjust
 
 
-def hyperbolic_transform_to(vector, transform_matrix, origin_adjust=None):
-    return
-
-
 class EuclideanSimplexTransform(object):
     """Creates and contains the objects needed to convert to and from the
     Euclidean Simplex basis.
@@ -98,40 +94,3 @@ class EuclideanSimplexTransform(object):
             self.change_of_basis_matrix,
             self.origin_adjust,
         )
-
-
-class HyperbolicSimplexTransform(object):
-    """
-
-    Attributes
-    ----------
-    origin_adjust : np.ndarray
-
-    """
-
-    def __init__(self, dim):
-        # Create origin adjustment, center 1st dim's extreme value at origin
-        raise NotImplementedError
-
-    def to(self, vectors):
-        """Transform given vectors into n-1 probability simplex space."""
-        # center 1st dim's extreme value at origin
-        return
-
-    def tf_to(self, vectors):
-        """Transform given vectors into n-1 probability simplex space done in
-        tensorflow code.
-
-        """
-        # center 1st dim's extreme value at origin
-        return
-
-    def back(self, vectors):
-        """Transform given vectors out of n-1 probability simplex space."""
-        return
-
-    def tf_from(self, vectors):
-        """Transform given vectors out of n-1 probability simplex space done in
-        tensorflow code.
-        """
-        return
