@@ -22,10 +22,31 @@ def cartesian_to_hypersphere(vectors):
         hyperspherical coordinates where the first element is the radius, and
         then followed by n-1 angles for each dimension.
     """
-    radii = np.linalg.norm(vectors[:, 0])
+    # TODO add check for 3 or more dimensions in samples.
+    if len(vectors.shape) == 1:
+        # single sample
+        vectors = vectors.reshape(1, -1)
 
+    #radii = np.linalg.norm(vectors[:, 0])
+    flipped = np.fliplr(vectors)
+    cumsqrt = np.sqrt(np.cumsum(flipped ** 2, axis=1))
+    #radii = cumsqrt[:, -1]
+    angles = np.arccos(flipped / cumsqrt)
+    # angles 1 -- n-2 = np.fliplr(angles[2:])
 
-    return
+    last_angle = np.pi - 2 * np.arctan(
+        (flipped[:, 1] + cumsqrt[:, 1]) / flipped[:, 0]
+    )
+
+    # radius followed by ascending n-1 angles per row
+    return np.concatenate(
+        (
+            cumsqrt[:, [-1]],
+            np.fliplr(angles[:, 2:]),
+            last_angle.reshape([-1, 1]),
+        ),
+        axis=1,
+    )
 
 
 def hypersphere_to_cartesian(vectors):
@@ -46,6 +67,7 @@ def hypersphere_to_cartesian(vectors):
         2-dimensional array where the first dimension is the samples and the
         second is the n-dimensional Cartesian coordinates.
     """
+    # TODO add check for 3 or more dimensions in samples.
     if len(vectors.shape) == 1:
         # single sample
         vectors = vectors.reshape(1, -1)
