@@ -50,13 +50,10 @@ def transform_to(vectors, transform_matrix, origin_adjust):
     probability simplex space of one dimension less. The orgin adjustment
     is used to move to the correct origin of the probability simplex space.
     """
-    #return transform_matrix @ (vectors - origin_adjust)
-    #return (vectors - origin_adjust) @ transform_matrix.T
     return (vectors - origin_adjust) @ transform_matrix
 
 
 def transform_from(vectors, transform_matrix, origin_adjust):
-    #return (vectors @ transform_matrix) + origin_adjust
     return (vectors @ transform_matrix.T) + origin_adjust
 
 
@@ -68,6 +65,13 @@ class EuclideanSimplexTransform(object):
     ----------
     origin_adjust : np.ndarray
     change_of_basis_matrix : np.ndarray
+
+    Properties
+    ----------
+    input_dim : int
+        The number of dimensions of the input samples before being transformed.
+    output_dim : int
+        The number of dimensions of the samples after being transformed.
     """
     def __init__(self, dim, equal_scale=True):
         # Create origin adjustment, center 1st dim's extreme value at origin
@@ -75,13 +79,20 @@ class EuclideanSimplexTransform(object):
         self.origin_adjust[0] = 1
 
         # Create change of basis matrix
-        # TODO make the change_of_basis_matrix scale each dim equally.
         self.change_of_basis_matrix = get_change_of_basis_matrix(dim, equal_scale)
 
         #if equal_scale:
+        # THIS IS NOT necessary for Euclidean transform.
         #    simplex_extremes = np.eye(input_dim) / self.to(np.eye(input_dim))
         #    self.change_of_basis_matrix =
 
+    @property
+    def input_dim(self):
+        return len(self.origin_adjust)
+
+    @property
+    def output_dim(self):
+        return self.input_dim - 1
 
     def to(self, vectors):
         """Transform given vectors into n-1 probability simplex space."""
