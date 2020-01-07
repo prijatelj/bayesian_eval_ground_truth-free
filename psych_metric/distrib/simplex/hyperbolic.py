@@ -4,11 +4,62 @@ import logging
 import numpy as np
 
 
+def cart2polar(vectors):
+    """Convert from 2d Cartesian coordinates to polar coordinates.
+
+    Parameters
+    ----------
+    vectors : np.ndarray
+        2-dimensional array where the first dimension is the samples and the
+        second is the 2-dimensional Cartesian coordinates.
+
+    Returns
+    -------
+        2-dimensional array where the first dimension is the samples and the
+        second dimension contains 2 elements consisting of the polar
+        coordinates where the first element is the radius, and then followed by
+        the angle.
+    """
+    return np.concatenate(
+        (
+            np.linalg.norm(vectors, axis=1, keepdims=True),
+            np.arctan2(vectors[:, 1], vectors[:, 0]).reshape([-1, 1]),
+        ),
+        axis=1,
+    )
+
+
+def polar2cart(vectors):
+    """Convert from polar to 2d Cartesian coordinates.
+
+    Parameters
+    ----------
+    vectors : np.ndarray
+        2-dimensional array where the first dimension is the samples and the
+        second dimension contains 2 elements consisting of the polar
+        coordinates where the first element is the radius, and then followed by
+        the angle.
+
+    Results
+    -------
+    np.ndarray
+        2-dimensional array where the first dimension is the samples and the
+        second is the 2-dimensional Cartesian coordinates.
+    """
+    return vectors[:, [0]] * np.concatenate(
+        (
+            np.cos(vectors[:, [1]]),
+            np.sin(vectors[:, [1]]),
+        ),
+        axis=1,
+    )
+
+
 def cartesian_to_hypersphere(vectors):
     """Convert from Cartesian coordinates to hyperspherical coordinates of the
     same n-dimensions.
 
-    Attributes
+    Parameters
     ----------
     vectors : np.ndarray
         2-dimensional array where the first dimension is the samples and the
@@ -22,10 +73,18 @@ def cartesian_to_hypersphere(vectors):
         hyperspherical coordinates where the first element is the radius, and
         then followed by n-1 angles for each dimension.
     """
-    # TODO add check for 3 or more dimensions in samples.
     if len(vectors.shape) == 1:
         # single sample
-        vectors = vectors.reshape(1, -1)
+        vectors = vectors.reshape([1, -1])
+
+    if vectors.shape[1] == 2:
+        return cart2polar(vectors)
+    elif vectors.shape[1] < 2:
+        raise ValueError(' '.join([
+            'Expected the number of coordinate dimensions to be >= 2, but',
+            f'recieved vectors with shape {vectors.shape}. and axis being',
+            f'1.',
+        ]))
 
     #radii = np.linalg.norm(vectors[:, 0])
     flipped = np.fliplr(vectors)
@@ -53,8 +112,8 @@ def hypersphere_to_cartesian(vectors):
     """Convert from hyperspherical coordinates to Cartesian coordinates of the
     same n-dimensions.
 
-    Attributes
-    -------
+    Parameters
+    ----------
     vectors : np.ndarray
         2-dimensional array where the first dimension is the samples and the
         second dimension contains n elements consisting of the n-1-dimensional
@@ -67,10 +126,18 @@ def hypersphere_to_cartesian(vectors):
         2-dimensional array where the first dimension is the samples and the
         second is the n-dimensional Cartesian coordinates.
     """
-    # TODO add check for 3 or more dimensions in samples.
     if len(vectors.shape) == 1:
         # single sample
-        vectors = vectors.reshape(1, -1)
+        vectors = vectors.reshape([1, -1])
+
+    if vectors.shape[1] == 2:
+        return polar2cart(vectors)
+    elif vectors.shape[1] < 2:
+        raise ValueError(' '.join([
+            'Expected the number of coordinate dimensions to be >= 2, but',
+            f'recieved vectors with shape {vectors.shape}. and axis being',
+            f'1.',
+        ]))
 
     # x1 = radius * cos(rho_1)
     # xn-1 = radius * sin(rho_1) * ... * sin(rho_n-2) * cos(rho_n-1)
