@@ -3,6 +3,8 @@ import logging
 
 import numpy as np
 
+from psych_metric.distrib.simplex import EuclideanSimplexTransform
+
 
 def cart2polar(vectors):
     """Convert from 2d Cartesian coordinates to polar coordinates.
@@ -167,16 +169,22 @@ class HyperbolicSimplexTransform(object):
 
     def __init__(self, dim):
         # Create origin adjustment, center of simplex at origin
-        self.origin_adjust = np.ones(dim) / 2
+        self.euclid_simplex_transform = EuclideanSimplexTransform(dim)
+        #self.origin_adjust = np.ones(dim) / 2
+        #self.circumscribed_radius = np.linalg.norm(self.origin_adjust)
 
         raise NotImplementedError
 
     def to(self, vectors):
         """Transform given vectors into hyperbolic probability simplex space."""
         # Center discrete probability simplex at origin in Euclidean space
-        centered_vectors = vectors - self.origin_adjust
+        #centered_vectors = vectors - self.origin_adjust
+        euclid_simplex = self.euclid_simplex_transform.to(vectors)
 
-        # Convert to polar coordinates
+        # center at origin.
+
+        # Convert to polar/hyperspherical coordinates
+        #hyperspherical = cartesian_to_hypersphere(centered_vectors)
 
         # Stretch simplex into hypersphere, no longer conserving the angles
 
