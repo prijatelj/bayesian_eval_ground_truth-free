@@ -42,7 +42,7 @@ def get_change_of_basis_matrix(input_dim):
 
     # TODO to transpose or not to transpose... just ensure you're consistent!
     # Create orthonormal basis of simplex
-    return np.linalg.qr(spanning_vectors)[0].T
+    return np.linalg.qr(spanning_vectors)[0]
 
 
 def transform_to(vectors, transform_matrix, origin_adjust):
@@ -51,13 +51,13 @@ def transform_to(vectors, transform_matrix, origin_adjust):
     is used to move to the correct origin of the probability simplex space.
     """
     #return transform_matrix @ (vectors - origin_adjust)
-    return (vectors - origin_adjust) @ transform_matrix.T
-    #return (vectors - origin_adjust) @ transform_matrix
+    #return (vectors - origin_adjust) @ transform_matrix.T
+    return (vectors - origin_adjust) @ transform_matrix
 
 
 def transform_from(vectors, transform_matrix, origin_adjust):
-    return (vectors @ transform_matrix) + origin_adjust
-    #return (vectors @ transform_matrix.T) + origin_adjust
+    #return (vectors @ transform_matrix) + origin_adjust
+    return (vectors @ transform_matrix.T) + origin_adjust
 
 
 class EuclideanSimplexTransform(object):
@@ -69,13 +69,18 @@ class EuclideanSimplexTransform(object):
     origin_adjust : np.ndarray
     change_of_basis_matrix : np.ndarray
     """
-    def __init__(self, dim):
+    def __init__(self, dim, equal_scale=True):
         # Create origin adjustment, center 1st dim's extreme value at origin
         self.origin_adjust = np.zeros(dim)
         self.origin_adjust[0] = 1
 
         # Create change of basis matrix
-        self.change_of_basis_matrix = get_change_of_basis_matrix(dim)
+        # TODO make the change_of_basis_matrix scale each dim equally.
+        self.change_of_basis_matrix = get_change_of_basis_matrix(dim, equal_scale)
+
+        #if equal_scale:
+        #    simplex_extremes = np.eye(input_dim) / self.to(np.eye(input_dim))
+        #    self.change_of_basis_matrix =
 
 
     def to(self, vectors):
