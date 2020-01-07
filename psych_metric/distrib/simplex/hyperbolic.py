@@ -182,11 +182,18 @@ class HyperbolicSimplexTransform(object):
         euclid_simplex = self.euclid_simplex_transform.to(vectors)
 
         # center at origin.
+        # Center the euclid n-1 basis of simplex at origin, then check if vertices equidistant, which they should be. then can use those as circumscribed_radius
+        extremes = np.eye(self.euclid_simplex_transform.input_dim)[1:]
+        simplex_extremes = self.euclid_simplex_transform.to(extremes)
 
         # Convert to polar/hyperspherical coordinates
         #hyperspherical = cartesian_to_hypersphere(centered_vectors)
 
         # Stretch simplex into hypersphere, no longer conserving the angles
+
+        # figure out the nice transform of the sides of simplex into arcs based on angle.
+        # aka find radius of boundy pt of simplex given angle, then the rest follows.
+        # point radius * circumscribed_radius / simplex_boundary_radius(angle)
 
         # Inverse Poincare' Ball method to go into hyperbolic space
 
