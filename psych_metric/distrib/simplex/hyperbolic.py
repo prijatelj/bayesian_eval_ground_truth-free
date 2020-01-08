@@ -169,8 +169,19 @@ class HyperbolicSimplexTransform(object):
 
     def __init__(self, dim):
         # Create origin adjustment, center of simplex at origin
-        self.euclid_simplex_transform = EuclideanSimplexTransform(dim)
         #self.origin_adjust = np.ones(dim) / 2
+        self.euclid_simplex_transform = EuclideanSimplexTransform(dim)
+
+        extremes = np.eye(self.euclid_simplex_transform.input_dim)[1:]
+        simplex_extremes = self.euclid_simplex_transform.to(extremes)
+
+        # TODO equal scaling of dimensions?
+        # extremes / 2 is the radii to each vertex of the simplex, and their
+        # norms is the radii which are all the same via orthogonal rotation
+        # matrix.
+
+        self.centering_mat = simplex_extremes/2
+
         #self.circumscribed_radius = np.linalg.norm(self.origin_adjust)
 
         raise NotImplementedError
@@ -182,9 +193,10 @@ class HyperbolicSimplexTransform(object):
         euclid_simplex = self.euclid_simplex_transform.to(vectors)
 
         # center at origin.
-        # Center the euclid n-1 basis of simplex at origin, then check if vertices equidistant, which they should be. then can use those as circumscribed_radius
-        extremes = np.eye(self.euclid_simplex_transform.input_dim)[1:]
-        simplex_extremes = self.euclid_simplex_transform.to(extremes)
+        # Center the euclid n-1 basis of simplex at origin, then check if
+        # vertices equidistant, which they should be. then can use those as
+        # circumscribed_radius
+        centered = euclid_simplex - self.centering_mat
 
         # Convert to polar/hyperspherical coordinates
         #hyperspherical = cartesian_to_hypersphere(centered_vectors)
