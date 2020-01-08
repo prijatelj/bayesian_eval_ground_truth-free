@@ -172,19 +172,29 @@ class HyperbolicSimplexTransform(object):
         #self.origin_adjust = np.ones(dim) / 2
         self.euclid_simplex_transform = EuclideanSimplexTransform(dim)
 
-        extremes = np.eye(self.euclid_simplex_transform.input_dim)[1:]
+        extremes = np.eye(self.input_dim)
         simplex_extremes = self.euclid_simplex_transform.to(extremes)
 
         # TODO equal scaling of dimensions?
         # extremes / 2 is the radii to each vertex of the simplex, and their
         # norms is the radii which are all the same via orthogonal rotation
         # matrix.
+        # Save the vector for translating all pts to center about origin.
+        self.centroid = simplex_extremes.mean(axis=0)
 
-        self.centering_mat = simplex_extremes/2
-
-        #self.circumscribed_radius = np.linalg.norm(self.origin_adjust)
+        self.circumscribed_radius = np.linalg.norm(
+            simplex_extremes[0] - self.centroid,
+        )
 
         raise NotImplementedError
+
+    @property
+    def input_dim(self):
+        return self.euclid_simplex_transform.input_dim
+
+    @property
+    def output_dim(self):
+        return self.euclid_simplex_transform.output_dim
 
     def to(self, vectors):
         """Transform given vectors into hyperbolic probability simplex space."""
@@ -196,7 +206,7 @@ class HyperbolicSimplexTransform(object):
         # Center the euclid n-1 basis of simplex at origin, then check if
         # vertices equidistant, which they should be. then can use those as
         # circumscribed_radius
-        centered = euclid_simplex - self.centering_mat
+        centered = euclid_simplex - self.centroid
 
         # Convert to polar/hyperspherical coordinates
         #hyperspherical = cartesian_to_hypersphere(centered_vectors)
