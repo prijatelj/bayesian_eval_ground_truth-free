@@ -170,21 +170,24 @@ class HyperbolicSimplexTransform(object):
     def __init__(self, dim):
         # Create origin adjustment, center of simplex at origin
         #self.origin_adjust = np.ones(dim) / 2
-        self.euclid_simplex_transform = EuclideanSimplexTransform(dim)
-
-        extremes = np.eye(self.input_dim)
-        simplex_extremes = self.euclid_simplex_transform.to(extremes)
+        #self.euclid_simplex_transform = EuclideanSimplexTransform(dim)
+        #extremes = np.eye(self.input_dim)
+        #simplex_extremes = self.euclid_simplex_transform.to(extremes)
 
         # TODO equal scaling of dimensions?
         # extremes / 2 is the radii to each vertex of the simplex, and their
         # norms is the radii which are all the same via orthogonal rotation
         # matrix.
         # Save the vector for translating all pts to center about origin.
-        self.centroid = simplex_extremes.mean(axis=0)
+        #self.centroid = simplex_extremes.mean(axis=0)
 
-        self.circumscribed_radius = np.linalg.norm(
-            simplex_extremes[0] - self.centroid,
-        )
+        # Center Simplex in N-dim
+        self.center_adjust = 1.0 / float(dim)
+
+        # Rotate to zero out one arbitrary dimension, drop that zeroed dim.
+        self.rotate_drop_dim = get_rotate_drop_dim_matrix(dim, 0)
+
+        #self.circumscribed_radius = np.linalg.norm()
 
         raise NotImplementedError
 
@@ -200,13 +203,17 @@ class HyperbolicSimplexTransform(object):
         """Transform given vectors into hyperbolic probability simplex space."""
         # Center discrete probability simplex at origin in Euclidean space
         #centered_vectors = vectors - self.origin_adjust
-        euclid_simplex = self.euclid_simplex_transform.to(vectors)
+        # TODO change euclid_simplex / make alt. to use center and rotate only
+        #euclid_simplex = self.euclid_simplex_transform.to(vectors)
+
 
         # center at origin.
         # Center the euclid n-1 basis of simplex at origin, then check if
         # vertices equidistant, which they should be. then can use those as
         # circumscribed_radius
-        centered = euclid_simplex - self.centroid
+        centered = vectors - self.centroid
+
+
 
         # Convert to polar/hyperspherical coordinates
         #hyperspherical = cartesian_to_hypersphere(centered_vectors)
