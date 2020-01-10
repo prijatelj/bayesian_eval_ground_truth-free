@@ -182,12 +182,24 @@ class HyperbolicSimplexTransform(object):
         #self.centroid = simplex_extremes.mean(axis=0)
 
         # Center Simplex in N-dim
-        self.center_adjust = 1.0 / float(dim)
+        self.center_adjust = 1.0 / dim
 
         # Rotate to zero out one arbitrary dimension, drop that zeroed dim.
         self.rotate_drop_dim = get_rotate_drop_dim_matrix(dim, 0)
 
         #self.circumscribed_radius = np.linalg.norm()
+
+        # rotate and drop dim
+        # does not have to be negative, but be aware of rotation direction
+        self.axis_rot = -np.ones(dim)
+        self.axis_rot[0] = 0
+
+        self.angle_rot = np.arctan2(
+            1.0 - 1.0 / dim,
+            np.linalg.norm([1.0 / dim] * (dim - 1)),
+        )
+        # TODO Rotation matrix or Rotors rotate and drop dim
+
 
         raise NotImplementedError
 
