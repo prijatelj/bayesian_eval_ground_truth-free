@@ -3,7 +3,7 @@ import logging
 
 import numpy as np
 
-from psych_metric.distrib.simplex import EuclideanSimplexTransform
+from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
 
 
 def cart2polar(vectors):
@@ -158,6 +158,23 @@ def hypersphere_to_cartesian(vectors):
     return  vectors[:, 0].reshape(-1, 1) * sin * cos
 
 
+def get_simplex_boundary_radius(angles, circumscribed_radius):
+    """Returns the radius of the point on the boundary of the regular simplex
+
+    Parameters
+    ----------
+    angles : np.ndarray
+        Array of different sets of angles defining the location of the boundary
+        point on the simplex whose radius is being calculated. Each row is
+        a different point and the columns are the angles.
+    circumscribed_radius :
+        The radius of the circumscribed hypersphere of the simplex, which is
+        equal to the radius of each vertex of the regular simplex.
+    """
+    return circumscribed_radius * np.cos(np.pi / 3) \
+        / np.cos(2 / 3 * np.pi - angles)
+
+
 class HyperbolicSimplexTransform(object):
     """
 
@@ -200,7 +217,6 @@ class HyperbolicSimplexTransform(object):
         )
         # TODO Rotation matrix or Rotors rotate and drop dim
 
-
         raise NotImplementedError
 
     @property
@@ -228,15 +244,15 @@ class HyperbolicSimplexTransform(object):
 
 
         # Convert to polar/hyperspherical coordinates
-        #hyperspherical = cartesian_to_hypersphere(centered_vectors)
+        hyperspherical = cartesian_to_hypersphere(centered)
 
         # Stretch simplex into hypersphere, no longer conserving the angles
 
-        # figure out the nice transform of the sides of simplex into arcs based on angle.
-        # aka find radius of boundy pt of simplex given angle, then the rest follows.
-        # point radius * circumscribed_radius / simplex_boundary_radius(angle)
+        np.cos(np.pi / 3) / np.cos(2 / 3 * np.pi - angles)
+        hyperspherical[:, 0] /= np.cos(np.pi / 3) * np.cos(2 / 3 * np.pi - hyperspherical[:, 1:])
 
         # Inverse Poincare' Ball method to go into hyperbolic space
+
 
         return
 
