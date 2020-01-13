@@ -158,6 +158,45 @@ def hypersphere_to_cartesian(vectors):
     return  vectors[:, 0].reshape(-1, 1) * sin * cos
 
 
+def get_rotation_axis_angle(dim, dim_to_zero=0):
+    """Given number of dimensions of a discrete probability simplex, find some
+    vector that lies on the rotation axis and angle to zero the given
+    dimension.
+    """
+
+    return
+
+
+def rotation_matrix(dim, x, y, angle):
+    """Creates rotation matrix."""
+    rotate = np.eye(dim)
+    rotate[x, x] = np.cos(angle)
+    rotate[x, y] = -np.sin(angle)
+    rotate[y, x] = np.sin(angle)
+    rotate[y, y] = np.cos(angle)
+    return rotate
+
+
+def rotate_around(rotation_simplex, angle):
+    """General n-dimension rotation."""
+    # TODO currently assumes given a simplex with 1st point already centered.
+    n = len(rotation_simplex)
+    v = rotation_simplex
+    mat = np.eye(n)
+
+    for r in range(1, n):
+        for c in list(range(r, n))[::-1]:
+            v = v @ mat
+            mat = mat @ rotation_matrix(
+                n,
+                c,
+                c - 1,
+                np.arctan2(v[r, c], v[r, c-1]),
+            )
+
+    return mat @ rotation_matrix(n, n-1, n, angle) @ np.linalg.inv(mat)
+
+
 def get_simplex_boundary_radius(angles, circumscribed_radius):
     """Returns the radius of the point on the boundary of the regular simplex
 
@@ -171,8 +210,10 @@ def get_simplex_boundary_radius(angles, circumscribed_radius):
         The radius of the circumscribed hypersphere of the simplex, which is
         equal to the radius of each vertex of the regular simplex.
     """
-    return circumscribed_radius * np.cos(np.pi / 3) \
-        / np.cos(2 / 3 * np.pi - angles)
+    #return circumscribed_radius * np.cos(np.pi / 3) \
+    #    / np.cos(2 / 3 * np.pi - angles)
+
+
 
 
 class HyperbolicSimplexTransform(object):
@@ -208,8 +249,8 @@ class HyperbolicSimplexTransform(object):
 
         # rotate and drop dim
         # does not have to be negative, but be aware of rotation direction
-        self.axis_rot = -np.ones(dim)
-        self.axis_rot[0] = 0
+        #self.axis_rot = -np.ones(dim)
+        #self.axis_rot[0] = 0
 
         self.angle_rot = np.arctan2(
             1.0 - 1.0 / dim,
