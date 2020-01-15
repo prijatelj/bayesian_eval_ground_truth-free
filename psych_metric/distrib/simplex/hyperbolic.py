@@ -167,8 +167,8 @@ def get_rotation_axis_angle(dim, dim_to_zero=0):
     return
 
 
-def rotation_matrix(dim, x, y, angle):
-    """Creates rotation matrix."""
+def givens_rotation(dim, x, y, angle):
+    """Creates a Givens rotation matrix."""
     rotate = np.eye(dim)
     rotate[x, x] = np.cos(angle)
     rotate[x, y] = -np.sin(angle)
@@ -179,15 +179,22 @@ def rotation_matrix(dim, x, y, angle):
 
 def rotate_around(rotation_simplex, angle):
     """General n-dimension rotation."""
-    # TODO currently assumes given a simplex with 1st point already centered.
+    if rotation_simplex.shape[0] > rotation_simplex.shape[0]:
+        # expects points to contained in the rows, elements in columns
+        rotation_simplex = rotation_simplex.T
+
+    # Transpose the simplex st the first point is centered at origin
+    v = rotation_simplex - rotation_simplex[0]
+    # TODO how to include this in the ending matrix? need to be homogenous
+    # coordinates? As is right now, the alg will treat v1 as v0 post-transpose
+
     n = len(rotation_simplex)
-    v = rotation_simplex
     mat = np.eye(n)
 
     for r in range(1, n):
         for c in list(range(r, n))[::-1]:
             v = v @ mat
-            mat = mat @ rotation_matrix(
+            mat = mat @ givens_rotation(
                 n,
                 c,
                 c - 1,
