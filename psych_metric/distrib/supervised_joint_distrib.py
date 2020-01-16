@@ -13,87 +13,12 @@ from sklearn.neighbors import BallTree
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from psych_metric import mvst
-from psych_metric.distrib import mle_gradient_descent
 from psych_metric.distrib import distrib_utils
+from psych_metric.distrib import mle_gradient_descent
+from psych_metric.distrib.conditional.simplex_differences_transform import \
+    DifferencesTransform
 
 # TODO handle continuous distrib of continuous distrib, only discrete atm.
-
-
-def transform_to(sample, transform_matrix, origin_adjust=None):
-    """Transforms the sample from discrete distribtuion space into the
-    probability simplex space of one dimension less. The orgin adjustment
-    is used to move to the correct origin of the probability simplex space.
-    """
-    if origin_adjust is None:
-        origin_adjust = np.zeros(transform_matrix.shape[1])
-        origin_adjust[0] = 1
-    return transform_matrix @ (sample - origin_adjust)
-
-
-def transform_from(sample, transform_matrix, origin_adjust=None):
-    if origin_adjust is None:
-        origin_adjust = np.zeros(transform_matrix.shape[1])
-        origin_adjust[0] = 1
-    return (sample @ transform_matrix) + origin_adjust
-
-
-def knn_log_prob(pred, num_classes, knn_tree, k, knn_pdf_num_samples=int(1e6)):
-    """Empirically estimates the predictor log probability using K Nearest
-    Neighbords.
-    """
-    if len(pred.shape) == 1:
-        # single sample
-        pred = pred.reshape(1, -1)
-
-    #radius = self.knn_tree.query(pred, k)[0][:, -1]
-    radius = knn_tree.query(pred, k)[0][:, -1]
-
-    # log(k) - log(n) - log(volume)
-    log_prob = np.log(k) - np.log(knn_pdf_num_samples)
-
-    # calculate the n-1 sphere volume being contained w/in the n-1 simplex
-    n = num_classes - 1
-    log_prob -= n * (np.log(np.pi) / 2 + np.log(radius)) \
-        - scipy.special.gammaln(n / 2 + 1)
-
-    return log_prob
-
-
-def transform_knn_log_prob_single(
-    trgt,
-    pred,
-    transform_knn_dists,
-    k,
-    origin_adjust,
-    transform_matrix,
-):
-    # Find valid differences from saved set: `self.transform_knn_dists`
-    # to test validity, convert target sample to simplex space.
-    simplex_trgt = transform_to(trgt, transform_matrix, origin_adjust)
-
-    # add differences to target & convert back to full dimensional space.
-    dist_check = transform_from(
-        transform_knn_dists + simplex_trgt,
-        transform_matrix,
-        origin_adjust,
-    )
-
-    # Check which are valid samples. Save indices or new array
-    valid_dists = transform_knn_dists[
-        np.where(distrib_utils.is_prob_distrib(dist_check))[0]
-    ]
-
-    # TODO should check if number of valid_dists >> k, otherwise not accurate estimate.
-
-    # Fit BallTree to the differences valid to the specific target.
-    knn_tree = BallTree(valid_dists)
-
-    # Get distance between actual sample pair of target and pred
-    actual_dist = transform_to(pred, transform_matrix, origin_adjust) - simplex_trgt
-
-    # Estimate the log probability.
-    return knn_log_prob(actual_dist, transform_matrix.shape[1], knn_tree, k)
 
 
 class SupervisedJointDistrib(object):
@@ -137,14 +62,14 @@ class SupervisedJointDistrib(object):
         pred=None,
         data_type='nominal',
         independent=False,
-        num_neighbors=10,
-        sample_dim=None,
+        knn_num_neighbors=10,
         total_count=None,
         tf_sess_config=None,
         mle_args=None,
         knn_num_samples=int(1e6),
+        hyperbolic=False,
         dtype=np.float32,
-        processes=16,
+        n_jobs=1,
     ):
         """
         Parameters
@@ -173,10 +98,6 @@ class SupervisedJointDistrib(object):
             how the sampling is handled, specifically in how the
             `transform_distrib` is treated. If True, the `transform_distrib` is
             instead treated as the distrib of second random variable.
-        sample_dim : int, optional
-            The number of dimensions of a single sample of both the target and
-            predictor distribtutions. This is only required when `target` and
-            `pred` are not provided.
         total_count : int
             Non-zero, positive integer of total count for the
             Dirichlet-multinomial target distribution.
@@ -200,9 +121,8 @@ class SupervisedJointDistrib(object):
             The number of parameters of the transform distribution
         """
         self.independent = independent
-        self.num_neighbors = num_neighbors
         self.dtype = dtype
-        self.processes = processes
+        self.sample_dim = target.shape[1]
 
         if not isinstance(total_count, int):
             # Check if any distribs are DirMult()s. They need total_counts
@@ -226,45 +146,6 @@ class SupervisedJointDistrib(object):
                 ]))
         self.total_count = total_count
 
-        # Set the class' sample_dim and transform_matrix
-        if target is not None and pred is not None:
-            if target.shape != pred.shape:
-                raise ValueError(' '.join([
-                    '`target.shape` and `pred.shape` must be the same shape.',
-                    f'Instead recieved shapes {target.shape} and {pred.shape}.',
-                ]))
-
-            self.sample_dim = target.shape[1]
-
-            # Get transform matrix from data
-            self.transform_matrix = self._get_change_of_basis_matrix(
-                target.shape[1]
-            )
-
-            # Create the origin adjustment for going to and from n-1 simplex.
-            self.origin_adjust = np.zeros(target.shape[1])
-            self.origin_adjust[0] = 1
-        elif isinstance(sample_dim, int):
-            self.sample_dim = sample_dim
-            self.transform_matrix = self._get_change_of_basis_matrix(sample_dim)
-
-            # Create the origin adjustment for going to and from n-1 simplex.
-            self.origin_adjust = np.zeros(sample_dim)
-            self.origin_adjust[0] = 1
-        else:
-            TypeError(' '.join([
-                '`target` and `pred` must be provided together, otherwise',
-                '`sample_dim` must be given instead, along with',
-                '`target_distrib` and `transform_distrib` given explicitly as',
-                'an already defined distribution each.',
-            ]))
-
-        # NOTE given the nature of the distribs being separate, the fitting of
-        # them within this class is a convenience for the research.
-        # Practically this class would only store the target and the
-        # conditional prob related code (simplex conversion and estimate of the
-        # transform function)
-
         # Fit the data (simply modularizes the fitting code,)
         self.fit(
             target_distrib,
@@ -274,6 +155,9 @@ class SupervisedJointDistrib(object):
             independent,
             mle_args,
             knn_num_samples,
+            knn_num_neighbors,
+            n_jobs,
+            hyperbolic,
         )
 
     def __copy__(self):
@@ -393,7 +277,7 @@ class SupervisedJointDistrib(object):
                     #)
                     raise NotImplementedError('Need to return a non tfp distrib')
 
-                    return  mvst.MultivariateStudentT(**mle_results[0].params)
+                    #return  mvst.MultivariateStudentT(**mle_results[0].params)
             else:
                 raise ValueError(' '.join([
                     'Currently only "Dirichlet", "DirichletMultinomial",',
@@ -433,8 +317,6 @@ class SupervisedJointDistrib(object):
 
     def _create_sampling_attributes(self, sess_config=None):
         """Creates the Tensorflow session and ops for sampling."""
-        #raise NotImplementedError()
-
         self.tf_sample_sess = tf.Session(config=sess_config)
 
         num_samples = tf.placeholder(tf.int32, name='num_samples')
@@ -445,39 +327,8 @@ class SupervisedJointDistrib(object):
             # just sample from transform_distrib and return paired RVs.
             self.tf_pred_samples = self.transform_distrib.sample(num_samples)
         else:
-            # Normalize the target samples for use with dependent transform
-            if isinstance(
-                self.target_distrib,
-                tfp.distributions.DirichletMultinomial,
-            ):
-                norm_target_samples = self.tf_target_samples / self.total_count
-            else:
-                norm_target_samples = self.tf_target_samples
-
-            # Convert the normalized target samples into the n-1 simplex basis.
-            target_simplex_samples = tf.cast(
-                (norm_target_samples - self.origin_adjust) @ self.transform_matrix.T,
-                tf.float32,
-            )
-
-            # Draw the transform differences from transform distribution
-            transform_dists = tf.cast(
-                self.transform_distrib.sample(num_samples),
-                tf.float32,
-            )
-
-            # Add the target to the transform distance to undo distance calc
-            pred_simplex_samples = transform_dists + target_simplex_samples
-
-            # Convert the predictor sample back into correct distrib space.
-            self.tf_pred_samples = ((pred_simplex_samples
-                @ self.transform_matrix) + self.origin_adjust)
-
-            if isinstance(
-                self.target_distrib,
-                tfp.distributions.DirichletMultinomial,
-            ):
-                self.tf_pred_samples = self.tf_pred_samples * self.total_count
+            # The pred sampling is handled by the Conditional Distrib class
+            self.tf_pred_samples = None
 
         self.tf_num_samples = num_samples
 
@@ -486,268 +337,6 @@ class SupervisedJointDistrib(object):
             tf.global_variables_initializer(),
             tf.local_variables_initializer(),
         ))
-
-    def _create_log_joint_prob_attributes(
-        self,
-        independent,
-        sess_config=None,
-    ):
-        if independent:
-            self.tf_log_prob_sess = None
-            self.joint_log_prob = None
-            self.log_prob_target_samples = None
-            self.log_prob_pred_samples = None
-            return
-
-        self.tf_log_prob_sess = tf.Session(config=sess_config)
-
-        # The target and predictor samples will be given.
-        log_prob_target_samples = tf.placeholder(
-            tf.float64,
-            name='log_prob_target_samples',
-        )
-        log_prob_pred_samples = tf.placeholder(
-            tf.float64,
-            name='log_prob_pred_samples',
-        )
-
-        # Normalize the samples for use with dependent transform
-        if isinstance(
-            self.target_distrib,
-            tfp.distributions.DirichletMultinomial,
-        ):
-            norm_target_samples = log_prob_target_samples / self.total_count
-        else:
-            norm_target_samples = log_prob_target_samples
-
-        if isinstance(
-            self.transform_distrib,
-            tfp.distributions.DirichletMultinomial,
-        ):
-            norm_pred_samples = log_prob_pred_samples / self.total_count
-        else:
-            norm_pred_samples = log_prob_pred_samples
-
-
-        # Convert the normalized samples into the n-1 simplex basis.
-        # TODO the casts here may be unnecessrary! Check this.
-        target_simplex_samples = tf.cast(
-            (norm_target_samples - self.origin_adjust) @ self.transform_matrix.T,
-            tf.float64,
-        )
-        pred_simplex_samples = tf.cast(
-            (norm_pred_samples - self.origin_adjust) @ self.transform_matrix.T,
-            tf.float64,
-        )
-
-        # Get the differences between pred and target
-        differences = pred_simplex_samples - target_simplex_samples
-
-        # Calculate the transform distrib's log prob of these differences
-        self.joint_log_prob = self.transform_distrib.log_prob(differences)
-
-        # Save the placeholders as class attributes
-        self.log_prob_target_samples = log_prob_target_samples
-        self.log_prob_pred_samples = log_prob_pred_samples
-
-        # Run once. the saved memory is freed upon this class instance deletion.
-        self.tf_log_prob_sess.run((
-            tf.global_variables_initializer(),
-            tf.local_variables_initializer(),
-        ))
-
-        return
-
-    def _create_empirical_predictor_pdf(
-        self,
-        num_samples=int(1e6),
-        independent=False,
-    ):
-        """Creates a probability density function for the predictor output from
-        the transform distribution via sampling of the joint distribution and
-        using Kernel Density Estimation (KDE).
-
-        Parameters
-        ----------
-        num_samples : int, optional (default=int(1e6))
-            The number of samples to draw from the joint distribution to use to
-            get samples of the predictor output to use in fitting the KDE.
-        kernel : str
-            The kernel identifier to be used by the KDE. Defaults to "tophat".
-        """
-        if independent:
-            self.knn_tree = None
-            self.knn_pdf_num_samples = None
-        else:
-            target_samples, pred_samples = self.sample(num_samples)
-            del target_samples
-
-            self.knn_tree = BallTree(pred_samples)
-            self.knn_pdf_num_samples = num_samples
-
-    def _create_knn_transform_pdf(
-        self,
-        independent=False,
-        num_samples=int(1e6),
-    ):
-        """KNN density estimate for the transform distribution whose space is
-        that of the differences of valid points within the probability simplex.
-
-        The Tensorflow Probability log prob for the transform will extremely
-        under estimate the log probability when the gaussian (or any distrib
-        for the transform) has a significant amount of its density outside of
-        the bounds of the simplex. As such it is necessary to calculate the log
-        prob another way, hence this KNN density estimate approach.
-        """
-        if independent:
-            # TODO Set the necessary attributes to None, so they exist but are empty.
-            self.knn_pdf_num_samples = None
-            self.transform_knn_dists = None
-        else:
-            self.knn_pdf_num_samples = num_samples
-            self.transform_knn_dists = self.transform_distrib.sample(num_samples).eval(session=tf.Session())
-
-    def _get_change_of_basis_matrix(self, input_dim):
-        """Creates a matrix that transforms from an `input_dim` space
-        representation of a `input_dim` - 1 discrete probability simplex to
-        that probability simplex's space.
-
-        The first dimension is arbitrarily chosen to collapse and is the
-        expected dimension to be adjusted for when moving the origin in the
-        change of basis.
-
-        Parameters
-        ----------
-        input_dim : int
-            The dimensions of the space of the data of a discrete probability
-            distribution. The valid values in this `input-dim`-space can be
-            expressed as a probability simplex where all points in that space
-            can be expressed as vectors whose values sum to 1 and are all in
-            the range [0,1].
-
-        Returns
-        -------
-        np.ndarray
-            Invertable matrix that is used to convert from the
-            `input_dim`-space to the probabilistic simplex space as a
-            left-transfrom matrix and converts the other way as a
-            right-transform matrix.
-        """
-        # Create n-1 spanning vectors, Using first dim as origin of new basis.
-        spanning_vectors = np.vstack((
-            -np.ones(input_dim -1),
-            np.eye(input_dim -1),
-        ))
-
-        # Create orthonormal basis of simplex
-        return np.linalg.qr(spanning_vectors)[0].T
-
-    def _transform_to(self, sample):
-        """Transforms the sample from discrete distribtuion space into the
-        probability simplex space of one dimension less. The orgin adjustment
-        is used to move to the correct origin of the probability simplex space.
-        """
-        return self.transform_matrix @ (sample - self.origin_adjust)
-
-    def _transform_from(self, sample):
-        """Transforms the sample from probability simplex space into the
-        discrete distribtuion space of one dimension more. The orgin adjustment
-        is used to move to the correct origin of the discrete distribtuion space.
-        """
-        # NOTE tensroflow optimization instead here.
-        return (sample @ self.transform_matrix) + self.origin_adjust
-
-    def _fit_transform_distrib(
-        self,
-        target,
-        pred,
-        distrib='MultivariateNormal',
-        mle_args=None,
-        zero_loc=False,
-    ):
-        """Fits and returns the transform distribution."""
-        differences = np.array([self._transform_to(pred[i]) - self._transform_to(target[i]) for i in range(len(target))])
-
-        # TODO make some handling of MLE not converging if using adam, ie. to
-        # allow the usage of non-convergence mle or not. (should be fine using
-        # multivariate gaussian)
-        if isinstance(distrib, str):
-            if (
-                distrib != 'MultivariateNormal'
-                and distrib != 'MultivariateCauchy'
-                and distrib != 'MultivariateStudentT'
-            ):
-                raise ValueError(' '.join([
-                    'Currently only "MultivariateNormal",',
-                    '"MultivariateCauchy", and "MultivariateStudentT" are',
-                    'supported for the', 'transform distribution as proof of',
-                    f'concept. {distrib} is not supported.',
-                ]))
-            # NOTE logically, mean should be zero given the simplex and
-            # differences.  Will need to resample more given
-
-            # deterministically calculate the Maximum Likely multivatiate
-            # norrmal TODO need to handle when covariance = 0 and change to an
-            # infinitesimal
-            return tfp.distributions.MultivariateNormalFullCovariance(
-                #np.zeros(pred.shape[1]),
-                np.mean(differences, axis=0),
-                np.cov(differences, bias=False, rowvar=False),
-            )
-        if isinstance(distrib, dict):
-            if distrib['distrib_id'] == 'MultivariateNormal':
-                self.target_distrib = mle_gradient_descent.mle_adam(
-                    distrib['distrib_id'],
-                    np.maximum(target, np.finfo(target.dtype).tiny),
-                    init_params=distrib['params'],
-                    **mle_args,
-                )
-            elif distrib['distrib_id'] == 'bnn':
-                raise NotImplementedError('the necessary conditional '
-                    + 'distribution bnn transform class does not yet exist.')
-            else: #distrib['distrib_id'] != 'MultivariateNormal':
-                raise ValueError(' '.join([
-                    'Currently only "MultivariateNormal" is supported for the',
-                    'transform distribution as proof of concept.',
-                    f'{distrib["distrib_id"]} is not a supported value for key',
-                    '`distrib_id`.',
-                ]))
-        else:
-            raise TypeError('`distrib` is expected to be of type `str` or '
-                + f'`dict` not `{type(distrib)}`')
-
-    def _knn_log_prob(self, pred, knn_tree, k=None):
-        if k is None:
-            k = self.num_neighbors
-
-        return knn_log_prob(
-            pred,
-            self.transform_matrix.shape[1],
-            knn_tree,
-            k,
-            self.knn_pdf_num_samples,
-        )
-
-    def _transform_knn_log_prob(self, target, pred, k=None, processes=None):
-        if k is None:
-            k = self.num_neighbors
-        if processes is None:
-            processes = self.processes
-
-        with Pool(processes=processes) as pool:
-            log_prob = pool.starmap(
-                transform_knn_log_prob_single,
-                zip(
-                    target,
-                    pred,
-                    [self.transform_knn_dists] * len(target),
-                    [k] * len(target),
-                    [self.origin_adjust] * len(target),
-                    [self.transform_matrix] * len(target),
-                ),
-            )
-
-        return np.array(log_prob)
 
     @property
     def num_params(self):
@@ -762,12 +351,14 @@ class SupervisedJointDistrib(object):
         independent=False,
         mle_args=None,
         knn_num_samples=int(1e6),
+        knn_num_neighbors=10,
+        n_jobs=1,
+        hyperbolic=False,
         tf_sess_config=None
     ):
         """Fits the target and transform distributions to the data."""
         # TODO check if the target and pred match the distributions' sample
         # space
-
         # TODO parallelize the fitting of the target and predictor distribs
 
         # Fit the target data
@@ -794,11 +385,22 @@ class SupervisedJointDistrib(object):
             # Use given distribution as the fitted dependent distribution
             self.transform_distrib = transform_distrib
         else:
-            self.transform_distrib = self._fit_transform_distrib(
-                target,
-                pred,
-                transform_distrib,
-            )
+            if transform_distrib.lower() == 'bnn':
+                raise NotImplementedError(
+                    'BNN Transform pipeline needs created.',
+                )
+            else:
+                self.transform_distrib = DifferencesTransform(
+                    target,
+                    pred,
+                    transform_distrib,
+                    knn_num_neighbors,
+                    hyperbolic,
+                    n_jobs,
+                    knn_num_samples,
+                    mle_args,
+                    tf_sess_config,
+                )
 
         # Set the number of parameters for the transform distribution
         self.transform_num_params = distrib_utils.get_num_params(
@@ -808,15 +410,6 @@ class SupervisedJointDistrib(object):
 
         # Create the Tensorflow session and ops for sampling
         self._create_sampling_attributes(tf_sess_config)
-        self._create_log_joint_prob_attributes(
-            self.independent,
-            tf_sess_config,
-        )
-        #self._create_empirical_predictor_pdf(independent=self.independent)
-
-        # create the transform log_prob knn
-        self._create_knn_transform_pdf(self.independent, knn_num_samples)
-
 
     def sample(self, num_samples, normalize=False):
         """Sample from the estimated joint probability distribution.
@@ -840,60 +433,30 @@ class SupervisedJointDistrib(object):
             the target and the predictor output aligned by samples in their
             first dimension.
         """
-
-        target_samples, pred_samples = self.tf_sample_sess.run(
-            [self.tf_target_samples, self.tf_pred_samples],
-            feed_dict={self.tf_num_samples: num_samples}
-        )
-
         if self.independent:
-            if normalize:
-                if isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial):
-                    target_samples = target_samples / self.total_count
-
-                if isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial):
-                    pred_samples = pred_samples / self.total_count
-
-            return target_samples, pred_samples
-
-        # NOTE using Tensorflow while loop to resample and check/rejection
-        # would be more optimal. This is next step if necessary.
-
-        # Get any and all indices of non-probability distrib samples
-        bad_sample_idx = np.argwhere(np.logical_not(
-            distrib_utils.is_prob_distrib(pred_samples),
-        ))
-        if len(bad_sample_idx) > 1:
-            bad_sample_idx = np.squeeze(bad_sample_idx)
-        num_bad_samples = len(bad_sample_idx)
-
-        while num_bad_samples > 0:
-            logging.info(
-                'SJD: Number of samples outside of simplex to be replaced: %d',
-                num_bad_samples,
+            target_samples, pred_samples = self.tf_sample_sess.run(
+                [self.tf_target_samples, self.tf_pred_samples],
+                feed_dict={self.tf_num_samples: num_samples}
+            )
+        else:
+            target_samples = self.tf_sample_sess.run(
+                self.tf_target_samples,
+                feed_dict={self.tf_num_samples: num_samples}
             )
 
-            # rerun session w/ enough samples to replace bad samples and some.
-            new_pred = self.tf_sample_sess.run(
-                self.tf_pred_samples,
-                feed_dict={self.tf_num_samples: num_bad_samples},
-            )
-
-            pred_samples[bad_sample_idx] = new_pred
-
-            bad_sample_idx = np.argwhere(np.logical_not(
-                distrib_utils.is_prob_distrib(pred_samples),
-            ))
-            if len(bad_sample_idx) > 1:
-                bad_sample_idx = np.squeeze(bad_sample_idx)
-            num_bad_samples = len(bad_sample_idx)
+            pred_samples = self.transform_distrib.sample(target_samples)
 
         if normalize:
-            if isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial):
+            if isinstance(
+                self.target_distrib,
+                tfp.distributions.DirichletMultinomial,
+            ):
                 target_samples = target_samples / self.total_count
 
-                # NOTE assumes that predictors samples is of the same
-                # output as target, when target is a DirichletMultinomial.
+            if isinstance(
+                self.transform_distrib.distrib,
+                tfp.distributions.DirichletMultinomial,
+            ):
                 pred_samples = pred_samples / self.total_count
 
         return target_samples, pred_samples
@@ -931,59 +494,51 @@ class SupervisedJointDistrib(object):
             or returns the individual random variables unconditional log
             probability when `joint` is False.
         """
+        # If a Dirichlet tfp distrib, must set minimum to tiny for that dtype
         if (
-            isinstance(self.target_distrib, tfp.distributions.DirichletMultinomial)
+            isinstance(
+                self.target_distrib,
+                tfp.distributions.DirichletMultinomial,
+            )
             or isinstance(self.target_distrib, tfp.distributions.Dirichlet)
         ):
             target = target.astype(self.dtype)
             target = np.maximum(target, np.finfo(target.dtype).tiny)
 
-        if self.independent:
-            # If independent, then just measure the MLE of the distribs separately.
-            if (
-                isinstance(self.transform_distrib, tfp.distributions.DirichletMultinomial)
-                or isinstance(self.transform_distrib, tfp.distributions.Dirichlet)
-            ):
-                pred = pred.astype(self.dtype)
-                pred = np.maximum(pred, np.finfo(pred.dtype).tiny)
+        if (
+            self.independent
+            and (
+                isinstance(
+                    self.transform_distrib.distrib,
+                    tfp.distributions.DirichletMultinomial,
+                )
+                or isinstance(
+                    self.transform_distrib,
+                    tfp.distributions.Dirichlet,
+                )
+            )
+        ):
+            pred = pred.astype(self.dtype)
+            pred = np.maximum(pred, np.finfo(pred.dtype).tiny)
 
-            log_prob_pair = self.tf_sample_sess.run((
+        if self.independent:
+            # If independent, then measure the MLE of the distribs separately.
+            log_prob_target, log_prob_pred = self.tf_sample_sess.run((
                 self.target_distrib.log_prob(target),
                 self.transform_distrib.log_prob(pred)
             ))
-
-            if return_individuals:
-                return (
-                    log_prob_pair[0] + log_prob_pair[1],
-                    log_prob_pair[0],
-                    log_prob_pair[1],
-                )
-
-            return log_prob_pair[0] + log_prob_pair[1]
-
-        log_prob_target = self.target_distrib.log_prob(target).eval(
-            session=self.tf_sample_sess,
-        )
-
-        # Calculate the log prob of the stochastic transform function
-        #log_prob_pred = self.tf_log_prob_sess.run(
-        #    self.joint_log_prob,
-        #    feed_dict={
-        #        self.log_prob_target_samples: target,
-        #        self.log_prob_pred_samples: pred,
-        #    },
-        #)
-
-        log_prob_pred = self._transform_knn_log_prob(target, pred)
+        else:
+            log_prob_target = self.target_distrib.log_prob(target).eval(
+                session=self.tf_sample_sess,
+            )
+            log_prob_pred = self.transform_distrib.log_prob(target, pred)
 
         if return_individuals:
             return (
-                #log_prob_target + log_prob_pred,
-                None,
+                log_prob_target + log_prob_pred,
                 log_prob_target,
                 log_prob_pred,
             )
-
         return log_prob_target + log_prob_pred
 
     def info_criterion(self, mle, criterions='bic', num_samples=None, data=None):
