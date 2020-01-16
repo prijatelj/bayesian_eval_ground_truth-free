@@ -1,5 +1,6 @@
 """Transform Distribution by modeling the differences in simplex space.
 """
+from copy import deepcopy
 import logging
 
 import numpy as np
@@ -80,6 +81,25 @@ class DifferencesTransform(object):
         self.knn_density_samples = self.distrib.sample(
             knn_density_num_samples,
         ).eval(session=tf.Session(config=sess_config))
+
+    def __copy__(self):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        new.__dict__.update(self.__dict__)
+        return new
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+
+        for k, v in self.__dict__.items():
+            if k == 'distrib':
+                setattr(new, k, v.copy())
+            else:
+                setattr(new, k, deepcopy(v, memo))
+
+        return new
 
     def _create_sample_attributes(self, sess_config=None):
         """Creates the Tensorflow session and ops for sampling."""

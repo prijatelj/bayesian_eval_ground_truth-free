@@ -1,4 +1,5 @@
 """The functions for converting to and from the Euclidean simplex basis"""
+from copy import deepcopy
 import logging
 
 import numpy as np
@@ -85,6 +86,22 @@ class EuclideanSimplexTransform(object):
         # THIS IS NOT necessary for Euclidean transform.
         #    simplex_extremes = np.eye(input_dim) / self.to(np.eye(input_dim))
         #    self.change_of_basis_matrix =
+
+    def __copy__(self):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        new.__dict__.update(self.__dict__)
+        return new
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+
+        for k, v in self.__dict__.items():
+            setattr(new, k, deepcopy(v, memo))
+
+        return new
 
     @property
     def input_dim(self):
