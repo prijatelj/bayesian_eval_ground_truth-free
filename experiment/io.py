@@ -654,14 +654,14 @@ def add_sjd_args(parser):
 
     # KNN desnity estimate parameters
     sjd.add_argument(
-        '--num_neighbors',
+        '--knn_num_neighbors',
         type=float,
         help=' '.join([
             'A positive int for the number of neighbors to use in the K',
             'Nearest Neighbors density estimate of the transform pdf.',
         ]),
         default=10,
-        dest='sjd.num_neighbors',
+        dest='sjd.knn_num_neighbors',
     )
 
     sjd.add_argument(
