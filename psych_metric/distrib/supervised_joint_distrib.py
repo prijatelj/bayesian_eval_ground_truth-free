@@ -68,6 +68,7 @@ class SupervisedJointDistrib(object):
         mle_args=None,
         knn_num_samples=int(1e6),
         hyperbolic=False,
+        sample_dim=None,
         dtype=np.float32,
         n_jobs=1,
     ):
@@ -122,7 +123,18 @@ class SupervisedJointDistrib(object):
         """
         self.independent = independent
         self.dtype = dtype
-        self.sample_dim = target.shape[1]
+        if target is not None and pred is not None:
+            self.sample_dim = target.shape[1]
+        elif sample_dim is not None:
+            self.sample_dim = sample_dim
+        else:
+            raise TypeError(' '.join([
+                '`target` and `pred` must be provided together, otherwise',
+                '`sample_dim` must be given instead, along with',
+                '`target_distrib` and `transform_distrib` given explicitly as',
+                'an already defined distribution each.',
+            ]))
+
 
         if not isinstance(total_count, int):
             # Check if any distribs are DirMult()s. They need total_counts
@@ -381,11 +393,14 @@ class SupervisedJointDistrib(object):
                 pred,
                 mle_args,
             )
-        elif isinstance(transform_distrib, tfp.distributions.Distribution):
-            # Use given distribution as the fitted dependent distribution
-            self.transform_distrib = transform_distrib
+        #elif isinstance(transform_distrib, tfp.distributions.Distribution):
+        #    # Use given distribution as the fitted dependent distribution
+        #    self.transform_distrib = transform_distrib
         else:
-            if transform_distrib.lower() == 'bnn':
+            if (
+                isinstance(transform_distrib, str)
+                and transform_distrib.lower() == 'bnn'
+            ):
                 raise NotImplementedError(
                     'BNN Transform pipeline needs created.',
                 )
@@ -398,8 +413,9 @@ class SupervisedJointDistrib(object):
                     hyperbolic,
                     n_jobs,
                     knn_num_samples,
-                    mle_args,
-                    tf_sess_config,
+                    input_dim=self.sample_dim,
+                    mle_args=mle_args,
+                    sess_config=tf_sess_config,
                 )
 
         # Set the number of parameters for the transform distribution

@@ -1,4 +1,5 @@
-"""Transform Distribution by modeling the differences in simplex space.
+"""Transform Distribution to approximate the conditoinal distribution by
+modeling the differences in simplex space.
 """
 from copy import deepcopy
 import logging
@@ -38,37 +39,33 @@ class DifferencesTransform(object):
 
     def __init__(
         self,
-        given_samples,
-        conditional_samples,
+        given_samples=None,
+        conditional_samples=None,
         distrib='MultivariateNormal',
         n_neighbors=1,
         hyperbolic=False,
         n_jobs=1,
         knn_density_num_samples=1e6,
+        input_dim=None,
         mle_args=None,
         sess_config=None,
     ):
-        if given_samples.shape != conditional_samples.shape:
-            raise ValueError(' '.join([
-                'given_samples shape and conditional_samples shape must be',
-                f'the same but recieved {given_samples.shape} and',
-                f'{conditional_samples.shape} respectively.',
+        if given_samples is not None and conditional_samples is not None:
+            input_dim = given_samples.shape[1]
+        elif not isinstance(input_dim, int):
+            raise TypeError(' '.join([
+                '`given_samples` and `conditional_samples` must be provided',
+                'together, otherwise `input_dim` must be given instead',
+                'along with `target_distrib` and `transform_distrib` given',
+                'explicitly as an already defined distribution each.',
             ]))
 
-        # All of these could be defined by: euclidean or hyperbolic transform
         if hyperbolic:
-            self.simplex_transform = HyperbolicSimplexTransform(
-                conditional_samples.shape[1],
-            )
+            self.simplex_transform = HyperbolicSimplexTransform(input_dim)
         else:
-            self.simplex_transform = EuclideanSimplexTransform(
-                conditional_samples.shape[1],
-            )
+            self.simplex_transform = EuclideanSimplexTransform(input_dim)
 
-        # KNN args
-        self.n_neighbors = n_neighbors
-        self.n_jobs = n_jobs
-
+        # Distrib args
         self.distrib = self._fit(
             given_samples,
             conditional_samples,
@@ -78,6 +75,10 @@ class DifferencesTransform(object):
         self._create_sample_attributes(sess_config)
         self._create_log_prob_attributes(sess_config)
 
+
+        # KNN args
+        self.n_neighbors = n_neighbors
+        self.n_jobs = n_jobs
         self.knn_density_samples = self.distrib.sample(
             knn_density_num_samples,
         ).eval(session=tf.Session(config=sess_config))
@@ -101,16 +102,11 @@ class DifferencesTransform(object):
 
         return new
 
-    def _create_sample_attributes(self, sess_config=None):
+    def _create_sample_attributes(self, sess_config=None, dtype=tf.float32):
         """Creates the Tensorflow session and ops for sampling."""
         self.tf_sample_sess = tf.Session(config=sess_config)
 
-        # TODO consider adding dimension param to define placeholder shape.
-        self.tf_given_samples = tf.placeholder(
-            tf.int32,
-            name='given_samples',
-        )
-
+        self.tf_given_samples = tf.placeholder(dtype, name='given_samples')
         self.tf_pred_samples = self.tf_sample(self.tf_given_samples)
 
         # Run once. the saved memory is freed upon this class instance deletion.
@@ -155,6 +151,16 @@ class DifferencesTransform(object):
             # Use given distribution as the fitted dependent distribution
             # TODO do check on distribution sample space being as expected.
             return distrib
+        elif (
+            given_samples is None
+            or conditional_samples is None
+            or given_samples.shape != conditional_samples.shape
+        ):
+            raise ValueError(' '.join([
+                'given_samples shape and conditional_samples shape must be',
+                f'the same but recieved {given_samples.shape} and',
+                f'{conditional_samples.shape} respectively.',
+            ]))
 
         if mle_args is None:
             mle_args = {}
@@ -236,28 +242,32 @@ class DifferencesTransform(object):
             raise TypeError('`distrib` is expected to be of type `str` or '
                 + f'`dict` not `{type(distrib)}`')
 
-    def tf_sample(self, tf_given_samples, parallel_iterations=10):
+    def tf_sample(
+        self,
+        tf_given_samples,
+        parallel_iterations=10,
+        dtype=tf.float32,
+    ):
         """Creates Tensorflow graph for sampling."""
         # Convert the given samples into the n-1 simplex basis.
         given_simplex_samples = tf.cast(
             self.simplex_transform.to(tf_given_samples),
-            tf.float32,
+            dtype,
         )
 
         # Draw the transform differences from transform distribution
-        transform_dists = tf.cast(
-            self.distrib.sample(tf_given_samples.shape[0]),
-            tf.float32,
+        transform_diffs = tf.cast(
+            self.distrib.sample(tf.shape(tf_given_samples)[0]),
+            dtype,
         )
 
         # Add the target to the transform distance to undo distance calc
-        #pred_simplex_samples = transform_dists + given_simplex_samples
-        pred_simplex_samples = given_simplex_samples + transform_dists
-
-        # TODO add tensorflow loop for resampling when EuclideanTransform
+        pred_simplex_samples = given_simplex_samples + transform_diffs
 
         # Convert the predictor sample back into correct distrib space.
         return self.simplex_transform.back(pred_simplex_samples)
+
+        # TODO add tensorflow loop for resampling when EuclideanTransform
         """
         tf.while_loop(
             lambda x: tf.logical_not(distrib_utils.tf_is_prob_distrib(x)),
@@ -292,10 +302,9 @@ class DifferencesTransform(object):
         # give input samples to be transformed (defines num of samples)
         # have number of transforms per single input sample (default = 1)
         pred_samples = self.tf_sample_sess.run(
-            [self.tf_pred_samples],
+            self.tf_pred_samples,
             feed_dict={
                 self.tf_given_samples: given_samples,
-                #self.tf_num_samples: num_samples,
             },
         )
 
@@ -314,7 +323,8 @@ class DifferencesTransform(object):
                 num_bad_samples,
             )
 
-            # TODO the resampling needs to resample only the transform given the same input sample.
+            # TODO the resampling needs to resample only the transform given
+            # the same input sample.
             # rerun session w/ enough samples to replace bad samples
             new_pred = self.tf_sample_sess.run(
                 self.tf_pred_samples,
