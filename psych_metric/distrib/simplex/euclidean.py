@@ -74,13 +74,13 @@ class EuclideanSimplexTransform(object):
     output_dim : int
         The number of dimensions of the samples after being transformed.
     """
-    def __init__(self, dim, equal_scale=True):
+    def __init__(self, input_dim, equal_scale=True):
         # Create origin adjustment, center 1st dim's extreme value at origin
-        self.origin_adjust = np.zeros(dim)
+        self.origin_adjust = np.zeros(input_dim)
         self.origin_adjust[0] = 1
 
         # Create change of basis matrix
-        self.change_of_basis_matrix = get_change_of_basis_matrix(dim, equal_scale)
+        self.change_of_basis_matrix = get_change_of_basis_matrix(input_dim)
 
         #if equal_scale:
         # THIS IS NOT necessary for Euclidean transform.
