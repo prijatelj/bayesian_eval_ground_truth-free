@@ -844,7 +844,7 @@ def parse_args(arg_set=None, custom_args=None, description=None):
 
         if arg_set and 'sjd' in arg_set:
             args.sjd.mle_args = vars(args.mle)
-            args.sjd.processes = args.cpu_cores
+            args.sjd.n_jobs = args.cpu_cores
 
     #return args, random_seeds
     return args
