@@ -446,14 +446,13 @@ def add_model_args(parser):
         dest='model.train.epochs',
     )
 
-    # TODO Implement and put in correct place init/load, xor train.
-    #model.add_argument(
-    #    '-w',
-    #    '--weights_file',
-    #    default=None,
-    #    help='The file containing the model weights to set at initialization.',
-    #    dest='model.train.weights_file',
-    #)
+    model.add_argument(
+        '-w',
+        '--weights_file',
+        default=None,
+        help='The file containing the model weights to set at initialization.',
+        dest='model.init.weights_file',
+    )
 
 
 def add_kfold_cv_args(parser):
