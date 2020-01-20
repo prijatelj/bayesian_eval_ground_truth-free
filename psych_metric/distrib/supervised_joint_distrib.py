@@ -33,15 +33,17 @@ class SupervisedJointDistrib(object):
         otherwise. Default is False
     transform_matrix : np.ndarray
         The matrix that transforms from the
-    target_distribution : tfp.distribution.Distribution
+    target_distrib : tfp.distribution.Distribution
         The probability distribution of the target data.
-    transform_distribution : tfp.distribution.Distribution
+    transform_distrib : tfp.distribution.Distribution | DifferencesTransform
         The probability distribution of the transformation function for
-        transforming the target distribution to the predictor output data.
-    tf_sample_sess: tf.Session
-    tf_target_samples: tf.Tensor
-    tf_pred_samples: tf.Tensor
-    tf_num_samples: tf.placeholder
+        transforming the target distribution to the predictor output data. If
+        `independent` is true, then this is a tfp distribution, otherwise it is
+        a DifferencesTransform.
+    tf_sample_sess : tf.Session
+    tf_target_samples : tf.Tensor
+    tf_pred_samples : tf.Tensor
+    tf_num_samples : tf.placeholder
     knn_tree : sklearn.neighbors.BallTree
         The BallTree that is used to calculate the empirical density of the
         predictor probability density function when the predictor random
@@ -354,6 +356,17 @@ class SupervisedJointDistrib(object):
     def num_params(self):
         return self.target_num_params + self.transform_num_params
 
+    @property
+    def params(self):
+        return {
+            'target': distrib_utils.get_tfp_distrib_params(
+                self.target_distrib,
+            ),
+            'transform': distrib_utils.get_tfp_distrib_params(
+                self.transform_distrib
+            ),
+        }
+
     def fit(
         self,
         target_distrib,
@@ -525,7 +538,7 @@ class SupervisedJointDistrib(object):
             self.independent
             and (
                 isinstance(
-                    self.transform_distrib.distrib,
+                    self.transform_distrib,
                     tfp.distributions.DirichletMultinomial,
                 )
                 or isinstance(
