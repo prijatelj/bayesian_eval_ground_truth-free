@@ -4,8 +4,8 @@
 #$ -N lm_lpe_iid       # Specify job name
 #$ -q gpu
 #$ -l gpu_card=1
-#$ -o logs/fb/fq/lpe/logs/
-#$ -e logs/fb/fq/lpe/logs/
+#$ -o logs/lm/fq/lpe/logs/
+#$ -e logs/lm/fq/lpe/logs/
 
 BASE_PATH="$HOME/Public/psych_metric"
 
