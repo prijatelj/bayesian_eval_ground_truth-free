@@ -446,14 +446,13 @@ def add_model_args(parser):
         dest='model.train.epochs',
     )
 
-    # TODO Implement and put in correct place init/load, xor train.
-    #model.add_argument(
-    #    '-w',
-    #    '--weights_file',
-    #    default=None,
-    #    help='The file containing the model weights to set at initialization.',
-    #    dest='model.train.weights_file',
-    #)
+    model.add_argument(
+        '-w',
+        '--weights_file',
+        default=None,
+        help='The file containing the model weights to set at initialization.',
+        dest='model.init.weights_file',
+    )
 
 
 def add_kfold_cv_args(parser):
@@ -654,14 +653,14 @@ def add_sjd_args(parser):
 
     # KNN desnity estimate parameters
     sjd.add_argument(
-        '--num_neighbors',
+        '--knn_num_neighbors',
         type=float,
         help=' '.join([
             'A positive int for the number of neighbors to use in the K',
             'Nearest Neighbors density estimate of the transform pdf.',
         ]),
         default=10,
-        dest='sjd.num_neighbors',
+        dest='sjd.knn_num_neighbors',
     )
 
     sjd.add_argument(
@@ -844,7 +843,7 @@ def parse_args(arg_set=None, custom_args=None, description=None):
 
         if arg_set and 'sjd' in arg_set:
             args.sjd.mle_args = vars(args.mle)
-            args.sjd.processes = args.cpu_cores
+            args.sjd.n_jobs = args.cpu_cores
 
     #return args, random_seeds
     return args

@@ -424,7 +424,7 @@ def log_prob_exps(
             )
 
         # Save parameters
-        results[key] = {'params': distrib_utils.get_sjd_params(candidate)}
+        results[key] = {'params': candidate.params}
 
         # Get log prob exp results on in-sample data:
         results[key]['train'] = log_prob_exp(
@@ -725,7 +725,7 @@ if __name__ == '__main__':
         data[1].shape[1],
         vars(args.mle),
         vars(args.sjd),
-        processes=args.cpu_cores,
+        n_jobs=args.cpu_cores,
     )
 
     #"""
@@ -746,9 +746,9 @@ if __name__ == '__main__':
     )
     #"""
 
-
     # Save the results to file
     experiment.io.save_json(args.output_dir, mean_results(uh, info_criterions))
+    #experiment.io.save_json(args.output_dir, uh)
 
     # TODO then try with load data ONCE, load one summary of a kfold. use data for all.
     #data=args.human_sjd.dir_path,

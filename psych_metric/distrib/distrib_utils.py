@@ -261,25 +261,3 @@ def get_tfp_distrib_params(
 ):
     """Returns the actual distribution parameters of the tfp distribution."""
     return {k: v for k, v in distrib._parameters.items() if k in valid_params}
-
-
-def get_sjd_rv_params(candidate, is_target=True):
-    distrib = candidate.target_distrib if is_target else \
-        candidate.transform_distrib
-
-    if isinstance(distrib, tfp.distributions.Distribution):
-        params = get_tfp_distrib_params(distrib)
-    else:
-        raise TypeError(' '.join([
-            'Expected `distrib` to be of types',
-            f'`tfp.distributions.Distribution` or, not `{type(distrib)}`',
-        ]))
-
-    return params
-
-
-def get_sjd_params(candidate):
-    return {
-        'target': get_sjd_rv_params(candidate, is_target=True),
-        'transform': get_sjd_rv_params(candidate, is_target=False),
-    }

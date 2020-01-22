@@ -234,6 +234,7 @@ def run_session(
         params_history = []
         loss_history = []
         loss_chain = 0
+        param_chain = 0
 
         i = 1
         continue_loop = True
@@ -264,12 +265,12 @@ def run_session(
             top_likelihoods = update_top_likelihoods(
                 top_likelihoods,
                 iter_results['neg_log_prob'],
-                params,
+                iter_results['params'],
                 num_top,
             )
 
             # Save observed vars of interest
-            if num_top <= 0 or not params_history and not loss_history:
+            if num_top <= 0 or (not params_history and not loss_history):
                 # return the history of all likelihoods and params.
                 params_history.append(iter_results['params'])
                 loss_history.append(iter_results['neg_log_prob'])
@@ -278,14 +279,16 @@ def run_session(
                 params_history[0] = iter_results['params']
                 loss_history[0] = iter_results['neg_log_prob']
 
-            continue_loop = to_continue(
+            continue_loop, loss_chain, param_chain = to_continue(
                 distrib_id,
                 iter_results['neg_log_prob'],
                 iter_results['params'],
                 params_history,
                 loss_history,
-                i,
-                max_iter,
+                loss_chain,
+                param_chain,
+                iter_num=i,
+                max_iter=max_iter,
                 tol_param=tol_param,
                 tol_loss=tol_loss,
                 tol_grad=tol_grad,
@@ -357,6 +360,7 @@ def to_continue(
     params_history,
     loss_history,
     loss_chain,
+    param_chain,
     iter_num,
     max_iter=1e4,
     grad=None,
@@ -385,8 +389,17 @@ def to_continue(
         param_diff = np.subtract(new_params, prior_params)
 
         if np.linalg.norm(param_diff) < tol_param:
-            logging.info('Parameter convergence in %d iterations.', iter_num)
-            return False
+            param_chain += 1
+
+            if param_chain >= tol_chain:
+                logging.info(
+                    'Parameter convergence in %d iterations.',
+                    iter_num,
+                )
+                return False, loss_chain, param_chain
+        else:
+            if param_chain > 0:
+                param_chain -= 1
 
     # Calculate loss difference
     if loss_history and np.abs(neg_log_prob - loss_history[-1]) < tol_param:
@@ -394,7 +407,7 @@ def to_continue(
 
         if loss_chain >= tol_chain:
             logging.info('Loss convergence in %d iterations.', iter_num)
-            return False
+            return False, loss_chain, param_chain
     else:
         if loss_chain > 0:
             loss_chain -= 1
@@ -406,11 +419,11 @@ def to_continue(
         and (np.linalg.norm(grad) < tol_param).all()
     ):
         logging.info('Gradient convergence in %d iterations.', iter_num)
-        return False
+        return False, loss_chain, param_chain
 
     # Check if at or over maximum iterations
     if iter_num >= max_iter:
         logging.info('Maimum iterations (%d) reached without convergence.', max_iter)
-        return False
+        return False, loss_chain, param_chain
 
-    return True
+    return True, loss_chain, param_chain

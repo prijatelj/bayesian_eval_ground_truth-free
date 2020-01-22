@@ -101,7 +101,7 @@ def get_sjd_candidates(
     dims,
     mle_args=None,
     sjd_args=None,
-    processes=16,
+    n_jobs=16,
 ):
     """Creates the dictionary of candidate identifers to their
     SupervisedJointDistrib initialization arguments. This is a convenience
@@ -120,8 +120,8 @@ def get_sjd_candidates(
     mle_args : dict, optional
         the Maximum Likelihood Estimation args to be used when fitting the
         data.
-    processes : int, optional
-        The number of CPU processes to be used when performing estimation of
+    n_jobs : int, optional
+        The number of CPU n_jobs to be used when performing estimation of
         parameters of the distributions.
     sjd_args : dict, optional
         dictionary of SupervisedJointDistrib initialization arguments that will
@@ -155,7 +155,7 @@ def get_sjd_candidates(
             'transform_distrib': 'Dirichlet',
             'independent': True,
             'mle_args': mle_args_copy,
-            'processes': processes,
+            'n_jobs': n_jobs,
         })
     if 'dir-mean_mvn-umvu' in sjd_ids:
         # target: Dirichlet: concentration is mean of data
@@ -166,7 +166,7 @@ def get_sjd_candidates(
             'transform_distrib': 'MultivariateNormal',
             'independent': False,
             'mle_args': None,
-            'processes': processes,
+            'n_jobs': n_jobs,
         })
     if 'dir-adam_mvn-umvu' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
@@ -181,7 +181,7 @@ def get_sjd_candidates(
             'transform_distrib': 'MultivariateNormal',
             'independent': False,
             'mle_args': mle_args_copy,
-            'processes': processes,
+            'n_jobs': n_jobs,
         })
     if 'dir_mvc_adam' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
@@ -204,7 +204,7 @@ def get_sjd_candidates(
             'transform_distrib': 'MultivariateCauchy',
             'independent': False,
             'mle_args': mle_args_copy,
-            'processes': processes,
+            'n_jobs': n_jobs,
         })
     if 'dir_mvst_adam' in sjd_ids:
         # TODO
