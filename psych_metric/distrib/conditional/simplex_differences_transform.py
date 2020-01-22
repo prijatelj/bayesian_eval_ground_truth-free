@@ -1,4 +1,4 @@
-"""Transform Distribution to approximate the conditoinal distribution by
+"""Transform Distribution to approximate the conditional distribution by
 modeling the differences in simplex space.
 """
 from copy import deepcopy
@@ -42,10 +42,10 @@ class DifferencesTransform(object):
         given_samples=None,
         conditional_samples=None,
         distrib='MultivariateNormal',
-        n_neighbors=1,
+        n_neighbors=10,
         hyperbolic=False,
         n_jobs=1,
-        knn_density_num_samples=1e6,
+        knn_density_num_samples=int(1e6),
         input_dim=None,
         mle_args=None,
         sess_config=None,
@@ -301,6 +301,9 @@ class DifferencesTransform(object):
     def sample(self, given_samples):
         # give input samples to be transformed (defines num of samples)
         # have number of transforms per single input sample (default = 1)
+        if len(given_samples.shape) == 1:
+            given_samples = given_samples.reshape(1, -1)
+
         pred_samples = self.tf_sample_sess.run(
             self.tf_pred_samples,
             feed_dict={
@@ -355,7 +358,7 @@ class DifferencesTransform(object):
             n_jobs = self.n_jobs
 
         if isinstance(self.simplex_transform, EuclideanSimplexTransform):
-            return knn_density.euclid_transform_knn_log_prob(
+            return knn_density.euclid_diff_knn_log_prob(
                 given_samples,
                 conditional_samples,
                 self.simplex_transform,
@@ -364,4 +367,4 @@ class DifferencesTransform(object):
                 n_jobs,
             )
         raise NotImplementedError('Hyperbolic knn density not implemented.')
-        #return knn_density.hyperbolic_transform_knn_log_prob(
+        #return knn_density.hyperbolic_knn_log_prob(
