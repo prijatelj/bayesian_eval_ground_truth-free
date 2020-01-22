@@ -31,8 +31,6 @@ class SupervisedJointDistrib(object):
     independent : bool
         True if the random variables are indpendent of one anothers, False
         otherwise. Default is False
-    transform_matrix : np.ndarray
-        The matrix that transforms from the
     target_distrib : tfp.distribution.Distribution
         The probability distribution of the target data.
     transform_distrib : tfp.distribution.Distribution | DifferencesTransform
@@ -44,13 +42,6 @@ class SupervisedJointDistrib(object):
     tf_target_samples : tf.Tensor
     tf_pred_samples : tf.Tensor
     tf_num_samples : tf.placeholder
-    knn_tree : sklearn.neighbors.BallTree
-        The BallTree that is used to calculate the empirical density of the
-        predictor probability density function when the predictor random
-        variable is dependent on the target.
-    knn_pdf_num_samples : int
-        Number of samples used to estimate the predictor pdf when predictor is
-        dependent on target.
     sample_dim : int, optional
         The number of dimensions of a single sample of both the target and
         predictor distribtutions.
