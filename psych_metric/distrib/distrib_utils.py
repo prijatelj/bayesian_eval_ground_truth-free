@@ -197,6 +197,7 @@ def is_prob_distrib(
     equal_nan=False,
     axis=1,
 ):
+    # TODO beware of single prob vector checks, needs to be 2d shaped array still
     """Checks if the vector is a valid discrete probability distribution."""
     # check if each row sums to 1
     sums_to_one = np.isclose(vector.sum(axis), 1, rtol, atol, equal_nan)
