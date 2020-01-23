@@ -25,6 +25,7 @@ def bnn_mcmc(
     gpus=0,
     mcmc_args=None,
 ):
+    """Tests the BNN MCMC on simulated data"""
     rdm = src_candidates.get_src_sjd('tight_dir_small_mvn', 4)
     s = rdm.sample(src_samples)
     ss0= (s[0] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
