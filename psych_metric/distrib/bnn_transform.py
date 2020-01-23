@@ -56,7 +56,7 @@ def bnn_mlp(
 
 def bnn_mlp_placeholders(
     input_labels,
-    num_layers=2,
+    num_layers=1,
     num_hidden=10,
     hidden_activation=tf.math.sigmoid,
     hidden_use_bias=True,
@@ -369,6 +369,7 @@ def assign_weights_bnn(
     results_list = [bnn_out]
 
     if output_labels:
+        # TODO this doesn't make sense. bnn isn't used for simplex differences
         tf_output = tf.placeholder(
             dtype=dtype,
             shape=[None, output_labels.shape[1]],
