@@ -220,7 +220,20 @@ def get_simplex_boundary_radius(angles, circumscribed_radius):
     #return circumscribed_radius * np.cos(np.pi / 3) \
     #    / np.cos(2 / 3 * np.pi - angles)
 
+    # TODO this use Barycentric Coordinates
 
+    # after rotation about arbitary n-2 space, go into Barycentric Coordinates
+    # cartesian to barycentric
+
+    # for every angle set given, find the minimum Barycentric coord and zero it
+    # while increasing the remaining coordinates approriately, thus getting the
+    # point on the d-1 simplex opposite of the zeroed coord.
+
+    # convert that back into Cartesian and get the radius (L2norm)
+    # barycentric to cartesian
+
+    # that is the simplex's boundary point's radius at the given angle set
+    return
 
 
 class HyperbolicSimplexTransform(object):
@@ -282,14 +295,14 @@ class HyperbolicSimplexTransform(object):
         # TODO change euclid_simplex / make alt. to use center and rotate only
         #euclid_simplex = self.euclid_simplex_transform.to(vectors)
 
+        # TODO do rotation about n-2 space
 
         # center at origin.
         # Center the euclid n-1 basis of simplex at origin, then check if
         # vertices equidistant, which they should be. then can use those as
         # circumscribed_radius
+        # TODO ensure centered at origin
         centered = vectors - self.centroid
-
-
 
         # Convert to polar/hyperspherical coordinates
         hyperspherical = cartesian_to_hypersphere(centered)
