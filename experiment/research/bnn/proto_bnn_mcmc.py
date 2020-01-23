@@ -10,10 +10,11 @@ from statsmodels.tsa.stattools import acf
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-import bnn_exp
-from experiment import io
 from psych_metric.distrib import bnn_transform
-import src_candidates
+
+from experiment.research.bnn import bnn_exp
+from experiment import io
+from experiment.research.sjd import src_candidates
 
 
 def mcmc_sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):

@@ -16,7 +16,7 @@ from psych_metric.distrib import distrib_utils
 
 import experiment.io
 import experiment.distrib
-from predictors import load_prep_data
+from experiment.research.predictors import load_prep_data
 
 
 def mle_adam_distribs(

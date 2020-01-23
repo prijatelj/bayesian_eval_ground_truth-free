@@ -10,7 +10,7 @@ import h5py
 import numpy as np
 
 from psych_metric.datasets import data_handler
-from psych_metric import predictors
+from experiment.research import predictors
 
 labelme = data_handler.load_dataset(
     'LabelMe',

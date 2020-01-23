@@ -19,8 +19,8 @@ from psych_metric.distrib.supervised_joint_distrib import SupervisedJointDistrib
 import experiment.io
 import experiment.distrib
 from experiment.kfold import kfold_generator, get_kfold_idx
-import predictors
-import src_candidates
+from experiment.research import predictors
+from experiment.research.sjd import src_candidates
 
 
 def load_summary(summary_file):

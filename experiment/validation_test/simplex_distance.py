@@ -1,6 +1,6 @@
 import numpy as np
 
-import sjd_log_prob_exp
+from experiment.sjd import sjd_log_prob_exp
 
 
 def transform_to(sample, transform_matrix, origin_adjust=None):

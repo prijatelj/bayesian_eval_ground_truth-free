@@ -1,20 +1,16 @@
 import os
+import json
+
 import pandas as pd
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib as mpl
 import numpy as np
-import seaborn as sns
-from experiment.visuals import visualization_snippets
-import sjd_log_prob_exp
-import json
-import tensorflow as tf
-import tensorflow_probability as tfp
-from psych_metric.distrib import bnn_transform
 from statsmodels.tsa.stattools import acf, pacf
+import tensorflow as tf
 
-import src_candidates
+from psych_metric.distrib import bnn_transform
+
 from experiment import io
+from experiment.research.sjd import src_candidates
 
 
 def bnn_mcmc(
