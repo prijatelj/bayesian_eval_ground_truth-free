@@ -1,6 +1,8 @@
 """The Class and related functions for a BNN implemented via MCMC."""
+import tensorflow as tf
 
 from psych_metric.distrib import bnn_transform
+
 
 class BNNMCMC(object):
     """An implementation of a Bayesian Neural Network implemented via Markov
@@ -20,37 +22,59 @@ class BNNMCMC(object):
 
     def __init__(
         self,
+        dim,
         num_layers=1,
         num_hidden=10,
         hidden_activation=tf.math.sigmoid,
         hidden_use_bias=True,
         output_activation=None, #, tf.math.sigmoid,
         output_use_bias=True, # False,
-        kernel_args,
+        #kernel_args, # TODO
         dtype=tf.float32,
         sess=None,
     ):
-        pass
+        self.dtype = dtype
+
+        # Make BNN and weight_placeholders, input & output tensors
+        self.input = tf.placeholder(
+            dtype=dtype,
+            shape=[None, dim],
+            name='input_labels',
+        )
+
+        self.output, self.weight_placeholders = bnn_transform.bnn_mlp_placeholders(
+            self.input,
+            num_layers,
+            num_hidden,
+            hidden_activation,
+            hidden_use_bias,
+            output_activation,
+            output_use_bias,
+            dtype,
+        )
+
+        # TODO need to add actual fitting via MCMC, sampling, etc.
+        # for now, just a way to better contain the args and functions.
 
     def fit(self, kernel_args):
 
-        raise NotImplemented(' '.join([
+        raise NotImplementedError(' '.join([
             'The API does not yet contain the BNN MCMC training code. It',
             'exists in prototype format as a series of functions.',
             'See `bnn_exp.py`',
-        ])
+        ]))
 
     def get_weight_sets(self, num):
         """After fitting the BNN via MCMC, get a set of weights for different
         instances of the BNN to obtian the distribution of outputs.
         """
-        raise NotImplemented(' '.join([
+        raise NotImplementedError(' '.join([
             'The API does not yet contain the BNN MCMC sampling code. It',
             'exists in prototype format as a series of functions.',
             'See `bnn_exp.py`',
-        ])
+        ]))
 
-    def predict(self, given_samples, weight_sets):
+    def predict(self, given_samples, weight_sets, sess_config=None):
         """Returns the predictions of the BNN with the given weight_sets.
 
         Returns
@@ -61,5 +85,12 @@ class BNNMCMC(object):
             dimensions). In the case of Euclidean transform, the returned
             array may contain some invalid discrete probability distributions.
         """
-
-        return pred
+        return bnn_transform.assign_weights_bnn(
+            weight_sets,
+            self.weight_placeholders,
+            self.output,
+            given_samples,
+            self.input,
+            dtype=self.dtype,
+            sess_config=sess_config, # TODO, replace with class attrib?
+        )
