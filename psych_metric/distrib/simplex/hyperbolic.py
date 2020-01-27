@@ -188,20 +188,23 @@ def rotate_around(rotation_simplex, angle):
     # TODO how to include this in the ending matrix? need to be homogenous
     # coordinates? As is right now, the alg will treat v1 as v0 post-transpose
 
-    n = len(rotation_simplex)
+    #n = len(rotation_simplex)
+    n = rotation_simplex.shape[1]
     mat = np.eye(n)
 
     for r in range(1, n):
-        for c in list(range(r, n))[::-1]:
-            v = v @ mat
-            mat = mat @ givens_rotation(
+        for c in list(range(r, n - 1))[::-1]:
+            rot = givens_rotation(
                 n,
                 c,
                 c - 1,
                 np.arctan2(v[r, c], v[r, c-1]),
             )
+            #v = mat @ v # @ mat
+            v = v @ mat
+            mat = mat @ rot
 
-    return mat @ rotation_matrix(n, n-1, n, angle) @ np.linalg.inv(mat)
+    return mat @ givens_rotation(n, n-2, n-1, angle) @ np.linalg.inv(mat)
 
 
 def get_simplex_boundary_radius(angles, circumscribed_radius):
@@ -259,11 +262,24 @@ class HyperbolicSimplexTransform(object):
         # Save the vector for translating all pts to center about origin.
         #self.centroid = simplex_extremes.mean(axis=0)
 
-        # Center Simplex in N-dim
-        self.center_adjust = 1.0 / dim
+        prob_simplex_verts = np.eye(dim)
+        angle_to_rotate = np.arctan2(
+            1.0 - 1.0 / dim,
+            np.linalg.norm([1.0 / dim] * (dim - 1)),
+        )
 
         # Rotate to zero out one arbitrary dimension, drop that zeroed dim.
-        self.rotate_drop_dim = get_rotate_drop_dim_matrix(dim, 0)
+        #self.origin_adjust = np.zeros(dim)
+        #self.origin_adjust[0] = 1
+
+        self.rotate_drop_dim = rotate_around(
+            prob_simplex_verts[1:],
+            angle_to_rotate,
+        )
+
+        # Center Simplex in (N-1)-dim (find centroid and adjust via that)
+        #self.center_adjust = 1.0 / dim
+        #self.center_adjust =
 
         #self.circumscribed_radius = np.linalg.norm()
 
@@ -272,10 +288,6 @@ class HyperbolicSimplexTransform(object):
         #self.axis_rot = -np.ones(dim)
         #self.axis_rot[0] = 0
 
-        self.angle_rot = np.arctan2(
-            1.0 - 1.0 / dim,
-            np.linalg.norm([1.0 / dim] * (dim - 1)),
-        )
         # TODO Rotation matrix or Rotors rotate and drop dim
 
         raise NotImplementedError
@@ -296,24 +308,28 @@ class HyperbolicSimplexTransform(object):
         #euclid_simplex = self.euclid_simplex_transform.to(vectors)
 
         # TODO do rotation about n-2 space
+        vectors =  (vectors - self.origin_adjust) @ self.rotate_drop_dim
 
         # center at origin.
         # Center the euclid n-1 basis of simplex at origin, then check if
         # vertices equidistant, which they should be. then can use those as
         # circumscribed_radius
         # TODO ensure centered at origin
-        centered = vectors - self.centroid
+        centered = vectors - self.center_adjust
 
         # Convert to polar/hyperspherical coordinates
         hyperspherical = cartesian_to_hypersphere(centered)
 
-        # Stretch simplex into hypersphere, no longer conserving the angles
+        # TODO Stretch simplex into hypersphere, no longer conserving the angles
+        # convert each pt to Barycentric coordinates
+        # select minimum coord as dim to zero to get boundary pt on d simplex
+        # get boundary points radius
+        # scale each point by * circum_radius / simplex_boundary_radius
 
         np.cos(np.pi / 3) / np.cos(2 / 3 * np.pi - angles)
         hyperspherical[:, 0] /= np.cos(np.pi / 3) * np.cos(2 / 3 * np.pi - hyperspherical[:, 1:])
 
-        # Inverse Poincare' Ball method to go into hyperbolic space
-
+        # TODO Inverse Poincare' Ball method to go into hyperbolic space
 
         return
 
