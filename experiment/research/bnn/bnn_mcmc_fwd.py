@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
     # Run KNNDE using BNN_MCMC.predict(givens, weights)
     print('Perform KNNDE log prob on Train')
-    train_log_probs = knn_density.euclid_bnn_knn_log_prob(
+    log_probs = knn_density.euclid_bnn_knn_log_prob(
         givens,
         pred,
         simplex_transform,
@@ -99,8 +99,9 @@ if __name__ == '__main__':
         args.n_jobs,
     )
 
-    train_log_probs = train_log_probs.sum()
+    log_probs = log_probs.sum()
 
+    """
     print('Perform KNNDE log prob on Test')
     test_log_probs = knn_density.euclid_bnn_knn_log_prob(
         givens,
@@ -113,11 +114,11 @@ if __name__ == '__main__':
     )
 
     test_log_probs = test_log_probs.sum()
+    """
 
     io.save_json(
         args.output_dir,
         {
-            'train:': train_log_probs,
-            'test:': test_log_probs,
+            'log_prob_sum': log_probs
         },
     )
