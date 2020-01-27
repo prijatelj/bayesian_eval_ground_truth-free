@@ -1,14 +1,123 @@
 """Forward pass of the BNN """
+import os
+import glob
+import json
+
 import numpy as np
 
 from psych_metric.distrib.bnn.bnn_mcmc import BNN_MCMC
+from psych_metric.distrib.empirical_density import knn_density
+from psych_metric.distrib.simplex import euclidean
 
-import experiment.io
+from experiment import io
+from experiment.research.bnn import proto_bnn_mcmc
+from experiment.research.sjd import sjd_log_prob_exp
+
+
+def load_sample_weights(weights_dir, filename='sampled_weights.json'):
+    """Loads the sampled bnn weight sets from directory recursively into
+    memory.
+    """
+    weights_sets = []
+
+    # loop through json files, get weights, concatenate them
+    # walk directory tree, grabbing all
+    for filepath in glob.iglob(os.path.join(weights_dir, '*', filename)):
+        with open(filepath, 'r') as f:
+            weights = json.load(f)
+            for vals in weights.values():
+                if weights_sets:
+                    for i, w in enumerate(vals['weights']):
+                        weights_sets[i] = np.vstack((
+                            weights_sets[i],
+                            np.array(w)[vals['is_accepted']],
+                        ))
+                else:
+                    weights_sets += [np.array(w)[vals['is_accepted']]
+                        for w in vals['weights']]
+
+    return weights_sets
+
+
+def add_custom_args(parser):
+    proto_bnn_mcmc.add_custom_args(parser)
+
+    # add other args
+    #parser.add_argument(
+    #    '--bnn_weights_file',
+    #    default=None,
+    #    help='Path to the bnn weights file.',
+    #)
+
 
 if __name__ == '__main__':
-    pass
-    # TODO Load sampled weights
-    # TODO combine sampled weights into a list
-    # TODO Load dataset's labels (given = target, conditionals = pred)
-    # TODO Create instance of BNN_MCMC
-    # TODO run KNNDE using BNN_MCMC.predict(givens, weights)
+    args = io.parse_args(
+        custom_args=add_custom_args,
+        description='Runs KNNDE for euclidean BNN given the sampled weights.',
+    )
+
+    # Load sampled weights
+    # combine sampled weights into a list
+
+    # Load dataset's labels (given = target, conditionals = pred)
+    if os.path.isfile(args.data.dataset_filepath):
+        with open(args.data.dataset_filepath, 'r') as f:
+            data = json.load(f)
+            pred = np.array(data['output'], dtype=np.float32)
+            givens = np.array(data['input'], dtype=np.float32)
+
+        # load the euclidean simplex transform
+        simplex_transform = euclidean.EuclideanSimplexTransform(pred.shape[1] + 1)
+        simplex_transform.origin_adjust = np.array(data['origin_adjust'])
+        simplex_transform.change_of_basis_matrix = np.array(
+            data['change_of_basis'],
+        )
+        del data
+
+        if os.path.isfile(args.bnn_weights_file):
+            with open(args.bnn_weights_file, 'r') as f:
+                weights_sets = [np.array(x, dtype=np.float32) for x in json.load(f)]
+        elif os.path.isdir(args.bnn_weights_file):
+            weights_sets = load_sample_weights(args.bnn_weights_file)
+        else:
+            raise ValueError('bnn weights file must be a file or dir.')
+    else:
+        raise ValueError('data dataset_filepath needs to be a file')
+
+    # Create instance of BNN_MCMC
+    bnn_mcmc = BNN_MCMC(args.dim, **vars(args.bnn))
+
+    # Run KNNDE using BNN_MCMC.predict(givens, weights)
+    print('Perform KNNDE log prob on Train')
+    train_log_probs = knn_density.euclid_bnn_knn_log_prob(
+        givens,
+        pred,
+        simplex_transform,
+        bnn_mcmc,
+        weights_sets,
+        args.n_neighbors,
+        args.n_jobs,
+    )
+
+    train_log_probs = train_log_probs.sum()
+
+    print('Perform KNNDE log prob on Test')
+    test_log_probs = knn_density.euclid_bnn_knn_log_prob(
+        givens,
+        pred,
+        simplex_transform,
+        bnn_mcmc,
+        weights_sets,
+        args.n_neighbors,
+        args.n_jobs,
+    )
+
+    test_log_probs = test_log_probs.sum()
+
+    io.save_json(
+        args.output_dir,
+        {
+            'train:': train_log_probs,
+            'test:': test_log_probs,
+        },
+    )
