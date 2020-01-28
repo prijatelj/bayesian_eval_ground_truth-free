@@ -200,7 +200,6 @@ def rotate_around(rotation_simplex, angle):
                 c - 1,
                 np.arctan2(v[r, c], v[r, c-1]),
             )
-            #v = mat @ v # @ mat
             v = v @ mat
             mat = mat @ rot
 
@@ -264,8 +263,8 @@ class HyperbolicSimplexTransform(object):
 
         prob_simplex_verts = np.eye(dim)
         angle_to_rotate = np.arctan2(
-            1.0 - 1.0 / dim,
-            np.linalg.norm([1.0 / dim] * (dim - 1)),
+            1.0,
+            np.linalg.norm([1 / (dim - 1)] * (dim - 1)),
         )
 
         # Rotate to zero out one arbitrary dimension, drop that zeroed dim.
@@ -308,7 +307,8 @@ class HyperbolicSimplexTransform(object):
         #euclid_simplex = self.euclid_simplex_transform.to(vectors)
 
         # TODO do rotation about n-2 space
-        vectors =  (vectors - self.origin_adjust) @ self.rotate_drop_dim
+        vectors = (vectors - self.origin_adjust) @ self.rotate_drop_dim \
+            - self.origin_adjust
 
         # center at origin.
         # Center the euclid n-1 basis of simplex at origin, then check if
