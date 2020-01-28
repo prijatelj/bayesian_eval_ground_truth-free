@@ -171,8 +171,9 @@ def givens_rotation(dim, x, y, angle):
     """Creates a Givens rotation matrix."""
     rotate = np.eye(dim)
     rotate[x, x] = np.cos(angle)
-    rotate[x, y] = -np.sin(angle)
-    rotate[y, x] = np.sin(angle)
+    #rotate[x, y] = -np.sin(angle)
+    rotate[x, y] = np.sin(angle)
+    rotate[y, x] = -np.sin(angle)
     rotate[y, y] = np.cos(angle)
     return rotate
 
@@ -201,9 +202,10 @@ def rotate_around(rotation_simplex, angle):
     for r in range(1, n-1):
         print(f'\nr = {r}, from [1, {n-1}).')
         for c in list(range(r, n))[::-1]:
-            print(f'\t-----\n\tc = {c}, from ({n-1}, {r}].')
+            print(f'\t-----\n\tc = {c}, from ({n}, {r}].')
             k += 1
             print(f'\tk = {k}')
+            print(f'rot k={k}\'s angle = {np.arctan2(v[r, c], v[r, c - 1])}')
             rot = givens_rotation(
                 n,
                 c,
@@ -213,8 +215,8 @@ def rotate_around(rotation_simplex, angle):
             v = v @ rot
             mat = mat @ rot
 
-            print(f'\tv:\n{v}')
             print(f'\trot:\n{rot}')
+            print(f'\tv:\n{v}')
             print(f'\tmat:\n{mat}')
 
     return (
