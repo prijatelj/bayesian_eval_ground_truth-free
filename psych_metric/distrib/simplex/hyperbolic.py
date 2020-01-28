@@ -192,18 +192,35 @@ def rotate_around(rotation_simplex, angle):
     n = rotation_simplex.shape[1]
     mat = np.eye(n)
 
-    for r in range(1, n):
-        for c in list(range(r, n - 1))[::-1]:
+    k = 0
+    print(f'k = {k}')
+
+    print(f'v:\n{v}')
+    print(f'mat:\n{mat}')
+
+    for r in range(1, n-1):
+        print(f'\nr = {r}, from [1, {n-1}).')
+        for c in list(range(r, n))[::-1]:
+            print(f'\t-----\n\tc = {c}, from ({n-1}, {r}].')
+            k += 1
+            print(f'\tk = {k}')
             rot = givens_rotation(
                 n,
                 c,
                 c - 1,
-                np.arctan2(v[r, c], v[r, c-1]),
+                np.arctan2(v[r, c], v[r, c - 1]),
             )
-            v = v @ mat
+            v = v @ rot
             mat = mat @ rot
 
-    return mat @ givens_rotation(n, n-2, n-1, angle) @ np.linalg.inv(mat)
+            print(f'\tv:\n{v}')
+            print(f'\trot:\n{rot}')
+            print(f'\tmat:\n{mat}')
+
+    return (
+        rotation_simplex[0],
+        mat @ givens_rotation(n, n - 2, n - 1, angle) @ np.linalg.inv(mat),
+    )
 
 
 def get_simplex_boundary_radius(angles, circumscribed_radius):
@@ -268,17 +285,14 @@ class HyperbolicSimplexTransform(object):
         )
 
         # Rotate to zero out one arbitrary dimension, drop that zeroed dim.
-        #self.origin_adjust = np.zeros(dim)
-        #self.origin_adjust[0] = 1
-
-        self.rotate_drop_dim = rotate_around(
+        self.translate, self.rotate_drop_dim = rotate_around(
             prob_simplex_verts[1:],
             angle_to_rotate,
         )
 
         # Center Simplex in (N-1)-dim (find centroid and adjust via that)
         #self.center_adjust = 1.0 / dim
-        #self.center_adjust =
+        self.centroid = np.mean(self.rotate_drop_dim, axis=0)
 
         #self.circumscribed_radius = np.linalg.norm()
 
@@ -302,20 +316,19 @@ class HyperbolicSimplexTransform(object):
     def to(self, vectors):
         """Transform given vectors into hyperbolic probability simplex space."""
         # Center discrete probability simplex at origin in Euclidean space
-        #centered_vectors = vectors - self.origin_adjust
         # TODO change euclid_simplex / make alt. to use center and rotate only
         #euclid_simplex = self.euclid_simplex_transform.to(vectors)
 
         # TODO do rotation about n-2 space
-        vectors = (vectors - self.origin_adjust) @ self.rotate_drop_dim \
-            - self.origin_adjust
+        vectors = (vectors - self.translate) @ self.rotate_drop_dim \
+            + self.translate
 
         # center at origin.
         # Center the euclid n-1 basis of simplex at origin, then check if
         # vertices equidistant, which they should be. then can use those as
         # circumscribed_radius
         # TODO ensure centered at origin
-        centered = vectors - self.center_adjust
+        centered = vectors - self.centroid
 
         # Convert to polar/hyperspherical coordinates
         hyperspherical = cartesian_to_hypersphere(centered)
