@@ -1,9 +1,10 @@
 """The functions for converting to and from the Hyperbolic simplex basis"""
+from copy import deepcopy
 import logging
 
 import numpy as np
 
-from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
+#from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
 
 
 def cart2polar(vectors):
@@ -158,13 +159,8 @@ def hypersphere_to_cartesian(vectors):
     return  vectors[:, 0].reshape(-1, 1) * sin * cos
 
 
-def get_rotation_axis_angle(dim, dim_to_zero=0):
-    """Given number of dimensions of a discrete probability simplex, find some
-    vector that lies on the rotation axis and angle to zero the given
-    dimension.
-    """
-
-    return
+def barycentric_to_cartesian():
+    pass
 
 
 def givens_rotation(dim, x, y, angle):
@@ -186,10 +182,7 @@ def rotate_around(rotation_simplex, angle):
 
     # Transpose the simplex st the first point is centered at origin
     v = rotation_simplex - rotation_simplex[0]
-    # TODO how to include this in the ending matrix? need to be homogenous
-    # coordinates? As is right now, the alg will treat v1 as v0 post-transpose
 
-    #n = len(rotation_simplex)
     n = rotation_simplex.shape[1]
     mat = np.eye(n)
 
@@ -257,92 +250,180 @@ def get_simplex_boundary_radius(angles, circumscribed_radius):
     return
 
 
-class HyperbolicSimplexTransform(object):
-    """
+class Rotator(object):
+    """Class the contains the process for rotating about some n-2 space."""
+    def __init__(self, rotation_simplex, angle):
+        self.translate, self.rotate_drop_dim = rotate_around(
+            rotation_simplex,
+            angle,
+        )
+
+    def rotate(self, vectors, drop_dim=False):
+        """Rotates the vectors of the n-1 simplex from n dimensions to n-1
+        dimensions.
+        """
+        # TODO expects shape of 2, add check on vectors
+        result = (vectors - self.translate) @ self.rotate_drop_dim \
+            + self.translate
+        if drop_dim:
+            return result[:, 1:]
+        return result
+
+    def inverse(self, vectors):
+        """Rotates the vectors of the n-1 simplex from n-1 dimensions to n
+        dimensions.
+        """
+        # TODO expects shape of 2, add check on vectors
+        if vectors.shape[1] == len(self.translate):
+            return (vectors - self.translate) \
+                @ np.linalg.inv(self.rotate_drop_dim) + self.translate
+        return (
+            (
+                np.hstack((np.zeros([len(vectors), 1]), vectors))
+                - self.translate
+            )
+            @ np.linalg.inv(self.rotate_drop_dim)
+            + self.translate
+        )
+
+
+class EuclideanSimplexTransform(object):
+    """Creates and contains the objects needed to convert to and from the
+    Euclidean Simplex basis.
 
     Attributes
     ----------
-    origin_adjust : np.ndarray
+    cart_simplex : np.ndarray
+    centroid : np.ndarray
+    rotator : Rotator
+        Used to find cart_simplex and for reverse transforming from the
+        cartesian simplex to the original probability simplex.
 
+    Properties
+    ----------
+    input_dim : int
+        The number of dimensions of the input samples before being transformed.
+    output_dim : int
+
+    Note
+    ----
+    This EuclideanSimplexTransform takes more time and more memory than the
+    original that used QR or SVD to find the rotation matrix. However, this
+    version preserves the simplex dimensions, keeping the simplex regular,
+    while the QR and SVD found rotation matrices do not.
     """
-
     def __init__(self, dim):
-        # Create origin adjustment, center of simplex at origin
-        #self.origin_adjust = np.ones(dim) / 2
-        #self.euclid_simplex_transform = EuclideanSimplexTransform(dim)
-        #extremes = np.eye(self.input_dim)
-        #simplex_extremes = self.euclid_simplex_transform.to(extremes)
-
-        # TODO equal scaling of dimensions?
-        # extremes / 2 is the radii to each vertex of the simplex, and their
-        # norms is the radii which are all the same via orthogonal rotation
-        # matrix.
-        # Save the vector for translating all pts to center about origin.
-        #self.centroid = simplex_extremes.mean(axis=0)
-
         prob_simplex_verts = np.eye(dim)
-        angle_to_rotate = np.arctan2(
+
+        # Get the angle to rotate about the n-2 space to zero out first dim
+        angle_to_rotate = -np.arctan2(
             1.0,
             np.linalg.norm([1 / (dim - 1)] * (dim - 1)),
         )
 
         # Rotate to zero out one arbitrary dimension, drop that zeroed dim.
-        self.translate, self.rotate_drop_dim = rotate_around(
-            prob_simplex_verts[1:],
-            angle_to_rotate,
-        )
+        self.rotator = Rotator(prob_simplex_verts[1:], angle_to_rotate)
+        self.cart_simplex = self.rotator.rotate(prob_simplex_verts)
 
         # Center Simplex in (N-1)-dim (find centroid and adjust via that)
-        #self.center_adjust = 1.0 / dim
-        self.centroid = np.mean(self.rotate_drop_dim, axis=0)
+        self.centroid = np.mean(self.cart_simplex, axis=0)
+        self.cart_simplex -= self.centroid
 
-        #self.circumscribed_radius = np.linalg.norm()
+        # Save the vertices of the rotated simplex, transposed for ease of comp
+        self.cart_simplex = self.cart_simplex.T
+        # TODO Decide if keeping the cart_simplex for going from prob simplex
+        # to cart simplex with only one matrix multiplication is worth keeping
+        # the (n,n) matrix.
 
-        # rotate and drop dim
-        # does not have to be negative, but be aware of rotation direction
-        #self.axis_rot = -np.ones(dim)
-        #self.axis_rot[0] = 0
+    def __copy__(self):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        new.__dict__.update(self.__dict__)
+        return new
 
-        # TODO Rotation matrix or Rotors rotate and drop dim
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        memo[id(self)] = new
 
-        raise NotImplementedError
+        for k, v in self.__dict__.items():
+            setattr(new, k, deepcopy(v, memo))
+
+        return new
 
     @property
     def input_dim(self):
-        return self.euclid_simplex_transform.input_dim
+        # TODO wrap all code for obtaining cart_simllex in EuclideanTransform
+        #return self.euclid_simplex_transform.input_dim
+        return self.cart_simplex.shape[0]
 
     @property
     def output_dim(self):
-        return self.euclid_simplex_transform.output_dim
+        #return self.euclid_simplex_transform.output_dim
+        return self.cart_simplex.shape[1]
+
+    def to(self, vectors, drop_dim=True):
+        """Transform given vectors into hyperbolic probability simplex space."""
+        # Convert from probability simplex to the Cartesian coordinates of the
+        # centered, regular simplex
+        if drop_dim:
+            return (vectors @ self.cart_simplex)[:, 1:]
+        return vectors @ self.cart_simplex
+
+    def back(self, vectors):
+        """Transform given vectors into hyperbolic probability simplex space."""
+        # Convert from probability simplex to the Cartesian coordinates of the
+        # centered, regular simplex
+        #aligned = vectors @ self.aligned_simplex.T
+
+        # TODO expects shape of 2, add check on vectors
+        if vectors.shape[1] == self.input_dim:
+            return self.rotator.inverse(vectors + self.centroid)
+        return self.rotator.inverse(vectors + self.centroid)
+
+
+class HyperbolicSimplexTransform(object):
+    """
+
+    Attributes
+    ----------
+    """
+
+    def __init__(self, dim):
+        self.est = EuclideanSimplexTransform(dim)
+
+        # Save the radius of the simplex's circumscribed hypersphere
+        self.circumscribed_radius = np.linalg.norm(self.est.cart_simplex[:, 0])
+
+    @property
+    def input_dim(self):
+        # TODO wrap all code for obtaining cart_simllex in EuclideanTransform
+        return self.est.input_dim
+
+    @property
+    def output_dim(self):
+        return self.est.output_dim
 
     def to(self, vectors):
         """Transform given vectors into hyperbolic probability simplex space."""
-        # Center discrete probability simplex at origin in Euclidean space
-        # TODO change euclid_simplex / make alt. to use center and rotate only
-        #euclid_simplex = self.euclid_simplex_transform.to(vectors)
-
-        # TODO do rotation about n-2 space
-        vectors = (vectors - self.translate) @ self.rotate_drop_dim \
-            + self.translate
-
-        # center at origin.
-        # Center the euclid n-1 basis of simplex at origin, then check if
-        # vertices equidistant, which they should be. then can use those as
-        # circumscribed_radius
-        # TODO ensure centered at origin
-        centered = vectors - self.centroid
+        # Convert from probability simplex to the Cartesian coordinates of the
+        # centered, regular simplex
+        #aligned = vectors @ self.aligned_simplex.T
+        aligned = self.est.to(vectors, drop_dim=True)
 
         # Convert to polar/hyperspherical coordinates
-        hyperspherical = cartesian_to_hypersphere(centered)
+        hyperspherical = cartesian_to_hypersphere(aligned)
 
         # TODO Stretch simplex into hypersphere, no longer conserving the angles
+
+
         # convert each pt to Barycentric coordinates
         # select minimum coord as dim to zero to get boundary pt on d simplex
         # get boundary points radius
         # scale each point by * circum_radius / simplex_boundary_radius
 
-        np.cos(np.pi / 3) / np.cos(2 / 3 * np.pi - angles)
-        hyperspherical[:, 0] /= np.cos(np.pi / 3) * np.cos(2 / 3 * np.pi - hyperspherical[:, 1:])
+        #ok = np.cos(np.pi / 3) / np.cos(2 / 3 * np.pi - angles)
+        #hyperspherical[:, 0] /= np.cos(np.pi / 3) * np.cos(2 / 3 * np.pi - hyperspherical[:, 1:])
 
         # TODO Inverse Poincare' Ball method to go into hyperbolic space
 
@@ -351,14 +432,17 @@ class HyperbolicSimplexTransform(object):
     def tf_to(self, vectors):
         """Transform given vectors into n-1 probability simplex space done in
         tensorflow code.
-
         """
-        # center 1st dim's extreme value at origin
         return
 
     def back(self, vectors):
         """Transform given vectors out of n-1 probability simplex space."""
-        return
+        # Poinecare's Ball
+
+        # Circumscribed hypersphere to Cartesian simplex
+
+        # Cartesian simplex to probability distribution (Barycentric coord)
+        return self.est.back(vectors)
 
     def tf_from(self, vectors):
         """Transform given vectors out of n-1 probability simplex space done in
