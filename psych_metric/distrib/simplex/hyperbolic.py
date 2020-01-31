@@ -214,18 +214,23 @@ def rotate_around(rotation_simplex, angle):
     )
 
 
-def get_simplex_boundary_pts(prob_vectors, copy=False):
-    """Returns the radius of the point on the boundary of the regular simplex
+def get_simplex_boundary_pts(prob_vectors, copy=True):
+    """Returns the boundary points of the regular simplex whose circumscribed
+    hypersphere's radius intersects through the provided points in Barycentric
+    coordinates. The given points define the angle of the line that passes
+    through the center of the simplex, the given point, and the respectie point
+    on the boundary of the simplex.
 
     Parameters
     ----------
-    angles : np.ndarray
-        Array of different sets of angles defining the location of the boundary
-        point on the simplex whose radius is being calculated. Each row is
-        a different point and the columns are the angles.
-    circumscribed_radius :
-        The radius of the circumscribed hypersphere of the simplex, which is
-        equal to the radius of each vertex of the regular simplex.
+    prob_vectors : np.ndarray
+        Array of probability vectors, or Barycentric coordinates of a regular
+        simplex. Each point defines the angle of the ray that intersects the
+        given point, starts at the center of the simplex, and intersects the
+        corresponding boundary point of the simplex.
+    copy : bool
+        If True, copies the given prob_vectors np.ndarray, otherwise modifies
+        the original.
     """
     if copy:
         prob_vectors = prob_vectors.copy()
@@ -447,12 +452,12 @@ class HyperbolicSimplexTransform(object):
 
         # Circumscribed hypersphere to Cartesian simplex:
         # vectors is the boundaries of the simplex, but in cart simplex.
-        cart = hypersphere_to_cartesian(hyperspherical)
-        non_edge_case = (cart == 0).sum(axis=1) < cart.shape[1] - 1
+        simplex = self.est.back(hypersphere_to_cartesian(hyperspherical))
+        non_edge_case = (simplex == 0).sum(axis=1) < simplex.shape[1] - 1
 
         # Get the boundaries in Barycentric coordinates (probability vectors)
         boundaries = get_simplex_boundary_pts(
-            self.est.back(cart[non_edge_case]),
+            simplex[non_edge_case],
             copy=True,
         )
 
