@@ -160,7 +160,7 @@ def hypersphere_to_cartesian(vectors):
 
 
 def givens_rotation(dim, x, y, angle):
-    """Creates a Givens rotation matrix."""
+    """Creates a transposed Givens rotation matrix."""
     rotate = np.eye(dim)
     rotate[x, x] = np.cos(angle)
     #rotate[x, y] = -np.sin(angle)
@@ -177,7 +177,8 @@ def rotate_around(rotation_simplex, angle):
         rotation_simplex = rotation_simplex.T
 
     # Transpose the simplex st the first point is centered at origin
-    v = rotation_simplex - rotation_simplex[0]
+    translation_vector = rotation_simplex[0].copy()
+    v = rotation_simplex - translation_vector
 
     n = rotation_simplex.shape[1]
     mat = np.eye(n)
@@ -194,7 +195,7 @@ def rotate_around(rotation_simplex, angle):
             print(f'\t-----\n\tc = {c}, from ({n}, {r}].')
             k += 1
             print(f'\tk = {k}')
-            print(f'rot k={k}\'s angle = {np.arctan2(v[r, c], v[r, c - 1])}')
+            print(f'\trot k={k}\'s angle = {np.arctan2(v[r, c], v[r, c - 1])}')
             rot = givens_rotation(
                 n,
                 c,
@@ -209,7 +210,7 @@ def rotate_around(rotation_simplex, angle):
             print(f'\tmat:\n{mat}')
 
     return (
-        rotation_simplex[0],
+        translation_vector,
         mat @ givens_rotation(n, n - 2, n - 1, angle) @ np.linalg.inv(mat),
     )
 
@@ -437,7 +438,7 @@ class HyperbolicSimplexTransform(object):
         # TODO Inverse Poincare' Ball method to go into hyperbolic space
 
 
-        return
+        return hyperspherical
 
     def tf_to(self, vectors):
         """Transform given vectors into n-1 probability simplex space done in
@@ -448,7 +449,8 @@ class HyperbolicSimplexTransform(object):
     def back(self, vectors):
         """Transform given vectors out of n-1 probability simplex space."""
         # Poinecare's Ball to get hypersphere
-        hyperspherical = poincare_ball(vectors)
+        #hyperspherical = poincare_ball(vectors)
+        hyperspherical = vectors
 
         # Circumscribed hypersphere to Cartesian simplex:
         # vectors is the boundaries of the simplex, but in cart simplex.
