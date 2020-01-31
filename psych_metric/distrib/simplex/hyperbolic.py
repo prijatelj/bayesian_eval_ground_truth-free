@@ -159,10 +159,6 @@ def hypersphere_to_cartesian(vectors):
     return  vectors[:, 0].reshape(-1, 1) * sin * cos
 
 
-def barycentric_to_cartesian():
-    pass
-
-
 def givens_rotation(dim, x, y, angle):
     """Creates a Givens rotation matrix."""
     rotate = np.eye(dim)
@@ -218,7 +214,7 @@ def rotate_around(rotation_simplex, angle):
     )
 
 
-def get_simplex_boundary_radius(angles, circumscribed_radius):
+def get_simplex_boundary_pts(prob_vectors, copy=False):
     """Returns the radius of the point on the boundary of the regular simplex
 
     Parameters
@@ -231,23 +227,20 @@ def get_simplex_boundary_radius(angles, circumscribed_radius):
         The radius of the circumscribed hypersphere of the simplex, which is
         equal to the radius of each vertex of the regular simplex.
     """
-    #return circumscribed_radius * np.cos(np.pi / 3) \
-    #    / np.cos(2 / 3 * np.pi - angles)
+    if copy:
+        prob_vectors = prob_vectors.copy()
 
-    # TODO this use Barycentric Coordinates
+    # Probability vectors are already in Barycentric coordinates
+    # select minimum coord(s) as dim to zero to get boundary pt on d simplex
+    row_min = np.min(prob_vectors, axis=1)
+    dim = prob_vectors.shape[1] - 1
 
-    # after rotation about arbitary n-2 space, go into Barycentric Coordinates
-    # cartesian to barycentric
+    for i, minimum in enumerate(row_min):
+        min_mask = prob_vectors[i] == minimum
+        prob_vectors[i, np.logical_not(min_mask)] += minimum / dim * min_mask.sum()
+        prob_vectors[i, min_mask] = 0
 
-    # for every angle set given, find the minimum Barycentric coord and zero it
-    # while increasing the remaining coordinates approriately, thus getting the
-    # point on the d-1 simplex opposite of the zeroed coord.
-
-    # convert that back into Cartesian and get the radius (L2norm)
-    # barycentric to cartesian
-
-    # that is the simplex's boundary point's radius at the given angle set
-    return
+    return prob_vectors
 
 
 class Rotator(object):
@@ -411,21 +404,33 @@ class HyperbolicSimplexTransform(object):
         #aligned = vectors @ self.aligned_simplex.T
         aligned = self.est.to(vectors, drop_dim=True)
 
-        # Convert to polar/hyperspherical coordinates
+        # Stretch simplex into hypersphere, no longer conserving the angles
         hyperspherical = cartesian_to_hypersphere(aligned)
 
-        # TODO Stretch simplex into hypersphere, no longer conserving the angles
+        # Edge cases:
+        #   Do not stretch points along line of vertex (all zeros but 1 element)
+        #   Do not stretch centered points (all zeros).
+        non_edge_case = (aligned == 0).sum(axis=1) < aligned.shape[1] - 1
 
+        boundaries = get_simplex_boundary_pts(
+            vectors[non_edge_case],
+            copy=True,
+        )
 
-        # convert each pt to Barycentric coordinates
-        # select minimum coord as dim to zero to get boundary pt on d simplex
         # get boundary points radius
-        # scale each point by * circum_radius / simplex_boundary_radius
+        boundary_radii = np.linalg.norm(
+            self.est.to(boundaries, drop_dim=True),
+            axis=1,
+        )
 
-        #ok = np.cos(np.pi / 3) / np.cos(2 / 3 * np.pi - angles)
-        #hyperspherical[:, 0] /= np.cos(np.pi / 3) * np.cos(2 / 3 * np.pi - hyperspherical[:, 1:])
+        # scale each point radii by * circum_radius / simplex_boundary_radius
+        hyperspherical[non_edge_case, 0] = (
+            hyperspherical[non_edge_case, 0]
+            * self.circumscribed_radius / boundary_radii
+        )
 
         # TODO Inverse Poincare' Ball method to go into hyperbolic space
+
 
         return
 
@@ -437,12 +442,34 @@ class HyperbolicSimplexTransform(object):
 
     def back(self, vectors):
         """Transform given vectors out of n-1 probability simplex space."""
-        # Poinecare's Ball
+        # Poinecare's Ball to get hypersphere
+        hyperspherical = poincare_ball(vectors)
 
-        # Circumscribed hypersphere to Cartesian simplex
+        # Circumscribed hypersphere to Cartesian simplex:
+        # vectors is the boundaries of the simplex, but in cart simplex.
+        cart = hypersphere_to_cartesian(hyperspherical)
+        non_edge_case = (cart == 0).sum(axis=1) < cart.shape[1] - 1
+
+        # Get the boundaries in Barycentric coordinates (probability vectors)
+        boundaries = get_simplex_boundary_pts(
+            self.est.back(cart[non_edge_case]),
+            copy=True,
+        )
+
+        # Get boundary points radius
+        boundary_radii = np.linalg.norm(
+            self.est.to(boundaries, drop_dim=True),
+            axis=1,
+        )
+
+        # Scale each point radii by * simplex_boundary_radius / circum_radius
+        hyperspherical[non_edge_case, 0] = (
+            hyperspherical[non_edge_case, 0]
+            * boundary_radii / self.circumscribed_radius
+        )
 
         # Cartesian simplex to probability distribution (Barycentric coord)
-        return self.est.back(vectors)
+        return self.est.back(hypersphere_to_cartesian(hyperspherical))
 
     def tf_from(self, vectors):
         """Transform given vectors out of n-1 probability simplex space done in
