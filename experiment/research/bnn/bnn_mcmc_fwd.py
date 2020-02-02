@@ -85,7 +85,7 @@ if __name__ == '__main__':
         raise ValueError('data dataset_filepath needs to be a file')
 
     # Create instance of BNN_MCMC
-    bnn_mcmc = BNN_MCMC(args.dim, **vars(args.bnn))
+    bnn_mcmc = BNN_MCMC(givens.shape[1], **vars(args.bnn))
 
     # Run KNNDE using BNN_MCMC.predict(givens, weights)
     print('Perform KNNDE log prob on Train')
@@ -98,8 +98,6 @@ if __name__ == '__main__':
         args.n_neighbors,
         args.n_jobs,
     )
-
-    log_probs = log_probs.sum()
 
     """
     print('Perform KNNDE log prob on Test')
@@ -119,6 +117,7 @@ if __name__ == '__main__':
     io.save_json(
         args.output_dir,
         {
-            'log_prob_sum': log_probs
+            'log_prob_sum': log_probs.sum(),
+            'log_probs': log_probs
         },
     )
