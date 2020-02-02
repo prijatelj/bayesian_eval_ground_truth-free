@@ -259,7 +259,7 @@ def add_bnn_transform_args(parser):
 
     bnn.add_argument(
         '--num_layers',
-        default=2,
+        default=1,
         type=int,
         help='The number of hidden layers in the BNN.',
         dest='bnn.num_layers',
@@ -280,12 +280,12 @@ def add_bnn_transform_args(parser):
         dest='bnn.hidden_use_bias',
     )
 
-    bnn.add_argument(
-        '--linear_outputs',
-        action='store_true',
-        help='If given, the output layer activations will be linear.',
-        dest='bnn.linear_outputs',
-    )
+    #bnn.add_argument(
+    #    '--linear_outputs',
+    #    action='store_true',
+    #    help='If given, the output layer activations will be linear.',
+    #    dest='bnn.linear_outputs',
+    #)
 
 
 def add_custom_args(parser):
