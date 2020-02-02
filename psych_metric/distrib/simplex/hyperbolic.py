@@ -163,7 +163,6 @@ def givens_rotation(dim, x, y, angle):
     """Creates a transposed Givens rotation matrix."""
     rotate = np.eye(dim)
     rotate[x, x] = np.cos(angle)
-    #rotate[x, y] = -np.sin(angle)
     rotate[x, y] = np.sin(angle)
     rotate[y, x] = -np.sin(angle)
     rotate[y, y] = np.cos(angle)
