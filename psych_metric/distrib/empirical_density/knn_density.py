@@ -153,9 +153,9 @@ def euclid_bnn_knn_log_prob(
     """Runs the euclidean KNNDE log prob estimate for BNN MCMC in parallel."""
     # copy the class objects
     simplex_transform_list = [
-        simplex_transform.copy() for i in range(len(givven))
+        simplex_transform.copy() for i in range(len(given))
     ]
-    bnn_list = [bnn_mcmc_args.copy() for i in range(len(givven))]
+    bnn_list = [bnn_mcmc_args.copy() for i in range(len(given))]
 
     with Pool(processes=n_jobs) as pool:
         log_prob = pool.starmap(
