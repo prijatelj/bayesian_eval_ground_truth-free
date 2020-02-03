@@ -10,7 +10,7 @@ BASE_PATH="$HOME/Public/psych_metric"
 
 # set up the environment
 module add conda
-conda activate tf-1.15
+conda activate psych_tf-1.15
 
 # get the random seed for the specific job from file.
 #SEED="$(sed "$SGE_TASK_ID q;d" $BASE_PATH/experiment/random_seeds/random_seeds_count-100.txt)"
