@@ -105,8 +105,8 @@ if __name__ == '__main__':
         bnn_mcmc_args,
         weights_sets,
         args.sjd.knn_num_neighbors,
-        args.sjd.n_jobs,
         False, # needs_transformed: No for prototyping
+        args.sjd.n_jobs,
     )
 
     """

@@ -97,8 +97,8 @@ def euclid_bnn_knn_log_prob_single(
     bnn,
     weight_sets,
     n_neighbors=10, # 1 is lowest bias
-    n_jobs=1,
     needs_transformed=True,
+    n_jobs=1,
 ):
     """Calculate the log prob of a single sample of a conditional probability
     using a Euclidean simplex space conditional prob modeled via BNN and KNN to
@@ -148,8 +148,8 @@ def euclid_bnn_knn_log_prob(
     bnn_mcmc_args,
     weight_sets,
     n_neighbors=10,
-    n_jobs=1,
     needs_transformed=True,
+    n_jobs=1,
 ):
     """Runs the euclidean KNNDE log prob estimate for BNN MCMC in parallel."""
     # copy the class objects
