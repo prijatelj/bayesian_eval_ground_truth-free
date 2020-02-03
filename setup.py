@@ -1,5 +1,4 @@
-from setuptools import setup, find_packages
-from setuptools.command.install import install
+from setuptools import setup
 
 long_description = ''
 with open('README.md', 'r') as f:
@@ -20,6 +19,10 @@ setup(
         'psych_metric.datasets.crowd_layer',
         'psych_metric.datasets.facial_beauty',
         'psych_metric.distrib',
+        'psych_metric.distrib.bnn',
+        'psych_metric.distrib.simplex',
+        'psych_metric.distrib.conditional',
+        'psych_metric.distrib.empirical_density',
     ],
     #scripts
     long_description=long_description,
