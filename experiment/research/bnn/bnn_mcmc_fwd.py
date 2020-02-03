@@ -106,6 +106,7 @@ if __name__ == '__main__':
         weights_sets,
         args.sjd.knn_num_neighbors,
         args.sjd.n_jobs,
+        False, # needs_transformed: No for prototyping
     )
 
     """
@@ -118,6 +119,7 @@ if __name__ == '__main__':
         weights_sets,
         args.sjd.knn_num_neighbors,
         args.sjd.n_jobs,
+        False, # needs_transformed: No for prototyping
     )
 
     test_log_probs = test_log_probs.sum()
