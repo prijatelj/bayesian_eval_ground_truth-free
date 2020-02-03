@@ -1,4 +1,6 @@
 """The Class and related functions for a BNN implemented via MCMC."""
+from copy import deepcopy
+
 import tensorflow as tf
 
 from psych_metric.distrib import bnn_transform
@@ -55,6 +57,24 @@ class BNNMCMC(object):
 
         # TODO need to add actual fitting via MCMC, sampling, etc.
         # for now, just a way to better contain the args and functions.
+
+    def __copy__(self):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        new.__dict__.update(self.__dict__)
+        return new
+
+    def __deepcopy__(self, memo):
+        raise NotImplementedError
+
+        cls = self.__class__
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+
+        for k, v in self.__dict__.items():
+            setattr(new, k, deepcopy(v, memo))
+
+        return new
 
     def fit(self, kernel_args):
 

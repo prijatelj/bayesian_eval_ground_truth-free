@@ -6,6 +6,7 @@ import scipy
 from sklearn.neighbors import NearestNeighbors
 
 from psych_metric.distrib import distrib_utils
+from psych_metric.distrib.bnn.bnn_mcmc import BNNMCMC
 
 
 def knnde_log_prob(samples, knn, k, knn_density_num_samples):
@@ -103,6 +104,7 @@ def euclid_bnn_knn_log_prob_single(
     """
     simplex_target = simplex_transform.to(target)
 
+    bnn = BNNMCMC(**bnn)
     bnn_output = bnn.predict(simplex_target, weight_sets)
 
     output_check = simplex_transform.back(bnn_output)
@@ -131,19 +133,26 @@ def euclid_bnn_knn_log_prob(
     given,
     pred,
     simplex_transform,
-    bnn,
+    bnn_mcmc_args,
     weight_sets,
     n_neighbors=10,
     n_jobs=1,
 ):
+    """Runs the euclidean KNNDE log prob estimate for BNN MCMC in parallel."""
+    # copy the class objects
+    simplex_transform_list = [
+        simplex_transform.copy() for i in range(len(givven))
+    ]
+    bnn_list = [bnn_mcmc_args.copy() for i in range(len(givven))]
+
     with Pool(processes=n_jobs) as pool:
         log_prob = pool.starmap(
             euclid_bnn_knn_log_prob_single,
             zip(
                 given,
                 pred,
-                [simplex_transform] * len(given),
-                [bnn] * len(given),
+                simplex_transform_list,
+                bnn_list,
                 [weight_sets] * len(given),
                 [n_neighbors] * len(given),
             ),

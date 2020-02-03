@@ -92,7 +92,9 @@ if __name__ == '__main__':
         raise ValueError('data dataset_filepath needs to be a file')
 
     # Create instance of BNNMCMC
-    bnn_mcmc = BNNMCMC(givens.shape[1], **vars(args.bnn))
+    #bnn_mcmc = BNNMCMC(givens.shape[1], **vars(args.bnn))
+    bnn_mcmc_args = vars(args.bnn)
+    bnn_mcmc_args['dim'] = givens.shape[1]
 
     # Run KNNDE using BNNMCMC.predict(givens, weights)
     print('Perform KNNDE log prob on Train')
@@ -100,7 +102,7 @@ if __name__ == '__main__':
         givens,
         pred,
         simplex_transform,
-        bnn_mcmc,
+        bnn_mcmc_args,
         weights_sets,
         args.sjd.knn_num_neighbors,
         args.sjd.n_jobs,
