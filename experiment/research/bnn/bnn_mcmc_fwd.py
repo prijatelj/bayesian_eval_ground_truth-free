@@ -1,11 +1,17 @@
 """Forward pass of the BNN """
-import os
 import glob
 import json
+import os
+import sys
+
+
+# Necessary to run on CRC...
+#os.chdir(os.environ['BASE_PATH'])
+sys.path.append(os.environ['BASE_PATH'])
 
 import numpy as np
 
-from psych_metric.distrib.bnn.bnn_mcmc import BNN_MCMC
+from psych_metric.distrib.bnn.bnn_mcmc import BNNMCMC
 from psych_metric.distrib.empirical_density import knn_density
 from psych_metric.distrib.simplex import euclidean
 
@@ -52,6 +58,7 @@ def add_custom_args(parser):
 
 if __name__ == '__main__':
     args = io.parse_args(
+        ['sjd'],
         custom_args=add_custom_args,
         description='Runs KNNDE for euclidean BNN given the sampled weights.',
     )
@@ -84,10 +91,10 @@ if __name__ == '__main__':
     else:
         raise ValueError('data dataset_filepath needs to be a file')
 
-    # Create instance of BNN_MCMC
-    bnn_mcmc = BNN_MCMC(givens.shape[1], **vars(args.bnn))
+    # Create instance of BNNMCMC
+    bnn_mcmc = BNNMCMC(givens.shape[1], **vars(args.bnn))
 
-    # Run KNNDE using BNN_MCMC.predict(givens, weights)
+    # Run KNNDE using BNNMCMC.predict(givens, weights)
     print('Perform KNNDE log prob on Train')
     log_probs = knn_density.euclid_bnn_knn_log_prob(
         givens,
@@ -95,8 +102,8 @@ if __name__ == '__main__':
         simplex_transform,
         bnn_mcmc,
         weights_sets,
-        args.n_neighbors,
-        args.n_jobs,
+        args.sjd.knn_num_neighbors,
+        args.sjd.n_jobs,
     )
 
     """
@@ -107,8 +114,8 @@ if __name__ == '__main__':
         simplex_transform,
         bnn_mcmc,
         weights_sets,
-        args.n_neighbors,
-        args.n_jobs,
+        args.sjd.knn_num_neighbors,
+        args.sjd.n_jobs,
     )
 
     test_log_probs = test_log_probs.sum()
