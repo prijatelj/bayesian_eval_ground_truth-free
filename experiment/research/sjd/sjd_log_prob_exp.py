@@ -5,6 +5,17 @@ import csv
 import json
 import logging
 import os
+import sys
+
+
+# Necessary to run on CRC...
+try:
+    sys.path.append(os.environ['BASE_PATH'])
+except:
+    logging.warning(
+        'environment variable `BASE_PATH` is not available; not '
+        + 'appending anything to the system path.'
+    )
 
 import h5py
 import numpy as np
@@ -60,7 +71,7 @@ def load_eval_fold(
     ----------
     dir_path : str
         The filepath to the eval fold directory.
-    weight_file : str
+    weights_file : str
         The relative filepath from the eval fold directory to the weights file
         to be used to load the model.
     label_src : str, optional
@@ -231,7 +242,7 @@ def sjd_kfold_log_prob(
         data.
     dir_path : str
         The filepath to the eval fold directory.
-    weight_file : str
+    weights_file : str
         The relative filepath from the eval fold directory to the weights file
         to be used to load the model.
     label_src : str
@@ -659,13 +670,13 @@ def add_human_sjd_args(parser):
     )
 
     human_sjd.add_argument(
-        '--weights_file',
+        '--model_weights_file',
         help=' '.join([
             'The relative filepath from the eval fold directory to the',
             'model weights HDF5 file.',
         ]),
         default='weights.hdf5',
-        dest='human_sjd.weights_file',
+        dest='human_sjd.model_weights_file',
     )
 
     human_sjd.add_argument(
@@ -736,7 +747,7 @@ if __name__ == '__main__':
     uh = sjd_kfold_log_prob(
         candidates,
         dir_path=args.human_sjd.dir_path,
-        weights_file=args.human_sjd.weights_file,
+        weights_file=args.human_sjd.model_weights_file,
         label_src=args.label_src,
         summary_name=args.human_sjd.summary_name,
         data=data,
