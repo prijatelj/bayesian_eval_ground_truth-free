@@ -33,9 +33,11 @@ class BNNMCMC(object):
         output_use_bias=True, # False,
         #kernel_args, # TODO
         dtype=tf.float32,
-        sess=None,
+        #sess=None,
+        sess_config=None,
     ):
         self.dtype = dtype
+        self.sess_config = sess_config
 
         # Make BNN and weight_placeholders, input & output tensors
         self.input = tf.placeholder(
@@ -105,6 +107,9 @@ class BNNMCMC(object):
             dimensions). In the case of Euclidean transform, the returned
             array may contain some invalid discrete probability distributions.
         """
+        if sess_config is None and self.sess_config is not None:
+            sess_config = self.sess_config
+
         return bnn_transform.assign_weights_bnn(
             weight_sets,
             self.weight_placeholders,
