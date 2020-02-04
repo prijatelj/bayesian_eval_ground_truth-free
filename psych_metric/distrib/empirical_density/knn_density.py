@@ -1,5 +1,6 @@
 """K Nearest Neighbors Density Estimation."""
 from copy import deepcopy
+import logging
 from multiprocessing import Pool
 
 import numpy as np
@@ -104,13 +105,24 @@ def euclid_bnn_knn_log_prob_single(
     using a Euclidean simplex space conditional prob modeled via BNN and KNN to
     estimate the density.
     """
+    if len(target.shape) == 1:
+        # Handle single sample
+        target = target.reshape(1, -1)
+    if len(pred.shape) == 1:
+        # Handle single sample
+        pred = pred.reshape(1, -1)
+
     if needs_transformed:
         simplex_target = simplex_transform.to(target)
     else:
         simplex_target = target
 
+    print('STARTING a single run.')
+
     bnn = BNNMCMC(**bnn)
     bnn_output = bnn.predict(simplex_target, weight_sets)
+
+    print('single run bnn made.')
 
     output_check = simplex_transform.back(bnn_output)
 
@@ -173,3 +185,67 @@ def euclid_bnn_knn_log_prob(
         )
 
     return np.array(log_prob)
+
+
+def euclid_bnn_knn_log_prob_sequence(
+    given,
+    pred,
+    simplex_transform,
+    bnn_mcmc_args,
+    weight_sets,
+    n_neighbors=10,
+    needs_transformed=True,
+    n_jobs=1,
+):
+    """Runs the euclidean KNNDE log prob estimate for BNN MCMC in parallel."""
+    log_prob = []
+    for idx in range(len(given)):
+        log_prob.append(euclid_bnn_knn_log_prob_single(
+            given[idx],
+            pred[idx],
+            simplex_transform,
+            bnn_mcmc_args,
+            weight_sets,
+            n_neighbors,
+            needs_transformed,
+        ))
+
+    return np.array(log_prob)
+
+
+def euclid_bnn_knn_log_prob_ray(
+    given,
+    pred,
+    simplex_transform,
+    bnn_mcmc_args,
+    weight_sets,
+    n_neighbors=10,
+    needs_transformed=True,
+    n_jobs=1,
+):
+    """Runs the euclidean KNNDE log prob estimate for BNN MCMC in parallel."""
+    # copy the class objects
+    simplex_transform_list = [
+        deepcopy(simplex_transform) for i in range(len(given))
+    ]
+    bnn_list = [bnn_mcmc_args.copy() for i in range(len(given))]
+
+    with Pool(processes=n_jobs) as pool:
+        log_prob = pool.starmap(
+            euclid_bnn_knn_log_prob_single,
+            zip(
+                given,
+                pred,
+                simplex_transform_list,
+                bnn_list,
+                [weight_sets] * len(given),
+                [n_neighbors] * len(given),
+                [needs_transformed] * len(given),
+            ),
+        )
+
+    return np.array(log_prob)
+
+#@ray.remote
+#class Simulator(object):
+#    def __init__(self, sess_config):
