@@ -1,13 +1,18 @@
 """Forward pass of the BNN """
-import glob
 import json
+import logging
 import os
+from pathlib import Path
 import sys
 
 
 # Necessary to run on CRC...
 #os.chdir(os.environ['BASE_PATH'])
-sys.path.append(os.environ['BASE_PATH'])
+try:
+    sys.path.append(os.environ['BASE_PATH'])
+except:
+    logging.warning('environment variable `BASE_PATH` is not available; not appending anything to the system path.')
+
 
 import numpy as np
 
@@ -20,7 +25,7 @@ from experiment.research.bnn import proto_bnn_mcmc
 from experiment.research.sjd import sjd_log_prob_exp
 
 
-def load_sample_weights(weights_dir, filename='sampled_weights.json'):
+def load_sample_weights(weights_dir, filename='.json'):
     """Loads the sampled bnn weight sets from directory recursively into
     memory.
     """
@@ -28,7 +33,8 @@ def load_sample_weights(weights_dir, filename='sampled_weights.json'):
 
     # loop through json files, get weights, concatenate them
     # walk directory tree, grabbing all
-    for filepath in glob.iglob(os.path.join(weights_dir, '*', filename)):
+    #for filepath in glob.iglob(os.path.join(weights_dir, '*', filename)):
+    for filepath in Path(weights_dir).rglob('*' + filename):
         with open(filepath, 'r') as f:
             weights = json.load(f)
             for vals in weights.values():
@@ -76,9 +82,10 @@ if __name__ == '__main__':
         # load the euclidean simplex transform
         simplex_transform = euclidean.EuclideanSimplexTransform(pred.shape[1] + 1)
         simplex_transform.origin_adjust = np.array(data['origin_adjust'])
+        # NOTE there is only a transpose for the older data.
         simplex_transform.change_of_basis_matrix = np.array(
             data['change_of_basis'],
-        )
+        ).T
         del data
 
         if os.path.isfile(args.bnn_weights_file):
@@ -95,10 +102,17 @@ if __name__ == '__main__':
     #bnn_mcmc = BNNMCMC(givens.shape[1], **vars(args.bnn))
     bnn_mcmc_args = vars(args.bnn)
     bnn_mcmc_args['dim'] = givens.shape[1]
+    bnn_mcmc_args['sess_config'] = io.get_tf_config(
+        #args.cpu_cores,
+        1,
+        args.cpu,
+        args.gpu,
+    )
 
     # Run KNNDE using BNNMCMC.predict(givens, weights)
-    print('Perform KNNDE log prob on Train')
-    log_probs = knn_density.euclid_bnn_knn_log_prob(
+    logging.info('Perform KNNDE log prob on Train')
+    #log_probs = knn_density.euclid_bnn_knn_log_prob(
+    log_probs = knn_density.euclid_bnn_knn_log_prob_sequence(
         givens,
         pred,
         simplex_transform,
@@ -108,22 +122,6 @@ if __name__ == '__main__':
         False, # needs_transformed: No for prototyping
         args.sjd.n_jobs,
     )
-
-    """
-    print('Perform KNNDE log prob on Test')
-    test_log_probs = knn_density.euclid_bnn_knn_log_prob(
-        givens,
-        pred,
-        simplex_transform,
-        bnn_mcmc,
-        weights_sets,
-        args.sjd.knn_num_neighbors,
-        args.sjd.n_jobs,
-        False, # needs_transformed: No for prototyping
-    )
-
-    test_log_probs = test_log_probs.sum()
-    """
 
     io.save_json(
         args.output_dir,
