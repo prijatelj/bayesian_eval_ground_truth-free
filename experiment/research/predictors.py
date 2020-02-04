@@ -30,9 +30,11 @@ import tensorflow as tf
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import KFold, StratifiedKFold
 
-import experiment.io
-from psych_metric.datasets import data_handler
+from psych_metric import datasets
+#from psych_metric.datasets import data_handler
 #from experiment.crowd_layer import .... crowd layer classes etc.
+
+import experiment.io
 
 
 class CheckpointValidaitonOutput(keras.callbacks.Callback):
@@ -76,11 +78,34 @@ class CheckpointValidaitonOutput(keras.callbacks.Callback):
             """
 
 
+def load_dataset(dataset, *args, **kwargs):
+    """Temporary mask of dataset.data_handler.load_dataset() that only handles
+    LabelMe, FacialBeauty, and then FirstImpressions and ChaLearn.
+    """
+    if dataset.lower() == 'facial_beauty' or dataset.lower() == 'facialbeauty':
+        return datasets.FacialBeauty(dataset, *args, **kwargs)
+
+    # First Impressions
+    #elif dataset_exists(dataset, 'first_impressions'):
+    #    return datasets.FirtImpressions(dataset, *args, **kwargs)
+
+    # CrowdLayer
+    elif dataset.lower() == 'labelme':
+        return datasets.CrowdLayer(dataset, *args, **kwargs)
+    else:
+        raise NotImplementedError(' '.join([
+            'This is a tmp mask of dataset.data_handler.load_dataset as not',
+            'all the datasets are deemed necessary for the code using this',
+            'script.',
+        ]))
+
+
 def load_prep_data(dataset_id, data_config, label_src, parts='labelme'):
     """Load and prep dataset."""
     # TODO this should probably all be handled mostly in the dataset class itself. Specifically the label encoding and binarization.
 
-    dataset = data_handler.load_dataset(dataset_id, **data_config)
+    #dataset = data_handler.load_dataset(dataset_id, **data_config)
+    dataset = load_dataset(dataset_id, **data_config)
     if dataset_id == 'LabelMe' and parts == 'labelme':
         images, labels = dataset.load_images(os.path.join(
             dataset.data_dir,
