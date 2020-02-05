@@ -30,7 +30,7 @@ def knnde_log_prob(samples, knn, k, knn_density_num_samples):
     # calculate the n sphere volume being contained w/in the n simplex
     return log_prob - volume
 
-# TODO change to euclid_differences instead! NOT used for BNN
+
 def euclid_diff_knn_log_prob_single(
     target,
     pred,
@@ -48,7 +48,7 @@ def euclid_diff_knn_log_prob_single(
     simplex_target = simplex_transform.to(target)
 
     # add differences to target & convert back to full dimensional space.
-    diff_check = simplex_transform.back(transform_knn_diffs + simplex_target)
+    diff_check = simplex_transform.back(simplex_target + transform_knn_diffs)
 
     # Check which are valid samples. Save indices or new array
     valid_diffs = transform_knn_diffs[
@@ -62,7 +62,7 @@ def euclid_diff_knn_log_prob_single(
     knn.fit(valid_diffs)
 
     # Get distance between actual sample pair of target and pred
-    actual_diff = simplex_transform.to(pred) - simplex_target
+    actual_diff = simplex_target - simplex_transform.to(pred)
 
     # Estimate the log probability.
     return knnde_log_prob(actual_diff, knn, n_neighbors, len(valid_diffs))
