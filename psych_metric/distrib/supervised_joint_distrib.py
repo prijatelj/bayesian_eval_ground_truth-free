@@ -349,14 +349,20 @@ class SupervisedJointDistrib(object):
 
     @property
     def params(self):
-        return {
+        params_dict = {
             'target': distrib_utils.get_tfp_distrib_params(
                 self.target_distrib,
             ),
-            'transform': distrib_utils.get_tfp_distrib_params(
-                self.transform_distrib
-            ),
         }
+        if isinstance(self.transform_distrib, DifferencesTransform):
+            params_dict['transform'] = distrib_utils.get_tfp_distrib_params(
+                self.transform_distrib.distrib
+            )
+        else:
+            params_dict['transform'] = distrib_utils.get_tfp_distrib_params(
+                self.transform_distrib
+            )
+        return params_dict
 
     def fit(
         self,
