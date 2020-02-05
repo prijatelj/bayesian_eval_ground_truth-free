@@ -63,6 +63,7 @@ def load_eval_fold(
     summary_name='summary.json',
     data=None,
     load_model=True,
+    pred_name='pred.json',
 ):
     """Uses the information contained within the summary file to recreate the
     predictor model and load the data with its kfold indices.
@@ -94,9 +95,6 @@ def load_eval_fold(
     tuple
         The trained model and the label data split into train and test sets.
     """
-    if not load_model:
-        NotImplementedError('loading the predictions directly is not supported at the moment.')
-
     # Load summary json & obtain experiment variables for loading main objects.
     dataset_id, data_args, model_args, kfold_cv_args = load_summary(
         os.path.join(dir_path, summary_name)
@@ -132,6 +130,17 @@ def load_eval_fold(
         train_focus_fold=train_focus_fold,
         random_seed=kfold_cv_args['random_seed'],
     )
+
+    if not load_model:
+        # load predictions from file (expects csv)
+        with open(os.path.join(dir_path, pred_name), 'r') as f:
+            pred = json.load(f)
+
+        return (
+            (np.array(pred['train']), np.array(pred['test'])),
+            (features[train_idx], features[test_idx]),
+            (labels[train_idx], labels[test_idx]),
+        )
 
     # Recereate the model
     model = predictors.load_model(
