@@ -21,14 +21,18 @@ class DifferencesTransform(object):
     """All transform models that model the transform as:
         pred = t(y) = y + random_difference
     Where random_difference is the random variable of the differences of
-    predictor output from the actual label. This random variable may be modeled
-    as a distribution (ie. Multivariate Normal) or some other model such as
-    (BNN or Non-Parametric density estimate).
+    predictor output from the actual label (residual = y - pred). This random variable may
+    be modeled as a distribution (ie. Multivariate Normal) or some other model
+    such as (BNN or Non-Parametric density estimate).
 
     Attributes
     ----------
     simplex_transform : EuclideanSimplexTransform | HyperbolicSimplexTransform
     distrib : tfd.Distribution
+    tf_given_samples :
+    tf_conditional_samples :
+    tf_lp_given_samples :
+    tf_lp_conditional_samples :
     tf_given_samples :
     tf_conditional_samples :
     tf_log_prob_var :
@@ -119,18 +123,18 @@ class DifferencesTransform(object):
         self.tf_log_prob_sess = tf.Session(config=sess_config)
 
         # The target and predictor samples will be given.
-        self.given_samples = tf.placeholder(
+        self.tf_lp_given_samples = tf.placeholder(
             tf.float64,
             name='log_prob_given_samples',
         )
-        self.conditional_samples = tf.placeholder(
+        self.tf_lp_conditional_samples = tf.placeholder(
             tf.float64,
             name='log_prob_conditional_samples',
         )
 
         self.tf_log_prob_var = self.tf_log_prob(
-            self.given_samples,
-            self.conditional_samples,
+            self.tf_lp_given_samples,
+            self.tf_lp_conditional_samples,
         )
 
         # Run once. the saved memory is freed upon this class instance deletion.
@@ -350,12 +354,26 @@ class DifferencesTransform(object):
         given_samples,
         conditional_samples,
         n_neighbors=None,
-        n_jobs=1,
+        n_jobs=None,
     ):
+        """Calculates the log prob of the Distrib of Differences."""
+        if isinstance(self.distrib, tfd.Distribution):
+            return self.tf_log_prob_sess.run(
+                self.tf_log_prob_var,
+                feed_dict={
+                    self.tf_lp_given_samples: given_samples,
+                    self.tf_lp_conditional_samples: conditional_samples,
+                },
+            )
+
+        # TODO, I don't think this will ever be used in Distrib of Diffs
+        # Uses KNNDE to estimate the log prob. Necessary due to resampling
         if n_neighbors is None:
             n_neighbors = self.n_neighbors
-        if n_jobs is None:
+        if n_jobs is None and self.n_jobs is not None:
             n_jobs = self.n_jobs
+        else:
+            n_jobs = 1
 
         if isinstance(self.simplex_transform, EuclideanSimplexTransform):
             return knn_density.euclid_diff_knn_log_prob(
