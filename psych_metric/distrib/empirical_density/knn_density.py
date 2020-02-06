@@ -125,15 +125,17 @@ def euclid_bnn_knn_log_prob_single(
 
     output_check = simplex_transform.back(bnn_output)
 
-    # zero out any negative near zero values
-    output_check[np.isclose(output_check, 0) & (output_check < 0)] = 0
-
     # Check which are valid samples. Save indices or new array
     valid_diffs = bnn_output[
         np.where(distrib_utils.is_prob_distrib(output_check))[0]
     ]
 
     # TODO should check if number of valid_diffs >> k, otherwise not accurate estimate.
+    logging.debug(
+        '%d total valid differences used for KNNDE with n_neighbors = %d.',
+        len(valid_diffs),
+        n_neighbors,
+    )
 
     # Fit KNN to the differences valid to the specific target.
     knn = NearestNeighbors(n_neighbors, n_jobs=n_jobs)
