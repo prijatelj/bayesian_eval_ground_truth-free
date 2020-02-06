@@ -105,11 +105,10 @@ def euclid_bnn_knn_log_prob_single(
     using a Euclidean simplex space conditional prob modeled via BNN and KNN to
     estimate the density.
     """
+    # Handle single samples (correcting shape)
     if len(target.shape) == 1:
-        # Handle single sample
         target = target.reshape(1, -1)
     if len(pred.shape) == 1:
-        # Handle single sample
         pred = pred.reshape(1, -1)
 
     if needs_transformed:
@@ -125,6 +124,9 @@ def euclid_bnn_knn_log_prob_single(
     print('single run bnn made.')
 
     output_check = simplex_transform.back(bnn_output)
+
+    # zero out any negative near zero values
+    output_check[np.isclose(output_check, 0) & (output_check < 0)] = 0
 
     # Check which are valid samples. Save indices or new array
     valid_diffs = bnn_output[
