@@ -202,10 +202,12 @@ def is_prob_distrib(
     # check if each row sums to 1
     sums_to_one = np.isclose(vector.sum(axis), 1, rtol, atol, equal_nan)
 
+    # TODO set all vector values that are near 0 or 1 to 0 or 1, respectively
     # check if all values are w/in range
     in_range = (vector >= 0).all(axis) == (vector <= 1).all(axis)
 
     return sums_to_one & in_range
+
 
 def tf_is_prob_distrib(vector, axis=1):
     """Checks if the vector is a valid discrete probability distribution."""
