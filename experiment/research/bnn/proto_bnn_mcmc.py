@@ -37,8 +37,8 @@ def setup_rwm_sim(
 ):
     rdm = src_candidates.get_src_sjd('tight_dir_small_mvn', dim)
     s = rdm.sample(sample_size)
-    data = (s[0] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
-    targets = (s[1] - [1, 0, 0, 0]) @ rdm.transform_matrix.T
+    data = rdm.transform_distrib.simplex_transform.to(s[0])
+    targets = rdm.transform_distrib.simplex_transform.to(s[1])
 
     """
     def sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):
