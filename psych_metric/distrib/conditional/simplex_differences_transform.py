@@ -287,6 +287,7 @@ class DifferencesTransform(object):
         """Create Tensorflow graph for log prob calculation"""
         # Convert the samples into the n-1 simplex basis.
         # TODO the casts here may be unnecessrary! Check this.
+        # TODO ensure the usage of transforms to here are valid.
         given_simplex_samples = tf.cast(
             self.simplex_transform.to(given_samples),
             tf.float64,
@@ -355,9 +356,24 @@ class DifferencesTransform(object):
         conditional_samples,
         n_neighbors=None,
         n_jobs=None,
+        tfp_log_prob=False,
     ):
-        """Calculates the log prob of the Distrib of Differences."""
-        if isinstance(self.distrib, tfd.Distribution):
+        """Calculates the log prob of the Distrib of Differences.
+
+        Parameters
+        ----------
+        given_samples : np.ndarray
+            The samples from the given random variable that the conditional
+            random variable is dependent on.
+        """
+        #if not no_transform:
+        #    given_samples = tf
+        #    # NOTE the tf log prob contains transforms itself.
+        if tfp_log_prob:
+            # Using tfp log prob means ignoring the simplex boundary in the
+            # case of the Euclidean (Cartesian) only transform, but it can only
+            # be used when Hyperbolic transform is used to compare to other
+            # RV's.
             return self.tf_log_prob_sess.run(
                 self.tf_log_prob_var,
                 feed_dict={
@@ -366,8 +382,8 @@ class DifferencesTransform(object):
                 },
             )
 
-        # TODO, I don't think this will ever be used in Distrib of Diffs
         # Uses KNNDE to estimate the log prob. Necessary due to resampling
+        # invalid probability vectors.
         if n_neighbors is None:
             n_neighbors = self.n_neighbors
         if n_jobs is None and self.n_jobs is not None:
@@ -384,5 +400,7 @@ class DifferencesTransform(object):
                 n_neighbors,
                 n_jobs,
             )
-        raise NotImplementedError('Hyperbolic knn density not implemented.')
+        raise NotImplementedError(
+            'Hyperbolic knn density not implemented for this Distrib Diffs.'
+        )
         #return knn_density.hyperbolic_knn_log_prob(
