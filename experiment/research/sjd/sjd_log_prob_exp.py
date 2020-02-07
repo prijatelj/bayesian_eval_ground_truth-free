@@ -56,6 +56,26 @@ def recreate_label_bin(class_order):
     raise NotImplementedError
 
 
+def load_predictions(pred_file, parts=['train', 'test'], dtype=np.float64):
+        file_type = pred_file.rpartition('.')[-1]
+        if file_type == 'csv':
+            raise NotImplementedError(' '.join([
+                'CSV file is only for one set of predictions and is therefore',
+                'misisng either train or test. This needs handled',
+                'appropriately.',
+            ]))
+        elif file_type == 'json':
+            with open(pred_file, 'r') as f:
+                pred = json.load(f)
+
+                for i in parts:
+                    pred[i] = np.array(pred[i], dtype=dtype)
+
+            return pred
+
+        raise ValueError('pred_file must end with either "csv" or "json".')
+
+
 def load_eval_fold(
     dir_path,
     weights_file,
@@ -64,6 +84,7 @@ def load_eval_fold(
     data=None,
     load_model=True,
     pred_name='pred.json',
+    labels_in_pred=True,
 ):
     """Uses the information contained within the summary file to recreate the
     predictor model and load the data with its kfold indices.
@@ -89,6 +110,8 @@ def load_eval_fold(
         Currently a placeholder var indicating the possibilty of simply loading
         a predictions file instead of the model weights. Thus returning the
         predictions and the labels for the kfold split.
+    labels_in_pred : bool, optional
+        If True, expects the labels to be included in the pred json file.
 
     Returns
     -------
@@ -99,6 +122,19 @@ def load_eval_fold(
     dataset_id, data_args, model_args, kfold_cv_args = load_summary(
         os.path.join(dir_path, summary_name)
     )
+
+    if not load_model and labels_in_pred:
+        # load predictions from file (expects csv)
+        pred = load_predictions(os.path.join(dir_path, pred_name))
+
+        return (
+            (pred['train'], pred['test']),
+            None,
+            (
+                np.array(pred['labels']['train']),
+                np.array(pred['labels']['test']),
+            ),
+        )
 
     # load the data, if necessary
     if isinstance(data, tuple):
@@ -112,6 +148,7 @@ def load_eval_fold(
             label_src,
             model_args['parts'],
         )
+
 
     # Support for summaries written with older version of code
     if 'test_focus_fold' in kfold_cv_args:
@@ -133,11 +170,9 @@ def load_eval_fold(
 
     if not load_model:
         # load predictions from file (expects csv)
-        with open(os.path.join(dir_path, pred_name), 'r') as f:
-            pred = json.load(f)
-
+        pred = load_predictions(os.path.join(dir_path, pred_name))
         return (
-            (np.array(pred['train']), np.array(pred['test'])),
+            (pred['train'], pred['test']),
             (features[train_idx], features[test_idx]),
             (labels[train_idx], labels[test_idx]),
         )
@@ -698,6 +733,16 @@ def add_human_sjd_args(parser):
         dest='human_sjd.summary_name',
     )
 
+    human_sjd.add_argument(
+        '--pred_name',
+        help=' '.join([
+            'The relative filepath from the eval fold directory to the',
+            'summary CSV/JSON file.',
+        ]),
+        default='pred.csv',
+        dest='human_sjd.pred_name',
+    )
+
     # just adding a this script specific argument
     parser.add_argument(
         '--src_candidates',
@@ -705,6 +750,12 @@ def add_human_sjd_args(parser):
         nargs='+',
         type=str,
         help='The premade candidate SJDs to be tested.'
+    )
+
+    parser.add_argument(
+        '--sjd_load_model',
+        action='store_true',
+        help='If given, loads model to generate predictions.'
     )
 
 
@@ -722,12 +773,15 @@ if __name__ == '__main__':
 
     logging.info('Loading data and saving')
     # Load data once: features, labels, label_bin
-    data = predictors.load_prep_data(
-        args.dataset_id,
-        vars(args.data),
-        args.label_src,
-        args.model.parts,
-    )
+    if args.sjd_load_model:
+        data = predictors.load_prep_data(
+            args.dataset_id,
+            vars(args.data),
+            args.label_src,
+            args.model.parts,
+        )
+    else:
+        data = None
 
     if args.src_candidates is None:
         args.src_candidates = [
@@ -738,11 +792,21 @@ if __name__ == '__main__':
             'dir-adam_mvn-umvu',
         ],
 
+    if args.dataset_id.lower() == 'labelme':
+        data_dim = 8
+    elif (
+        args.dataset_id.lower() == 'facialbeauty'
+        or args.dataset_id.lower() == 'facial_beauty'
+    ):
+        data_dim = 5
+    else:
+        raise NotImplementedError('dataset not implemented yet for this script.')
+
     logging.info('Getting candidates')
     # Get candidates
     candidates = src_candidates.get_sjd_candidates(
         args.src_candidates,
-        data[1].shape[1],
+        data_dim,
         vars(args.mle),
         vars(args.sjd),
         n_jobs=args.cpu_cores,
@@ -760,7 +824,7 @@ if __name__ == '__main__':
         label_src=args.label_src,
         summary_name=args.human_sjd.summary_name,
         data=data,
-        load_model=True,
+        load_model=args.sjd_load_model,
         info_criterions=info_criterions,
         #output_path=args.output_dir
     )
