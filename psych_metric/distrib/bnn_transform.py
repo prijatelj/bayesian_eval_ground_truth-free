@@ -62,51 +62,38 @@ def mcmc_sample_log_prob(
     )
 
 
-def bnn_softmax(
-    input_labels,
-    simplex_transform,
-    num_layers=1,
-    num_hidden=10,
-    hidden_activation=tf.math.sigmoid,
-    hidden_use_bias=True,
-    output_activation=None,
-    output_use_bias=True,
-    dtype=tf.float32,
-    tf_device=None,
-):
+def bnn_softmax(input_labels, simplex_transform, *args, **kwargs):
     """BNN of stochastic transform of given random variable (target label) to
     the respective conditional random variable (predictor's prediction). Input
     is of the dimension of the original probability vector and output is in the
     same space.
     """
     with tf.device(tf_device), tf.name_scope('bnn_mlp_softmax_transform'):
-        tf_vars = []
-
-        x = input_labels
-        for i in range(num_layers):
-            dense_layer = tf.keras.layers.Dense(
-                num_hidden,
-                activation=hidden_activation,
-                dtype=dtype,
-                use_bias=hidden_use_bias,
-            )
-            x = dense_layer(x)
-            for w in dense_layer.weights:
-                tf_vars.append(w)
-
-        # output = activation(dot(input, kernel) + bias)
-        dense_layer = tf.keras.layers.Dense(
-            input_labels.shape[1],
-            activation=output_activation,
-            use_bias=output_use_bias,
-            dtype=dtype,
-            name='bnn_output_pred',
+        output, tf_vars = bnn_mlp(
+            simplex_transform.to(input_labels),
+            *args,
+            **kwargs,
         )
-        bnn_out = dense_layer(x)
-        for w in dense_layer.weights:
-            tf_vars.append(w)
 
-    return bnn_out, tf_vars
+        output = tf.nn.softmax(simplex_transform.back(bnn_out))
+
+    return output, tf_vars
+
+
+def bnn_softmax_placeholders(input_labels, simplex_transform, *args, **kwargs):
+    """Placeholder version of `bnn_softmax()`. BNN of stochastic transform of
+    given random variable (target label) to the respective conditional random
+    variable (predictor's prediction). Input is of the dimension of the
+    original probability vector and output is in the same space.
+    """
+    with tf.device(tf_device), tf.name_scope('bnn_softmax_transformer'):
+        output, tf_placeholders = bnn_mlp_placeholders(
+            simplex_transform.to(input_labels)
+            *args,
+            **kwargs,
+        )
+        output = tf.nn.softmax(simplex_transform.back(output))
+    return output, tf_placeholders
 
 
 def bnn_mlp(
