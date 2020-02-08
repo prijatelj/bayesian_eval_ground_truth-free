@@ -77,6 +77,7 @@ class BNNMCMC(object):
 
         self.output, self.weight_placeholders = bnn_transform.bnn_softmax_placeholders(
             self.input,
+            self.simplex_transform,
             num_layers,
             num_hidden,
             hidden_activation,
