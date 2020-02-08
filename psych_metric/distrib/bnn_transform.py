@@ -10,6 +10,105 @@ import tensorflow_probability as tfp
 from psych_metric.distrib.mcmc import get_mcmc_kernel
 
 
+def mcmc_sample_log_prob(
+    params,
+    data,
+    targets,
+    origin_adjust,
+    rotation_mat,
+    scale_identity_multiplier=0.01,
+):
+    """MCMC BNN that takes the original probability vectors and transforms them
+    into the conditional RV's probability vectors. This BNN ensures that the
+    output of the network is always a probability distribution via softmax.
+
+    Notes
+    -----
+    The BNN is rewritten here because TFP's MCMC target log prob does not play
+    well with creating the network outside of the target log prob function and
+    passed in as constant variables.
+    """
+    bnn_data = tf.convert_to_tensor(data.astype(np.float32), dtype=tf.float32)
+    bnn_target = tf.convert_to_tensor(
+        targets.astype(np.float32),
+        dtype=tf.float32,
+    )
+    bnn_rotation_mat = tf.convert_to_tensor(
+        rotation_mat.astype(np.float32),
+        dtype=tf.float32,
+    )
+    bnn_origin_adjust = tf.convert_to_tensor(
+        origin_adjust.astype(np.float32),
+        dtype=tf.float32,
+    )
+
+    hidden_weights, hidden_bias, output_weights, output_bias = params
+
+    bnn_data_rot = (bnn_data - bnn_origin_adjust) @ bnn_rotation_mat
+
+    hidden = tf.nn.sigmoid(bnn_data_rot @ hidden_weights + hidden_bias)
+
+    bnn_output = hidden @ output_weights + output_bias
+
+    output = tf.nn.softmax(
+        (bnn_output @ bnn_rotation_mat.T) + bnn_origin_adjust
+    )
+
+    return tf.reduce_sum(
+        tfp.distributions.MultivariateNormalDiag(
+            loc=tf.zeros([data.shape[1]]),
+            scale_identity_multiplier=scale_identity_multiplier
+        ).log_prob(output - bnn_target),
+    )
+
+
+def bnn_softmax(
+    input_labels,
+    simplex_transform,
+    num_layers=1,
+    num_hidden=10,
+    hidden_activation=tf.math.sigmoid,
+    hidden_use_bias=True,
+    output_activation=None,
+    output_use_bias=True,
+    dtype=tf.float32,
+    tf_device=None,
+):
+    """BNN of stochastic transform of given random variable (target label) to
+    the respective conditional random variable (predictor's prediction). Input
+    is of the dimension of the original probability vector and output is in the
+    same space.
+    """
+    with tf.device(tf_device), tf.name_scope('bnn_mlp_softmax_transform'):
+        tf_vars = []
+
+        x = input_labels
+        for i in range(num_layers):
+            dense_layer = tf.keras.layers.Dense(
+                num_hidden,
+                activation=hidden_activation,
+                dtype=dtype,
+                use_bias=hidden_use_bias,
+            )
+            x = dense_layer(x)
+            for w in dense_layer.weights:
+                tf_vars.append(w)
+
+        # output = activation(dot(input, kernel) + bias)
+        dense_layer = tf.keras.layers.Dense(
+            input_labels.shape[1],
+            activation=output_activation,
+            use_bias=output_use_bias,
+            dtype=dtype,
+            name='bnn_output_pred',
+        )
+        bnn_out = dense_layer(x)
+        for w in dense_layer.weights:
+            tf_vars.append(w)
+
+    return bnn_out, tf_vars
+
+
 def bnn_mlp(
     input_labels,
     num_layers=1,
