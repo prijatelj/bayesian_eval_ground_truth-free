@@ -127,14 +127,16 @@ def add_mcmc_args(parser):
     )
 
     mcmc.add_argument(
-        '--diff_scale',
-        default=1.0,
+        #'--diff_scale',
+        '--scale_identity_multiplier',
+        default=0.01,
         type=float,
         help=' '.join([
             'The scalar multiplier to use on the end of the BNN log',
             'probability in the MCMC fitting. Use -1.0 to negate the loss.',
         ]),
-        dest='mcmc.diff_scale',
+        #dest='mcmc.diff_scale',
+        dest='mcmc.scale_identity_multiplier',
     )
 
     # Sample chain
