@@ -2,6 +2,7 @@
 import logging
 import os
 import json
+from functools import partial
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +27,12 @@ def mcmc_sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):
 
     output = hidden @ output_weights + output_bias
 
-    return tf.reduce_sum(tfp.distributions.MultivariateNormalDiag(loc=tf.zeros([data.shape[1]]),scale_identity_multiplier=scale_identity_multiplier).log_prob(output-bnn_target))
+    return tf.reduce_sum(
+        tfp.distributions.MultivariateNormalDiag(
+            loc=tf.zeros([data.shape[1]]),
+            scale_identity_multiplier=scale_identity_multiplier,
+        ).log_prob(output-bnn_target)
+    )
 
 
 def setup_rwm_sim(
@@ -40,24 +46,21 @@ def setup_rwm_sim(
     data = rdm.transform_distrib.simplex_transform.to(s[0])
     targets = rdm.transform_distrib.simplex_transform.to(s[1])
 
-    """
-    def sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):
-        bnn_data = tf.convert_to_tensor(data.astype(np.float32),dtype=tf.float32)
-        bnn_target = tf.convert_to_tensor(targets.astype(np.float32),dtype=tf.float32)
-        hidden_weights, hidden_bias, output_weights, output_bias = params
-        hidden = tf.nn.sigmoid(bnn_data @ hidden_weights + hidden_bias)
-        output = hidden @ output_weights + output_bias
-        return tf.reduce_sum(tfp.distributions.MultivariateNormalDiag(loc=tf.zeros([data.shape[1]]),scale_identity_multiplier=scale_identity_multiplier).log_prob(output-bnn_target))
-    """
-
     init_state = [
         np.random.normal(scale=12**0.5 , size=(dim,width)).astype(np.float32),
         np.zeros([width], dtype=np.float32),
         np.random.normal(scale=0.48**0.5 , size=(width,dim)).astype(np.float32),
         np.zeros([dim], dtype=np.float32)]
 
+    sample_log_prob = partial(
+        bnn_transform.mcmc_sample_log_prob,
+        origin_adjust=rdm.transform_distrib.simplex_transform.origin_adjust,
+        rotation_mat=rdm.transform_distrib.simplex_transform.change_of_basis_matrix,
+        scale_identity_multiplier=scale_identity_multiplier,
+    )
+
     #return data, targets, sample_log_prob, init_state
-    return data, targets, mcmc_sample_log_prob, init_state
+    return data, targets, sample_log_prob, init_state
 
 
 def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0, init_vars=None):
@@ -312,6 +315,13 @@ def add_custom_args(parser):
     #    help='Does not save visuals.',
     #)
 
+    parser.add_argument(
+        '--',
+        default=1,
+        type=int,
+        help='The number of chains to be run in parallel for sampling.',
+    )
+
 
 if __name__ == '__main__':
     args = io.parse_args(custom_args=add_custom_args)
@@ -324,10 +334,15 @@ if __name__ == '__main__':
     if os.path.isfile(args.data.dataset_filepath):
         with open(args.data.dataset_filepath, 'r') as f:
             data = json.load(f)
-            targets = np.array(data['output'], dtype=np.float32)
-            data = np.array(data['input'], dtype=np.float32)
+            givens = np.array(data['givens'], dtype=np.float32)
+            conditionals = np.array(data['conditionals'], dtype=np.float32)
+            change_of_basis = np.array(data['change_of_basis'], dtype=np.float32)
 
-        sample_log_prob = mcmc_sample_log_prob
+        scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+        sample_log_prob = partial(
+            bnn_transform.mcmc_sample_log_prob,
+            scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+        )
 
         if not isinstance(args.bnn_weights_file, str):
             raise TypeError('bnn_weights_file must be provided when dataset_filepath is given')
@@ -336,16 +351,16 @@ if __name__ == '__main__':
             init_state = json.load(f)
             init_state = [np.array(x, dtype=np.float32) for x in init_state]
     else:
-        data, targets, sample_log_prob, init_state = setup_rwm_sim(
+        givens, conditionals, sample_log_prob, init_state = setup_rwm_sim(
             width=args.bnn.num_hidden,
             sample_size=args.num_samples,
-            scale_identity_multiplier=args.mcmc.diff_scale,
+            scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
             dim=args.dim,
         )
 
         io.save_json(
-            os.path.join(output_dir, 'data.json'),
-            {'input': data, 'output': targets},
+            os.path.join(output_dir, 'data_for_bnn.json'),
+            {'givens': givens, 'conditionals': conditionals},
         )
 
     logging.info('Setup the simulation data and the log prob function')
@@ -355,10 +370,10 @@ if __name__ == '__main__':
         if args.bnn_weights_file:
             init_vars = init_state
         init_state, loss = adam_init(
-            data,
-            targets,
+            givens,
+            conditionals,
             args.bnn.num_hidden,
-            data.shape[1],
+            givens.shape[1],
             args.adam_epochs,
             cpus=args.cpu,
             cpu_cores=args.cpu_cores,
@@ -373,8 +388,8 @@ if __name__ == '__main__':
 
     if args.mcmc.kernel_id == 'RandomWalkMetropolis':
         output, new_starting_state = run_rwm(
-            data,
-            targets,
+            givens,
+            conditionals,
             sample_log_prob,
             init_state,
             num_results=args.mcmc.sample_chain.num_results,
@@ -406,8 +421,8 @@ if __name__ == '__main__':
 
     elif args.mcmc.kernel_id == 'HamiltonianMonteCarlo':
         output = run_hmc(
-            data,
-            targets,
+            givens,
+            conditionals,
             sample_log_prob,
             init_state,
             num_results=args.mcmc.sample_chain.num_results,
@@ -463,8 +478,8 @@ if __name__ == '__main__':
 
     elif args.mcmc.kernel_id == 'NoUTurnSampler':
         output, new_starting_state = run_nuts(
-            data,
-            targets,
+            givens,
+            conditionals,
             sample_log_prob,
             init_state,
             num_results=args.mcmc.sample_chain.num_results,
@@ -502,7 +517,7 @@ if __name__ == '__main__':
         plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
         plt.close()
 
-    logging.info('Finished MCMC training and specific kernel data saving.')
+    logging.info('Finished MCMC training and specific kernel givens saving.')
 
 
     if args.parallel_chains <= 1:
