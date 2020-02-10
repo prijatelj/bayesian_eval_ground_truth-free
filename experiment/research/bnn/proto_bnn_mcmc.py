@@ -18,28 +18,11 @@ from experiment import io
 from experiment.research.sjd import src_candidates
 
 
-def mcmc_sample_log_prob(params,data,targets,scale_identity_multiplier=0.01):
-    bnn_data = tf.convert_to_tensor(data.astype(np.float32),dtype=tf.float32)
-    bnn_target = tf.convert_to_tensor(targets.astype(np.float32),dtype=tf.float32)
-
-    hidden_weights, hidden_bias, output_weights, output_bias = params
-    hidden = tf.nn.sigmoid(bnn_data @ hidden_weights + hidden_bias)
-
-    output = hidden @ output_weights + output_bias
-
-    return tf.reduce_sum(
-        tfp.distributions.MultivariateNormalDiag(
-            loc=tf.zeros([data.shape[1]]),
-            scale_identity_multiplier=scale_identity_multiplier,
-        ).log_prob(output-bnn_target)
-    )
-
-
 def setup_rwm_sim(
     width=10,
     sample_size=10,
     scale_identity_multiplier=0.01,
-    dim=4,
+    dim=3,
 ):
     rdm = src_candidates.get_src_sjd('tight_dir_small_mvn', dim)
     givens, conditionals = rdm.sample(sample_size)
@@ -47,9 +30,9 @@ def setup_rwm_sim(
     #targets = rdm.transform_distrib.simplex_transform.to(s[1])
 
     init_state = [
-        np.random.normal(scale=12**0.5 , size=(dim,width)).astype(np.float32),
+        np.random.normal(scale=12**0.5 , size=(dim-1,width)).astype(np.float32),
         np.zeros([width], dtype=np.float32),
-        np.random.normal(scale=0.48**0.5 , size=(width,dim)).astype(np.float32),
+        np.random.normal(scale=0.48**0.5 , size=(width,dim-1)).astype(np.float32),
         np.zeros([dim], dtype=np.float32)]
 
     sample_log_prob = partial(
