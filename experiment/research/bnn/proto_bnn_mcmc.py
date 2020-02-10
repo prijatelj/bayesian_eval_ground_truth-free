@@ -37,8 +37,8 @@ def setup_rwm_sim(
 
     sample_log_prob = partial(
         bnn_transform.mcmc_sample_log_prob,
-        origin_adjust=rdm.transform_distrib.simplex_transform.origin_adjust,
-        rotation_mat=rdm.transform_distrib.simplex_transform.change_of_basis_matrix,
+        origin_adjust=rdm.transform_distrib.simplex_transform.origin_adjust.astype(np.float32),
+        rotation_mat=rdm.transform_distrib.simplex_transform.change_of_basis_matrix.astype(np.float32),
         scale_identity_multiplier=scale_identity_multiplier,
     )
 
@@ -334,7 +334,7 @@ if __name__ == '__main__':
             init_state = json.load(f)
             init_state = [np.array(x, dtype=np.float32) for x in init_state]
     else:
-        givens, conditionals, sample_log_prob, init_state, sjd = setup_rwm_sim(
+        givens, conditionals, sample_log_prob, init_state, src = setup_rwm_sim(
             width=args.bnn.num_hidden,
             sample_size=args.num_samples,
             scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
@@ -346,9 +346,9 @@ if __name__ == '__main__':
             {
                 'givens': givens,
                 'conditionals': conditionals,
-                'src_sjd': sjd.params,
-                'change_of_basis': sjd.transform_distrib.simplex_transform.change_of_basis_matrix,
-                'origin_adjust': sjd.transform_distrib.simplex_transform.origin_adjust,
+                'src_sjd': src.params,
+                'change_of_basis': src.transform_distrib.simplex_transform.change_of_basis_matrix,
+                'origin_adjust': src.transform_distrib.simplex_transform.origin_adjust,
             },
         )
 
