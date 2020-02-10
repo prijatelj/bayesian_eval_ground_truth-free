@@ -75,7 +75,7 @@ def bnn_softmax(input_labels, simplex_transform, *args, **kwargs):
             **kwargs,
         )
 
-        output = tf.nn.softmax(simplex_transform.back(bnn_out))
+        output = tf.nn.softmax(simplex_transform.back(output))
 
     return output, tf_vars
 
