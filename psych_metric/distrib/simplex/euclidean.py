@@ -127,3 +127,8 @@ class EuclideanSimplexTransform(object):
             self.change_of_basis_matrix,
             self.origin_adjust,
         )
+
+    def tf_back(self, vectors):
+        """Transform given vectors out of n-1 probability simplex space."""
+        return (vectors @ tf.transpose(self.transform_matrix)) \
+            + self.origin_adjust

@@ -51,7 +51,7 @@ def mcmc_sample_log_prob(
     bnn_output = hidden @ output_weights + output_bias
 
     output = tf.nn.softmax(
-        (bnn_output @ bnn_rotation_mat.T) + bnn_origin_adjust
+        (bnn_output @ tf.transpose(bnn_rotation_mat)) + bnn_origin_adjust
     )
 
     return tf.reduce_sum(
