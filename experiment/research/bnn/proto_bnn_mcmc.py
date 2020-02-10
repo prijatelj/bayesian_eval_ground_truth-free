@@ -42,9 +42,9 @@ def setup_rwm_sim(
     dim=4,
 ):
     rdm = src_candidates.get_src_sjd('tight_dir_small_mvn', dim)
-    s = rdm.sample(sample_size)
-    data = rdm.transform_distrib.simplex_transform.to(s[0])
-    targets = rdm.transform_distrib.simplex_transform.to(s[1])
+    givens, conditionals = rdm.sample(sample_size)
+    #data = rdm.transform_distrib.simplex_transform.to(s[0])
+    #targets = rdm.transform_distrib.simplex_transform.to(s[1])
 
     init_state = [
         np.random.normal(scale=12**0.5 , size=(dim,width)).astype(np.float32),
@@ -60,7 +60,7 @@ def setup_rwm_sim(
     )
 
     #return data, targets, sample_log_prob, init_state
-    return data, targets, sample_log_prob, init_state
+    return givens, conditionals, sample_log_prob, init_state, rdm
 
 
 def adam_init(data, targets, width, dim, epochs, cpus=1, cpu_cores=16, gpus=0, init_vars=None):
@@ -351,7 +351,7 @@ if __name__ == '__main__':
             init_state = json.load(f)
             init_state = [np.array(x, dtype=np.float32) for x in init_state]
     else:
-        givens, conditionals, sample_log_prob, init_state = setup_rwm_sim(
+        givens, conditionals, sample_log_prob, init_state, sjd = setup_rwm_sim(
             width=args.bnn.num_hidden,
             sample_size=args.num_samples,
             scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
@@ -360,7 +360,13 @@ if __name__ == '__main__':
 
         io.save_json(
             os.path.join(output_dir, 'data_for_bnn.json'),
-            {'givens': givens, 'conditionals': conditionals},
+            {
+                'givens': givens,
+                'conditionals': conditionals,
+                'src_sjd': sjd.params,
+                'change_of_basis': sjd.transform_distrib.simplex_transform.change_of_basis_matrix,
+                'origin_adjust': sjd.transform_distrib.simplex_transform.origin_adjust,
+            },
         )
 
     logging.info('Setup the simulation data and the log prob function')
