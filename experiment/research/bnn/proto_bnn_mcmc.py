@@ -33,7 +33,7 @@ def setup_rwm_sim(
         np.random.normal(scale=12**0.5 , size=(dim-1,width)).astype(np.float32),
         np.zeros([width], dtype=np.float32),
         np.random.normal(scale=0.48**0.5 , size=(width,dim-1)).astype(np.float32),
-        np.zeros([dim], dtype=np.float32)]
+        np.zeros([dim-1], dtype=np.float32)]
 
     sample_log_prob = partial(
         bnn_transform.mcmc_sample_log_prob,
