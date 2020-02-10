@@ -5,14 +5,14 @@ import os
 from pathlib import Path
 import sys
 
-
-# Necessary to run on CRC...
-#os.chdir(os.environ['BASE_PATH'])
-try:
-    sys.path.append(os.environ['BASE_PATH'])
-except:
-    logging.warning('environment variable `BASE_PATH` is not available; not appending anything to the system path.')
-
+# Necessary to run on CRC... unless install `experiment` as package
+#try:
+#    sys.path.append(os.environ['BASE_PATH'])
+#except:
+#    logging.warning(
+#        'environment variable `BASE_PATH` is not available; not '
+#        + 'appending anything to the system path.'
+#    )
 
 import numpy as np
 
