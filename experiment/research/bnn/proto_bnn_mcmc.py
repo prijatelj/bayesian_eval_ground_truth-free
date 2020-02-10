@@ -315,12 +315,12 @@ def add_custom_args(parser):
     #    help='Does not save visuals.',
     #)
 
-    parser.add_argument(
-        '--',
-        default=1,
-        type=int,
-        help='The number of chains to be run in parallel for sampling.',
-    )
+    #parser.add_argument(
+    #    '--',
+    #    default=1,
+    #    type=int,
+    #    help='The number of chains to be run in parallel for sampling.',
+    #)
 
 
 if __name__ == '__main__':
