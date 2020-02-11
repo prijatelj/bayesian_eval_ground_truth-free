@@ -22,10 +22,11 @@ python3 experiment/research/bnn/proto_bnn_mcmc.py "__NO_this_should_not_exist" \
     --gpu 0 \
     --kernel_id 'HamiltonianMonteCarlo' \
     --num_results 10 \
-    --step_size 0.0005 \
+    --step_size 0.010185 \
     --num_leapfrog_steps 3 \
     --lag 5 \
     --burnin 10000000 \
+    --step_adjust_id Simple \
     --num_adaptation_steps 2000000 \
     --scale_identity_multiplier 0.01 \
     --log_level 'INFO' \
