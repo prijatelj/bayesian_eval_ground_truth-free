@@ -337,7 +337,7 @@ def add_custom_args(parser):
         help='The target accept probability for MCMC step adjustment methods.',
     )
 
-    mle.add_argument(
+    parser.add_argument(
         '--random_bnn_init',
         action='store_true',
         help='If given, and dataset_filepath is a file and no bnn weights given, then the bnn weights are randomly initialized.',
@@ -371,9 +371,15 @@ if __name__ == '__main__':
 
         if args.random_bnn_init:
             init_state = [
-                np.random.normal(scale=12**0.5 , size=(givens.shape[1]-1,width)).astype(np.float32),
-                np.zeros([width], dtype=np.float32),
-                np.random.normal(scale=0.48**0.5 , size=(width,givens.shape[1]-1)).astype(np.float32),
+                np.random.normal(
+                    scale=12**0.5,
+                    size=(givens.shape[1]-1,args.bnn.num_hidden),
+                ).astype(np.float32),
+                np.zeros([args.bnn.num_hidden], dtype=np.float32),
+                np.random.normal(
+                    scale=0.48**0.5 ,
+                    size=(args.bnn.num_hidden, givens.shape[1]-1),
+                ).astype(np.float32),
                 np.zeros([givens.shape[1]-1], dtype=np.float32),
             ]
         elif not isinstance(args.bnn_weights_file, str):
