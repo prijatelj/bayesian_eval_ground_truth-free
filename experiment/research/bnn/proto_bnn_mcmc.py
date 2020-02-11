@@ -369,6 +369,9 @@ if __name__ == '__main__':
             init_state = json.load(f)
             init_state = [np.array(x, dtype=np.float32) for x in init_state]
     else:
+        if args.parallel_chains > 1:
+            raise ValueError('The dataset_filepath is an invalid filepath.')
+
         givens, conditionals, sample_log_prob, init_state, src = setup_rwm_sim(
             width=args.bnn.num_hidden,
             sample_size=args.num_samples,
