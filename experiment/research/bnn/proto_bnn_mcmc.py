@@ -266,6 +266,34 @@ def sample_chain_run(
         return output
 
 
+def save_stats(
+    output_dir,
+    weights_sets,
+    accept_total,
+    accept_rate,
+    acf_log_prob,
+    final_step_size,
+):
+    """Saves important information of the MCMC chain runs."""
+    io.save_json(
+        os.path.join(output_dir, 'last_weights.json'),
+        weights_sets,
+    )
+
+    acf_lag = {
+        'accept_total': accept_total,
+        'accept_rate': accept_rate,
+        '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
+        '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
+        '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
+        'final_step_size': final_step_size,
+    }
+    io.save_json(
+        os.path.join(output_dir, 'acf_lag.json'),
+        acf_lag,
+    )
+
+
 def add_custom_args(parser):
     bnn_exp.add_custom_args(parser)
 
@@ -406,6 +434,15 @@ if __name__ == '__main__':
 
         final_step_size = args.mcmc.kernel.step_size
 
+        save_stats(
+            output_dir,
+            new_starting_state,
+            accept_total,
+            accept_rate,
+            acf_log_prob,
+            final_step_size,
+        )
+
         logging.info('Starting RandomWalkMetropolis specific visuals')
         plt.plot(output[1].accepted_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
@@ -450,6 +487,15 @@ if __name__ == '__main__':
             acf_log_prob = acf(
                 mcmc_results.accepted_results.target_log_prob,
                 nlags=int(args.mcmc.sample_chain.num_results / 4),
+            )
+
+            save_stats(
+                output_dir,
+                new_starting_state,
+                accept_total,
+                accept_rate,
+                acf_log_prob,
+                final_step_size,
             )
 
             logging.info('Starting HamiltonianMonteCarlo specific visuals')
@@ -506,6 +552,16 @@ if __name__ == '__main__':
             nlags=int(args.mcmc.sample_chain.num_results / 4),
         )
 
+        if args.parallel_chains <= 1:
+            save_stats(
+                output_dir,
+                new_starting_state,
+                accept_total,
+                accept_rate,
+                acf_log_prob,
+                final_step_size,
+            )
+
         logging.info('Starting NoUTurnSampler specific visuals')
         plt.plot(mcmc_results.target_log_prob)
         plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
@@ -516,23 +572,3 @@ if __name__ == '__main__':
         plt.close()
 
     logging.info('Finished MCMC training and specific kernel givens saving.')
-
-
-    if args.parallel_chains <= 1:
-        io.save_json(
-            os.path.join(output_dir, 'last_weights.json'),
-            new_starting_state,
-        )
-
-        acf_lag = {
-            'accept_total': accept_total,
-            'accept_rate': accept_rate,
-            '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
-            '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
-            '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
-            'final_step_size': final_step_size,
-        }
-        io.save_json(
-            os.path.join(output_dir, 'acf_lag.json'),
-            acf_lag,
-        )
