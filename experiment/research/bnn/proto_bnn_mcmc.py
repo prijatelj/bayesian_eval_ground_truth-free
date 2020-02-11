@@ -420,8 +420,8 @@ if __name__ == '__main__':
             num_results=args.mcmc.sample_chain.num_results,
             burnin=args.mcmc.sample_chain.burnin,
             lag=args.mcmc.sample_chain.lag,
-            step_size=args.mcmc.kernel.step_size, # 5e-4
-            num_leapfrog_steps=args.mcmc.kernel.num_leapfrog_steps, # 5
+            step_size=args.mcmc.kernel.step_size,
+            num_leapfrog_steps=args.mcmc.kernel.num_leapfrog_steps,
             num_adaptation_steps=args.mcmc.num_adaptation_steps,
             config=config,
             step_adjust_id=args.mcmc.step_adjust_id,
