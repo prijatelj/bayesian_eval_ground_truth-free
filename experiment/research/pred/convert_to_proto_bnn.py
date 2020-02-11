@@ -60,7 +60,6 @@ def parse_args():
         '--out_file_path',
         default=None,
         help='The output file path of converted json.',
-        dest='model.init.weights_file',
     )
 
     parser.add_argument(
@@ -77,11 +76,10 @@ def parse_args():
             'If given, the change of basis and origin adjust are added to the',
             'output file',
         ]),
-        dest='mle.alt_distrib',
     )
 
     return parser.parse_args()
 
 
 if __name__ == '__main__':
-    convert_pred_file_to_proto_bnn(**parse_args())
+    convert_pred_file_to_proto_bnn(**vars(parse_args()))
