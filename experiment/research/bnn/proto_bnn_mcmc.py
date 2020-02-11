@@ -337,6 +337,13 @@ def add_custom_args(parser):
         help='The target accept probability for MCMC step adjustment methods.',
     )
 
+    mle.add_argument(
+        '--random_bnn_init',
+        action='store_true',
+        help='If given, and dataset_filepath is a file and no bnn weights given, then the bnn weights are randomly initialized.',
+    )
+
+
 
 if __name__ == '__main__':
     args = io.parse_args(custom_args=add_custom_args)
@@ -362,12 +369,19 @@ if __name__ == '__main__':
             scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
         )
 
-        if not isinstance(args.bnn_weights_file, str):
+        if args.random_bnn_init:
+            init_state = [
+                np.random.normal(scale=12**0.5 , size=(givens.shape[1]-1,width)).astype(np.float32),
+                np.zeros([width], dtype=np.float32),
+                np.random.normal(scale=0.48**0.5 , size=(width,givens.shape[1]-1)).astype(np.float32),
+                np.zeros([givens.shape[1]-1], dtype=np.float32),
+            ]
+        elif not isinstance(args.bnn_weights_file, str):
             raise TypeError('bnn_weights_file must be provided when dataset_filepath is given')
-
-        with open(args.bnn_weights_file, 'r') as f:
-            init_state = json.load(f)
-            init_state = [np.array(x, dtype=np.float32) for x in init_state]
+        else:
+            with open(args.bnn_weights_file, 'r') as f:
+                init_state = json.load(f)
+                init_state = [np.array(x, dtype=np.float32) for x in init_state]
     else:
         if args.parallel_chains > 1:
             raise ValueError('The dataset_filepath is an invalid filepath.')
