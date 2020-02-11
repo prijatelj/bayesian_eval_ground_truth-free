@@ -306,7 +306,7 @@ def add_custom_args(parser):
 
     parser.add_argument(
         '--dim',
-        default=3,
+        default=None,
         type=int,
         help='The number of dimensions of the discrete distribution data (input and output).',
     )
@@ -385,6 +385,9 @@ if __name__ == '__main__':
     else:
         if args.parallel_chains > 1:
             raise ValueError('The dataset_filepath is an invalid filepath.')
+
+        if args.dim is None:
+            raise ValueError('Must provide dim when doing simulation runs.')
 
         givens, conditionals, sample_log_prob, init_state, src = setup_rwm_sim(
             width=args.bnn.num_hidden,
