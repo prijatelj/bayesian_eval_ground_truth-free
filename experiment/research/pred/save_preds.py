@@ -41,6 +41,7 @@ def load_fold_save_pred(
 
     io.save_json(os.path.join(dir_path, pred_name), file_to_save)
 
+
 def load_kfolds_save_preds():
     # TODO given dir containing the different folds' results directories, save
     return
