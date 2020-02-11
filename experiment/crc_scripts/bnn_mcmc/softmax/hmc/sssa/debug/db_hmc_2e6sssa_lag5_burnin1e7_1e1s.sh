@@ -13,7 +13,7 @@ module add conda
 conda activate psych_exp_tf-1.15
 
 python3 experiment/research/bnn/proto_bnn_mcmc.py "__NO_this_should_not_exist" \
-    --output_dir "$BASE_PATH/results/debug/bnn_softmax/MCMC/HMC/SSSA/hmc_2e6sssa_5u_1e7burn_5lag_1e6nr_5e-4ss_5nlfs_1e-2sim_1e1s/" \
+    --output_dir "$BASE_PATH/results/debug/bnn_softmax/MCMC/HMC/SSSA/hmc_2e6sssa_5u_1e7burn_5lag_1e6nr_5e-4ss_5nlfs_1e-2sim_1e1s_res1e2/" \
     --dim 3 \
     --num_hidden 5 \
     --num_samples 10 \
@@ -21,7 +21,7 @@ python3 experiment/research/bnn/proto_bnn_mcmc.py "__NO_this_should_not_exist" \
     --cpu_cores 2 \
     --gpu 0 \
     --kernel_id 'HamiltonianMonteCarlo' \
-    --num_results 1000000 \
+    --num_results 10 \
     --step_size 0.0005 \
     --num_leapfrog_steps 3 \
     --lag 5 \
