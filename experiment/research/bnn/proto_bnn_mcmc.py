@@ -120,6 +120,7 @@ def run_hmc(
     step_adjust_id='Simple',
     config=None,
     parallel=1,
+    target_accept_prob=0.75,
 ):
     kernel = tfp.mcmc.HamiltonianMonteCarlo(
         target_log_prob_fn=lambda x,y,z,q: sample_log_prob((x,y,z,q),data,targets),
@@ -131,11 +132,13 @@ def run_hmc(
             kernel = tfp.mcmc.SimpleStepSizeAdaptation(
                 kernel,
                 num_adaptation_steps=num_adaptation_steps,
+                target_accept_prob=target_accept_prob,
             )
         else:
             kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
                 kernel,
                 num_adaptation_steps=num_adaptation_steps,
+                target_accept_prob=target_accept_prob,
             )
 
     return sample_chain_run(
@@ -162,6 +165,7 @@ def run_nuts(
     step_adjust_id='Simple',
     config=None,
     parallel=1,
+    target_accept_prob=0.75,
 ):
     kernel = tfp.mcmc.NoUTurnSampler(
         target_log_prob_fn=lambda x,y,z,q: sample_log_prob((x,y,z,q),data,targets),
@@ -179,7 +183,7 @@ def run_nuts(
             kernel = tfp.mcmc.SimpleStepSizeAdaptation(
                 inner_kernel=trans_kernel,
                 num_adaptation_steps=num_adaptation_steps,
-                target_accept_prob=0.75,
+                target_accept_prob=target_accept_prob,
                 step_size_setter_fn=lambda pkr, new_step_size: pkr._replace(
                     inner_results=pkr.inner_results._replace(step_size=new_step_size)
                 ),
@@ -190,7 +194,7 @@ def run_nuts(
             kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
                 inner_kernel=trans_kernel,
                 num_adaptation_steps=num_adaptation_steps,
-                target_accept_prob=0.75,
+                target_accept_prob=target_accept_prob,
                 step_size_setter_fn=lambda pkr, new_step_size: pkr._replace(
                     inner_results=pkr.inner_results._replace(step_size=new_step_size)
                 ),
@@ -298,12 +302,12 @@ def add_custom_args(parser):
     #    help='Does not save visuals.',
     #)
 
-    #parser.add_argument(
-    #    '--',
-    #    default=1,
-    #    type=int,
-    #    help='The number of chains to be run in parallel for sampling.',
-    #)
+    parser.add_argument(
+        '--target_accept_prob',
+        default=0.75,
+        type=float,
+        help='The target accept probability for MCMC step adjustment methods.',
+    )
 
 
 if __name__ == '__main__':
@@ -426,6 +430,7 @@ if __name__ == '__main__':
             config=config,
             step_adjust_id=args.mcmc.step_adjust_id,
             parallel=args.parallel_chains,
+            target_accept_prob=args.target_accept_prob,
         )
         logging.info('Finished HamiltonianMonteCarlo')
 
@@ -481,6 +486,7 @@ if __name__ == '__main__':
             config=config,
             num_adaptation_steps=args.mcmc.num_adaptation_steps,
             step_adjust_id=args.mcmc.step_adjust_id,
+            target_accept_prob=args.target_accept_prob,
         )
         logging.info('Finished NoUTurnSampler')
 
