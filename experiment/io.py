@@ -544,7 +544,7 @@ def add_kfold_cv_args(parser):
 
     early_stop.add_argument(
         '--min_delta',
-        default='0',
+        default=0,
         type=float,
         help=' '.join([
             'Miminimum change in the monitored quantity to qualify as an',
@@ -556,7 +556,7 @@ def add_kfold_cv_args(parser):
 
     early_stop.add_argument(
         '--patience',
-        default='0',
+        default=0,
         type=int,
         help=' '.join([
             'number of epochs that produced the monitored quantity with no',
