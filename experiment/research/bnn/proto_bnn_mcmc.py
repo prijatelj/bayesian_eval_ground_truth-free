@@ -320,10 +320,13 @@ if __name__ == '__main__':
             givens = np.array(data['givens'], dtype=np.float32)
             conditionals = np.array(data['conditionals'], dtype=np.float32)
             change_of_basis = np.array(data['change_of_basis'], dtype=np.float32)
+            origin_adjust = np.array(data['origin_adjust'], dtype=np.float32)
 
         scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
         sample_log_prob = partial(
             bnn_transform.mcmc_sample_log_prob,
+            origin_adjust=origin_adjust,
+            rotation_mat=change_of_basis,
             scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
         )
 
