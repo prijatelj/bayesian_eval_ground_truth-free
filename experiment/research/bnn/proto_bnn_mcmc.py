@@ -285,6 +285,7 @@ def save_stats(
         'accept_rate': accept_rate,
         '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
         '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
+        '0.05': np.where(np.abs(acf_log_prob) < 0.05)[0][:10],
         '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
         'final_step_size': final_step_size,
     }
