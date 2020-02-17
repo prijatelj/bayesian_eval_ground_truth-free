@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from psych_metric.distrib import bnn_transform
 from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
-from psych_metric.distrib.distrib.bnn.mcmc import MCMC
+from psych_metric.distrib.bnn.mcmc import MCMC
 
 
 class BNNMCMC(object):
