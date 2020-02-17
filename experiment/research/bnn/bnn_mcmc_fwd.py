@@ -1,4 +1,4 @@
-"""Forward pass of the BNN """
+"""Forward pass of the BNN with given weights."""
 import json
 import logging
 import os
