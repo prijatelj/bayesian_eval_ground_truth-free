@@ -7,6 +7,7 @@ import tensorflow as tf
 
 from psych_metric.distrib import bnn_transform
 from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
+from psych_metric.distrib.distrib.bnn.mcmc import MCMC
 
 
 class BNNMCMC(object):
@@ -96,6 +97,9 @@ class BNNMCMC(object):
             scale_identity_multiplier=scale_identity_multiplier,
         )
 
+        # TODO MCMC(mcmc_args)
+        self.mcmc = MCMC(self.mcmc_sample_log_prob, **mcmc_args)
+
     def __copy__(self):
         cls = self.__class__
         new = cls.__new__(cls)
@@ -119,13 +123,16 @@ class BNNMCMC(object):
         # NOTE is this a safe way of returning this value as read only?
         return self.mcmc_sample_log_prob.keywords['scale_identity_multipler']
 
-    def fit(self, kernel_args):
+    def fit(self, *args, **kwargs):
+        #kernel_args
 
         raise NotImplementedError(' '.join([
             'The API does not yet contain the BNN MCMC training code. It',
             'exists in prototype format as a series of functions.',
             'See `bnn_exp.py`, and `proto_bnn_mcmc.py`.',
         ]))
+
+        self.mcmc.fit(*args, **kwargs)
 
         # TODO First, find step size that yields desired acceptance rate.
 
