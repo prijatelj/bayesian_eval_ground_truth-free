@@ -142,7 +142,7 @@ if not args.loaded_bnn_outputs:
     )
 
     # TODO fwd pass of BNN if loaded weights
-    bnn = BNNMCMC(**bnn)
+    bnn = BNNMCMC(**bnn_mcmc_args)
     preds = bnn.predict(task_targets, weights_sets)
 else:
     # if not loading the BNN sampled weights sets, then loading the BNN output
