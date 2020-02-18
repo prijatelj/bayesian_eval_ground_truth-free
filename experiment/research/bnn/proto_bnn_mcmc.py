@@ -481,7 +481,7 @@ if __name__ == '__main__':
             final_step_size,
             #log_prob_linreg=scipy.stats.linregress(
             #    np.arange(args.mcmc.sample_chain.num_results),
-            #    mcmc_results.target_log_prob
+            #    mcmc_results.accepted_results.target_log_prob,
             #),
         )
 
@@ -540,7 +540,7 @@ if __name__ == '__main__':
                 final_step_size,
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
-                    mcmc_results.target_log_prob
+                    mcmc_results.accepted_results.target_log_prob,
                 ),
             )
 
