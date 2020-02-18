@@ -134,7 +134,7 @@ if not args.loaded_bnn_outputs:
 
     # Create instance of BNNMCMC
     bnn_mcmc_args = vars(args.bnn)
-    bnn_mcmc_args['dim'] = givens.shape[1]
+    bnn_mcmc_args['dim'] = task_targets.shape[1]
     bnn_mcmc_args['sess_config'] = io.get_tf_config(
         args.cpu_cores,
         args.cpu,
