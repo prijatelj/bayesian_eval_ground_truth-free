@@ -35,7 +35,7 @@ class BNNMCMC(object):
         self,
         dim,
         num_layers=1,
-        num_hidden=10,
+        num_hidden=5,
         hidden_activation=tf.math.sigmoid,
         hidden_use_bias=True,
         output_activation=None, #, tf.math.sigmoid,

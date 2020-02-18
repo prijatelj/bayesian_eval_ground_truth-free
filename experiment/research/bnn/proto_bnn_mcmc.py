@@ -7,6 +7,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats
 from statsmodels.tsa.stattools import acf
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -273,6 +274,7 @@ def save_stats(
     accept_rate,
     acf_log_prob,
     final_step_size,
+    log_prob_linregress=None
 ):
     """Saves important information of the MCMC chain runs."""
     io.save_json(
@@ -289,6 +291,16 @@ def save_stats(
         '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
         'final_step_size': final_step_size,
     }
+
+    if log_prob_linregress is not None:
+        acf_lag['target_func_linreg'] = {
+            'slope': log_prob_linregress.slope,
+            'intercept': log_prob_linregress.intercept,
+            'r_value': log_prob_linregress.r_value,
+            'p_value': log_prob_linregress.p_value,
+            'stderr': log_prob_linregress.stderr,
+        }
+
     io.save_json(
         os.path.join(output_dir, 'acf_lag.json'),
         acf_lag,
@@ -467,6 +479,10 @@ if __name__ == '__main__':
             accept_rate,
             acf_log_prob,
             final_step_size,
+            #log_prob_linreg=scipy.stats.linregress(
+            #    np.arange(args.mcmc.sample_chain.num_results),
+            #    mcmc_results.target_log_prob
+            #),
         )
 
         logging.info('Starting RandomWalkMetropolis specific visuals')
@@ -522,6 +538,10 @@ if __name__ == '__main__':
                 accept_rate,
                 acf_log_prob,
                 final_step_size,
+                log_prob_linregress=scipy.stats.linregress(
+                    np.arange(args.mcmc.sample_chain.num_results),
+                    mcmc_results.target_log_prob
+                ),
             )
 
             logging.info('Starting HamiltonianMonteCarlo specific visuals')
@@ -586,6 +606,10 @@ if __name__ == '__main__':
                 accept_rate,
                 acf_log_prob,
                 final_step_size,
+                log_prob_linregress=scipy.stats.linregress(
+                    np.arange(args.mcmc.sample_chain.num_results),
+                    mcmc_results.target_log_prob
+                ),
             )
 
         logging.info('Starting NoUTurnSampler specific visuals')

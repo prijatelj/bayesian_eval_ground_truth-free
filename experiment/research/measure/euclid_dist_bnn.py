@@ -216,7 +216,7 @@ if args.quantiles_frac > 2:
         quantile_set,
     )
     summary['target_samples']['quantiles'] = (
-        euclid_dists_means,
+        euclid_dists,
         quantile_set,
     )
 
