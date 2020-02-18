@@ -88,7 +88,7 @@ def bnn_softmax_placeholders(input_labels, simplex_transform, *args, **kwargs):
     """
     #with tf.device(tf_device), tf.name_scope('bnn_softmax_transformer'):
     output, tf_placeholders = bnn_mlp_placeholders(
-        simplex_transform.to(input_labels)
+        simplex_transform.to(input_labels),
         *args,
         **kwargs,
     )
