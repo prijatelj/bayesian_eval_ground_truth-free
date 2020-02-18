@@ -2,6 +2,7 @@
 single json.
 """
 import argparse
+import logging
 
 from experiment import io
 from experiment.research.bnn import bnn_mcmc_fwd
@@ -29,4 +30,4 @@ weights_sets = bnn_mcmc_fwd.load_sample_weights(args.input_dir)
 
 logging.info('Total accepted BNN MCMC samples = %d', weights_sets[0].shape[0])
 
-io.save_json(output_filename, weights_sets)
+io.save_json(args.output_filename, weights_sets)
