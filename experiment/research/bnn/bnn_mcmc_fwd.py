@@ -18,7 +18,7 @@ import numpy as np
 
 from psych_metric.distrib.bnn.bnn_mcmc import BNNMCMC
 from psych_metric.distrib.empirical_density import knn_density
-from psych_metric.distrib.simplex import euclidean
+from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
 
 from experiment import io
 from experiment.research.bnn import proto_bnn_mcmc
@@ -54,13 +54,6 @@ def load_sample_weights(weights_dir, filename='.json'):
 def add_custom_args(parser):
     proto_bnn_mcmc.add_custom_args(parser)
 
-    # add other args
-    #parser.add_argument(
-    #    '--bnn_weights_file',
-    #    default=None,
-    #    help='Path to the bnn weights file.',
-    #)
-
 
 if __name__ == '__main__':
     args = io.parse_args(
@@ -80,7 +73,7 @@ if __name__ == '__main__':
             givens = np.array(data['input'], dtype=np.float32)
 
         # load the euclidean simplex transform
-        simplex_transform = euclidean.EuclideanSimplexTransform(pred.shape[1] + 1)
+        simplex_transform = EuclideanSimplexTransform(pred.shape[1] + 1)
         simplex_transform.origin_adjust = np.array(data['origin_adjust'])
         # NOTE there is only a transpose for the older data.
         simplex_transform.change_of_basis_matrix = np.array(
