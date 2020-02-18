@@ -188,6 +188,7 @@ if args.quantiles_frac > 2:
 else:
     quantile_set = None
 
+
 def summary_arr(arr, quantile_set=None, axis=None):
     summary = {
         'mean': np.mean(arr, axis=axis),
@@ -201,16 +202,27 @@ def summary_arr(arr, quantile_set=None, axis=None):
 
     return summary
 
-summary = {
-    'overview': summary_arr(euclid_dists, quantile_set=quantile_set),
-    'summary_of_means': summary_arr(euclid_dists.mean(axis=1), quantile_set),
-    'summary_of_maxs': summary_arr(euclid_dists.max(axis=1), quantile_set),
-    'summary_of_mins': summary_arr(euclid_dists.min(axis=1), quantile_set),
-    'summary_of_medians': summary_arr(
-        np.median(euclid_dists, axis=1),
-        quantile_set,
-    ),
-    'target_samples': summary_arr(euclid_dists, quantile_set, axis=1),
-}
 
-io.save_json(os.path.join(output_dir, 'euclid_dists_summary.json'), summary)
+# Save the summary of the euclidean distances
+io.save_json(
+    os.path.join(output_dir, 'euclid_dists_summary.json'),
+    {
+        'overview': summary_arr(euclid_dists, quantile_set=quantile_set),
+        'summary_of_means': summary_arr(
+            euclid_dists.mean(axis=1),
+            quantile_set,
+        ),
+        'summary_of_maxs': summary_arr(euclid_dists.max(axis=1), quantile_set),
+        'summary_of_mins': summary_arr(euclid_dists.min(axis=1), quantile_set),
+        'summary_of_medians': summary_arr(
+            np.median(euclid_dists, axis=1),
+            quantile_set,
+        ),
+    },
+)
+
+# Save the flattening of the conditionals via different summarization methods
+io.save_json(
+    os.path.join(output_dir, 'euclid_dists_target_samples_flat.json'),
+    summary_arr(euclid_dists, quantile_set, axis=1),
+)
