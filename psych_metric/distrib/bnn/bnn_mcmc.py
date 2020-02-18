@@ -90,15 +90,15 @@ class BNNMCMC(object):
 
         # TODO need to add actual fitting via MCMC, sampling, etc.
         # for now, just a way to better contain the args and functions.
-        self.mcmc_sample_log_prob = partial(
-            bnn_transform.mcmc_sample_log_prob,
-            origin_adjust=self.simplex_transform.origin_adjust,
-            rotation_mat=self.simplex_transform.change_of_basis_matrix,
-            scale_identity_multiplier=scale_identity_multiplier,
-        )
+        #self.mcmc_sample_log_prob = partial(
+        #    bnn_transform.mcmc_sample_log_prob,
+        #    origin_adjust=self.simplex_transform.origin_adjust,
+        #    rotation_mat=self.simplex_transform.change_of_basis_matrix,
+        #    scale_identity_multiplier=scale_identity_multiplier,
+        #)
 
         # TODO MCMC(mcmc_args)
-        self.mcmc = MCMC(self.mcmc_sample_log_prob, **mcmc_args)
+        #self.mcmc = MCMC(self.mcmc_sample_log_prob, **mcmc_args)
 
     def __copy__(self):
         cls = self.__class__
@@ -121,7 +121,8 @@ class BNNMCMC(object):
     @property
     def scale_identity_multiplier(self):
         # NOTE is this a safe way of returning this value as read only?
-        return self.mcmc_sample_log_prob.keywords['scale_identity_multipler']
+        #return self.mcmc_sample_log_prob.keywords['scale_identity_multipler']
+        pass
 
     def fit(self, *args, **kwargs):
         #kernel_args
@@ -132,7 +133,7 @@ class BNNMCMC(object):
             'See `bnn_exp.py`, and `proto_bnn_mcmc.py`.',
         ]))
 
-        self.mcmc.fit(*args, **kwargs)
+        #self.mcmc.fit(*args, **kwargs)
 
         # TODO First, find step size that yields desired acceptance rate.
 
