@@ -91,8 +91,8 @@ output_dir = io.create_dirs(args.output_dir)
 if os.path.isfile(args.data.dataset_filepath):
     with open(args.data.dataset_filepath, 'r') as f:
         data = json.load(f)
-        pred = np.array(data['output'], dtype=np.float32)
-        givens = np.array(data['input'], dtype=np.float32)
+        pred = np.array(data['conditionals'], dtype=np.float32)
+        givens = np.array(data['givens'], dtype=np.float32)
 
     # load the euclidean simplex transform
     simplex_transform = EuclideanSimplexTransform(pred.shape[1] + 1)
@@ -183,7 +183,11 @@ if args.normalize:
     euclid_dists /= prob_simplex_max_dist
 
 # Save Euclidean distances shape [target, conditionals]
-np.savetxt(output_dir, euclid_dists, delimiter=',')
+np.savetxt(
+    os.path.join(output_dir, 'euclid_dists.csv'),
+    euclid_dists,
+    delimiter=',',
+)
 
 # save summary of Euclidean distances:
 # mean, min, max, median, 2 or 4 other quantiles.
@@ -216,4 +220,4 @@ if args.quantiles_frac > 2:
         quantile_set,
     )
 
-io.save_json(output_dir.rpartion('.')[1] + '.json', summary)
+io.save_json(os.path.join(output_dir, 'euclid_dists_summary.json'), summary)
