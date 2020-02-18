@@ -199,7 +199,7 @@ summary = {
         'max': euclid_dists.max(),
         'min': euclid_dists.min(),
         'median': np.median(euclid_dists),
-    }
+    },
     'summary_of_means': {
         'mean': euclid_dists_means.mean(),
         'max': euclid_dists_means.max(),
@@ -221,7 +221,7 @@ if args.quantiles_frac > 2:
         euclid_dists_means,
         quantile_set,
     )
-    summary['target_samples']['quantiles'] = (
+    summary['target_samples']['quantiles'] = np.quantile(
         euclid_dists,
         quantile_set,
         axis=1,
