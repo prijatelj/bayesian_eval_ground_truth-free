@@ -194,6 +194,12 @@ np.savetxt(
 euclid_dists_means = euclid_dists.mean(axis=1)
 
 summary = {
+    'overview': {
+        'mean': euclid_dists.mean(),
+        'max': euclid_dists.max(),
+        'min': euclid_dists.min(),
+        'median': np.median(euclid_dists),
+    }
     'summary_of_means': {
         'mean': euclid_dists_means.mean(),
         'max': euclid_dists_means.max(),
@@ -218,6 +224,7 @@ if args.quantiles_frac > 2:
     summary['target_samples']['quantiles'] = (
         euclid_dists,
         quantile_set,
+        axis=1,
     )
 
 io.save_json(os.path.join(output_dir, 'euclid_dists_summary.json'), summary)
