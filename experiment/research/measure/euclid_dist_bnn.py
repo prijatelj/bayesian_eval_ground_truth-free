@@ -169,18 +169,11 @@ del preds
 euclid_dists = np.linalg.norm(differences, axis=2)
 
 if args.normalize:
-    # Could calcuate the farthest euclidean distance of the probability
-    # simplex (from one vertex to another) and then normalize the resulting
-    # euclidean distances.
-    vertex_1 = np.zeros(targets.shape[1])
-    vertex_1[0] = 1
-
-    vertex_2 = np.zeros(targets.shape[1])
-    vertex_2[1] = 1
-
-    prob_simplex_max_dist = np.linalg.norm(vertex_1 - vertex_2)
-
-    euclid_dists /= prob_simplex_max_dist
+    # Normalizes by the largest possible distance within the probability
+    # simplex, which is the distance form one vertex to any other vertex
+    # because the probability simplex is regular (ie. 2-simplex is a
+    # equilateral triangle).
+    euclid_dists /= np.sqrt(2)
 
 # Save Euclidean distances shape [target, conditionals]
 np.savetxt(
@@ -190,41 +183,34 @@ np.savetxt(
 )
 
 # save summary of Euclidean distances:
-# mean, min, max, median, 2 or 4 other quantiles.
-euclid_dists_means = euclid_dists.mean(axis=1)
-
-summary = {
-    'overview': {
-        'mean': euclid_dists.mean(),
-        'max': euclid_dists.max(),
-        'min': euclid_dists.min(),
-        'median': np.median(euclid_dists),
-    },
-    'summary_of_means': {
-        'mean': euclid_dists_means.mean(),
-        'max': euclid_dists_means.max(),
-        'min': euclid_dists_means.min(),
-        'median': np.median(euclid_dists_means),
-    },
-    'target_samples': {
-        'mean': euclid_dists.mean(axis=1),
-        'max': euclid_dists.max(axis=1),
-        'min': euclid_dists.min(axis=1),
-        'median': np.median(euclid_dists, axis=1),
-    },
-}
-
 if args.quantiles_frac > 2:
     quantile_set = np.arange(1 + args.quantiles_frac) / args.quantiles_frac
+else:
+    quantile_set = None
 
-    summary['summary_of_means']['quantiles'] = np.quantile(
-        euclid_dists_means,
+def summary_arr(arr, quantile_set=None, axis=None):
+    summary = {
+        'mean': np.mean(arr, axis=axis),
+        'max': np.max(arr, axis=axis),
+        'min': np.min(arr, axis=axis),
+        'median': np.median(arr, axis=axis),
+    }
+
+    if quantile_set is not None:
+        summary['quantile'] = np.quantile(arr, quantile_set, axis=axis)
+
+    return summary
+
+summary = {
+    'overview': summary_arr(euclid_dists, quantile_set=quantile_set),
+    'summary_of_means': summary_arr(euclid_dists.mean(axis=1), quantile_set),
+    'summary_of_maxs': summary_arr(euclid_dists.max(axis=1), quantile_set),
+    'summary_of_mins': summary_arr(euclid_dists.min(axis=1), quantile_set),
+    'summary_of_medians': summary_arr(
+        np.median(euclid_dists, axis=1),
         quantile_set,
-    )
-    summary['target_samples']['quantiles'] = np.quantile(
-        euclid_dists,
-        quantile_set,
-        axis=1,
-    )
+    ),
+    'target_samples': summary_arr(euclid_dists, quantile_set, axis=1),
+}
 
 io.save_json(os.path.join(output_dir, 'euclid_dists_summary.json'), summary)
