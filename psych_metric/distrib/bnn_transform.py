@@ -68,14 +68,14 @@ def bnn_softmax(input_labels, simplex_transform, *args, **kwargs):
     is of the dimension of the original probability vector and output is in the
     same space.
     """
-    with tf.device(tf_device), tf.name_scope('bnn_mlp_softmax_transform'):
-        output, tf_vars = bnn_mlp(
-            simplex_transform.to(input_labels),
-            *args,
-            **kwargs,
-        )
+    #with tf.device(tf_device), tf.name_scope('bnn_mlp_softmax_transform'):
+    output, tf_vars = bnn_mlp(
+        simplex_transform.to(input_labels),
+        *args,
+        **kwargs,
+    )
 
-        output = tf.nn.softmax(simplex_transform.back(output))
+    output = tf.nn.softmax(simplex_transform.back(output))
 
     return output, tf_vars
 
@@ -86,13 +86,13 @@ def bnn_softmax_placeholders(input_labels, simplex_transform, *args, **kwargs):
     variable (predictor's prediction). Input is of the dimension of the
     original probability vector and output is in the same space.
     """
-    with tf.device(tf_device), tf.name_scope('bnn_softmax_transformer'):
-        output, tf_placeholders = bnn_mlp_placeholders(
-            simplex_transform.to(input_labels)
-            *args,
-            **kwargs,
-        )
-        output = tf.nn.softmax(simplex_transform.back(output))
+    #with tf.device(tf_device), tf.name_scope('bnn_softmax_transformer'):
+    output, tf_placeholders = bnn_mlp_placeholders(
+        simplex_transform.to(input_labels)
+        *args,
+        **kwargs,
+    )
+    output = tf.nn.softmax(simplex_transform.back(output))
     return output, tf_placeholders
 
 
