@@ -92,8 +92,8 @@ class BNNMCMC(object):
         # for now, just a way to better contain the args and functions.
         self.mcmc_sample_log_prob = partial(
             bnn_transform.mcmc_sample_log_prob,
-            origin_adjust=simplex_transform.origin_adjust,
-            rotation_mat=simplex_transform.change_of_basis_matrix,
+            origin_adjust=self.simplex_transform.origin_adjust,
+            rotation_mat=self.simplex_transform.change_of_basis_matrix,
             scale_identity_multiplier=scale_identity_multiplier,
         )
 
