@@ -345,7 +345,6 @@ def add_custom_args(parser):
     )
 
 
-
 if __name__ == '__main__':
     args = io.parse_args(custom_args=add_custom_args)
 
