@@ -109,7 +109,7 @@ else:
 if not args.target_is_task_target:
     # TODO Exp 1: load actual predictor's prediction
     targets = pred
-    task_targets = None
+    task_targets = givens
 else:
     # TODO Exp 2: load target label if Exp 2 where measurement is residuals.
     targets = givens
