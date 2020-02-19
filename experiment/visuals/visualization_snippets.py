@@ -63,6 +63,9 @@ def scatter3d(df, cols, **scatter_kws):
     ax.set_ylabel(cols[1])
     ax.set_zlabel(cols[2])
 
+    # for use of rotating orientation.
+    return fig, ax
+
 
 def aligned_hists(df, bins=10, title=None, xaxis_label=None, yaxis_label=None):
     fig, axes = plt.subplots()
