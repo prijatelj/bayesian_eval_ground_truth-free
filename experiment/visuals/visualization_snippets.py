@@ -63,6 +63,18 @@ def scatter3d(df, cols, **scatter_kws):
     ax.set_ylabel(cols[1])
     ax.set_zlabel(cols[2])
 
+    # for use of rotating orientation.
+    return fig, ax
+
+# plotting prob simplex 3d
+#fig, ax = scatter3d(df_all, [0,1,2], **{'c':df_all['c']})
+#for i in range(len(eye)):
+#    ax.plot([eye[0][i], eye[1][i]], [eye[1][i], eye[2][i]], [eye[2][i], eye[0][i]], color='black')
+#ax.view_init(elev=45., azim=45)
+#plt.savefig('../../sjd/sim/fq/small_10samples/exp1/tmp_visualize_5u_10s_bnn.png', dpi=400)
+#plt.close()
+
+
 
 def aligned_hists(df, bins=10, title=None, xaxis_label=None, yaxis_label=None):
     fig, axes = plt.subplots()
