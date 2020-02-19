@@ -296,8 +296,8 @@ def save_stats(
         acf_lag['target_func_linreg'] = {
             'slope': log_prob_linregress.slope,
             'intercept': log_prob_linregress.intercept,
-            'r_value': log_prob_linregress.r_value,
-            'p_value': log_prob_linregress.p_value,
+            'rvalue': log_prob_linregress.rvalue,
+            'pvalue': log_prob_linregress.pvalue,
             'stderr': log_prob_linregress.stderr,
         }
 
