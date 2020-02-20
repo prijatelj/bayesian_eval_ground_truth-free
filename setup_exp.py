@@ -18,7 +18,7 @@ setup(
         #'experiment.crowd_layer',
         'experiment.research',
         'experiment.research.bnn',
-        #'experiment.research.kldiv',
+        'experiment.research.measure',
         'experiment.research.pred',
         'experiment.research.sjd',
         'experiment.visuals',
