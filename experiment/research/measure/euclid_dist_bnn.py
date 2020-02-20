@@ -23,8 +23,9 @@ import os
 import numpy as np
 
 from experiment import io
-from experiment.research.bnn.bnn_mcmc_fwd import load_sample_weights
+from experiment.research.bnn.bnn_mcmc_fwd import load_bnn_fwd
 from experiment.research.bnn import proto_bnn_mcmc
+from experiment.research.measure.measure import save_measures
 
 from psych_metric.distrib.bnn.bnn_mcmc import BNNMCMC
 from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
@@ -43,6 +44,8 @@ def add_custom_args(parser):
             'the target (Exp 1).',
         ])
     )
+
+    """
     parser.add_argument(
         '--loaded_bnn_outputs',
         default=None,
@@ -52,6 +55,7 @@ def add_custom_args(parser):
             'than the expected BNN weight sets. NOT IMPLEMNETED yet.',
         ])
     )
+    """
 
     parser.add_argument(
         '--normalize',
@@ -79,7 +83,7 @@ def add_custom_args(parser):
     )
 
 
-# TODO create argparser
+# Create argparser
 args = io.parse_args(
     ['sjd'],
     custom_args=add_custom_args,
@@ -88,68 +92,30 @@ args = io.parse_args(
 
 output_dir = io.create_dirs(args.output_dir)
 
-if os.path.isfile(args.data.dataset_filepath):
-    with open(args.data.dataset_filepath, 'r') as f:
-        data = json.load(f)
-        pred = np.array(data['conditionals'], dtype=np.float32)
-        givens = np.array(data['givens'], dtype=np.float32)
+# Manage bnn mcmc args from argparse
+bnn_mcmc_args = vars(args.bnn)
+bnn_mcmc_args['sess_config'] = io.get_tf_config(
+    args.cpu_cores,
+    args.cpu,
+    args.gpu,
+)
 
-    # load the euclidean simplex transform
-    simplex_transform = EuclideanSimplexTransform(pred.shape[1] + 1)
-    simplex_transform.origin_adjust = np.array(data['origin_adjust'])
-    # NOTE there is only a transpose for the older data.
-    simplex_transform.change_of_basis_matrix = np.array(
-        data['change_of_basis'],
-    ).T
-    del data
-
-else:
-    raise ValueError('data dataset_filepath needs to be a file')
+givens, pred, weights_sets, bnn = load_bnn_fwd(
+    args.data.dataset_filepath,
+    args.bnn_weights_file,
+    bnn_mcmc_args,
+)
 
 if not args.target_is_task_target:
-    # TODO Exp 1: load actual predictor's prediction
+    # Exp 1: predictor's prediction is the target: t(y) = y_hat
     targets = pred
-    task_targets = givens
 else:
-    # TODO Exp 2: load target label if Exp 2 where measurement is residuals.
+    # Exp 2: Original target label is target where measurement is residuals.
     targets = givens
-    task_targets = targets
 del pred
-del givens
 
-# TODO load the BNN MCMC weights XOR load the BNN samples
-if not args.loaded_bnn_outputs:
-    if task_targets is None:
-        raise NotImplementedError()
-
-    if os.path.isfile(args.bnn_weights_file):
-        with open(args.bnn_weights_file, 'r') as f:
-            weights_sets = [
-                np.array(x, dtype=np.float32) for x in json.load(f)
-            ]
-    elif os.path.isdir(args.bnn_weights_file):
-        weights_sets = load_sample_weights(args.bnn_weights_file)
-    else:
-        raise ValueError('bnn weights file must be a file or dir.')
-
-    # Create instance of BNNMCMC
-    bnn_mcmc_args = vars(args.bnn)
-    bnn_mcmc_args['dim'] = task_targets.shape[1]
-    bnn_mcmc_args['sess_config'] = io.get_tf_config(
-        args.cpu_cores,
-        args.cpu,
-        args.gpu,
-    )
-
-    # TODO fwd pass of BNN if loaded weights
-    bnn = BNNMCMC(**bnn_mcmc_args)
-    preds = bnn.predict(task_targets, weights_sets)
-else:
-    # if not loading the BNN sampled weights sets, then loading the BNN output
-    # which if saved would be hdf5
-    #preds =
-    raise NotImplementedError('ATM, does not expect BNN output do be given')
-
+# fwd pass of BNN if loaded weights
+preds = bnn.predict(givens, weights_sets)
 
 # Perform the measurement of euclidean distance on the BNN MCMC output to the
 # actual prediction
@@ -163,7 +129,7 @@ for target_idx in range(len(targets)):
     # NOTE assumes shape of [targets, conditionals, classes]
     preds[target_idx] = targets[target_idx] - preds[target_idx]
 differences = preds
-# preds is no longer used from this point on, and it has been modified
+# preds is no longer used from this point on, as it has been modified
 del preds
 
 euclid_dists = np.linalg.norm(differences, axis=2)
@@ -175,54 +141,4 @@ if args.normalize:
     # equilateral triangle).
     euclid_dists /= np.sqrt(2)
 
-# Save Euclidean distances shape [target, conditionals]
-np.savetxt(
-    os.path.join(output_dir, 'euclid_dists.csv'),
-    euclid_dists,
-    delimiter=',',
-)
-
-# save summary of Euclidean distances:
-if args.quantiles_frac > 2:
-    quantile_set = np.arange(1 + args.quantiles_frac) / args.quantiles_frac
-else:
-    quantile_set = None
-
-
-def summary_arr(arr, quantile_set=None, axis=None):
-    summary = {
-        'mean': np.mean(arr, axis=axis),
-        'max': np.max(arr, axis=axis),
-        'min': np.min(arr, axis=axis),
-        'median': np.median(arr, axis=axis),
-    }
-
-    if quantile_set is not None:
-        summary['quantile'] = np.quantile(arr, quantile_set, axis=axis)
-
-    return summary
-
-
-# Save the summary of the euclidean distances
-io.save_json(
-    os.path.join(output_dir, 'euclid_dists_summary.json'),
-    {
-        'overview': summary_arr(euclid_dists, quantile_set=quantile_set),
-        'summary_of_means': summary_arr(
-            euclid_dists.mean(axis=1),
-            quantile_set,
-        ),
-        'summary_of_maxs': summary_arr(euclid_dists.max(axis=1), quantile_set),
-        'summary_of_mins': summary_arr(euclid_dists.min(axis=1), quantile_set),
-        'summary_of_medians': summary_arr(
-            np.median(euclid_dists, axis=1),
-            quantile_set,
-        ),
-    },
-)
-
-# Save the flattening of the conditionals via different summarization methods
-io.save_json(
-    os.path.join(output_dir, 'euclid_dists_target_samples_flat.json'),
-    summary_arr(euclid_dists, quantile_set, axis=1),
-)
+save_measures(output_dir, 'euclid_dists', euclid_dists, args.quantiles_frac)
