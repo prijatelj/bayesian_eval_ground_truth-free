@@ -4,6 +4,8 @@ and the predictors trained on that data.
 import logging
 import os
 
+import numpy as np
+
 from psych_metric.distrib.supervised_joint_distrib import SupervisedJointDistrib
 
 from experiment import io
@@ -101,11 +103,18 @@ def exp1_givens_data(
     pred : np.ndarray
     """
     # TODO sample from given candidate sjd, the conditional distrib only.
-    conditional_samples = []
-    for i in range(sample_size):
-        conditional_samples.append(candidate.transform_distrib.sample(
-            targets,
-        ))
+    if candidate.independent:
+        conditional_samples = candidate.sample(
+            len(targets) * sample_size,
+        )[1].reshape(len(targets), sample_size, targets.shape[1])
+    else:
+        conditional_samples = np.stack(
+            [
+                candidate.transform_distrib.sample(targets)
+                for i in range(sample_size)
+            ],
+            axis=2,
+        ).reshape(len(targets), sample_size, targets.shape[1])
 
     return measure.get_l2dists(preds, conditional_samples, normalize)
 
@@ -166,7 +175,7 @@ if __name__ == '__main__':
             #'iid_dirs_adam',
             'dir-mean_mvn-umvu',
             #'dir-adam_mvn-umvu',
-        ],
+        ]
 
     logging.info('Getting candidates')
     # Get candidates
@@ -181,9 +190,18 @@ if __name__ == '__main__':
     # Loop through candidates, fit givens and conds, sample conds given
     # data givens,
     if test is not None:
-        results = mult_candidates_exp1(candidates, train, test, args.normalize)
+        results = mult_candidates_exp1(
+            candidates,
+             train,
+             test,
+             normalize=args.normalize,
+         )
     else:
-        results = mult_candidates_exp1(candidates, train, args.normalize)
+        results = mult_candidates_exp1(
+            candidates,
+             train,
+             normalize=args.normalize,
+         )
 
     # Save the results of multiple candidates.
     for candidate in args.src_candidates:
@@ -192,8 +210,9 @@ if __name__ == '__main__':
         )
         measure.save_measures(
             tmp_out_dir,
+            'euclid_dists_train',
             results[candidate]['train'],
-            'euclid_dists',
+            args.quantiles_frac,
             args.do_not_save_raw,
         )
 
@@ -203,7 +222,8 @@ if __name__ == '__main__':
             )
             measure.save_measures(
                 tmp_out_dir,
+                'euclid_dists_test',
                 results[candidate]['test'],
-                'euclid_dists',
+                args.quantiles_frac,
                 args.do_not_save_raw,
             )

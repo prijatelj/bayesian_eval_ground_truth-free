@@ -52,7 +52,7 @@ def summary_dict(measurements, quantile_set=None, axis=1):
     }
 
 
-def save_raw_measurements(output_dir, measurements, measure_id):
+def save_raw_measurements(output_dir, measure_id, measurements):
     """Saves raw measures as csv or hdf5 file."""
     if len(measurements.shape) <= 2:
         np.savetxt(
@@ -74,7 +74,7 @@ def save_measures(
 ):
     """Convenience function to save measurement output and summarize."""
     if save_raw:
-        save_raw_measurements(output_dir, measurements, measure_id)
+        save_raw_measurements(output_dir, measure_id, measurements)
 
     if quantiles_frac > 2:
         quantile_set = np.arange(1 + quantiles_frac) / quantiles_frac
