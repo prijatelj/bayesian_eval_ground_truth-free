@@ -7,6 +7,7 @@ import numpy as np
 from psych_metric.metrics.measure import measure
 
 from experiment import io
+from experiment.research.bnn import proto_bnn_mcmc
 
 # TODO load bnn in experiment/research/bnn
 

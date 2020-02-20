@@ -16,19 +16,9 @@ Experiement 2 for residuals when target is given target label to predictor:
     generates the distribution of residuals, which is a distribution of a
     measure and part of experiment 2.
 """
-import csv
-import json
-import os
-
-import numpy as np
-
 from experiment import io
 from experiment.research.bnn.bnn_mcmc_fwd import load_bnn_fwd
-from experiment.research.bnn import proto_bnn_mcmc
 from experiment.research.measure import measure
-
-from psych_metric.distrib.bnn.bnn_mcmc import BNNMCMC
-from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
 
 if __name__ == "__main__":
     # Create argparser
