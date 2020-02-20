@@ -1,31 +1,15 @@
-"""Forward pass of the BNN with given weights."""
+"""BNN MCMC Forward pass helper functions."""
 import json
 import logging
 import os
 from pathlib import Path
-import sys
-
-# Necessary to run on CRC... unless install `experiment` as package
-#try:
-#    sys.path.append(os.environ['BASE_PATH'])
-#except:
-#    logging.warning(
-#        'environment variable `BASE_PATH` is not available; not '
-#        + 'appending anything to the system path.'
-#    )
 
 import numpy as np
 
 from psych_metric.distrib.bnn.bnn_mcmc import BNNMCMC
-from psych_metric.distrib.empirical_density import knn_density
-from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
-
-from experiment import io
-from experiment.research.bnn import proto_bnn_mcmc
-from experiment.research.sjd import sjd_log_prob_exp
 
 
-def load_sample_weights(weights_dir, filename='.json'):
+def load_sample_weights(weights_dir, filename='.json', dtype=np.float):
     """Loads the sampled bnn weight sets from directory recursively into
     memory.
     """
@@ -34,92 +18,124 @@ def load_sample_weights(weights_dir, filename='.json'):
     # loop through json files, get weights, concatenate them
     # walk directory tree, grabbing all
     #for filepath in glob.iglob(os.path.join(weights_dir, '*', filename)):
-    for filepath in Path(weights_dir).rglob('*' + filename):
-        with open(filepath, 'r') as f:
-            weights = json.load(f)
-            for vals in weights.values():
-                if weights_sets:
-                    for i, w in enumerate(vals['weights']):
-                        weights_sets[i] = np.vstack((
-                            weights_sets[i],
-                            np.array(w)[vals['is_accepted']],
-                        ))
-                else:
-                    weights_sets += [np.array(w)[vals['is_accepted']]
-                        for w in vals['weights']]
+    if os.path.isdir(weights_dir):
+        for filepath in Path(weights_dir).rglob('*' + filename):
+            with open(filepath, 'r') as f:
+                weights = json.load(f)
+                for vals in weights.values():
+                    if weights_sets:
+                        for i, w in enumerate(vals['weights']):
+                            weights_sets[i] = np.vstack((
+                                weights_sets[i],
+                                np.array(w, dtype=dtype)[vals['is_accepted']],
+                            ))
+                    else:
+                        weights_sets += [
+                            np.array(w, dtype=dtype)[vals['is_accepted']]
+                            for w in vals['weights']
+                        ]
+        return weights_sets
 
-    return weights_sets
+    # Handles the case where it is given a single json of accepted weights.
+    elif os.path.isfile(weights_dir):
+        with open(weights_dir, 'r') as f:
+            weights_sets = [np.array(x, dtype=dtype) for x in json.load(f)]
+        return weights_sets
+
+    raise ValueError(' '.join([
+        '`weights_dir` is an invalid filepath. Expected either a directory of',
+        'JSONs to be traversed recursively and whose rejected weights sets',
+        'are to be pruned, xor a single JSON file of aggregated accepted',
+        'weights sets.',
+    ]))
 
 
-def add_custom_args(parser):
-    proto_bnn_mcmc.add_custom_args(parser)
+def load_bnn_io_json(dataset_filepath, load_simplex=False, dtype=np.float32):
+    with open(dataset_filepath, 'r') as f:
+        data = json.load(f)
+        givens = np.array(data['givens'], dtype=dtype)
+        conditionals = np.array(data['conditionals'], dtype=dtype)
+        if load_simplex:
+            change_of_basis = np.array(data['change_of_basis'], dtype=dtype)
+            origin_adjust = np.array(data['origin_adjust'], dtype=dtype)
+            return givens, conditionals, change_of_basis, origin_adjust
+    return givens, conditionals
 
 
-if __name__ == '__main__':
-    args = io.parse_args(
-        ['sjd'],
-        custom_args=add_custom_args,
-        description='Runs KNNDE for euclidean BNN given the sampled weights.',
-    )
+def load_bnn_fwd(
+    dataset_filepath,
+    bnn_weights_file=None,
+    bnn_mcmc_args=None,
+    dtype=np.float32,
+    #load_simplex=False,
+):
+    """Convenience script function for loading everything to perform BNNMCMC
+    fwd pass. Loading the data for training the BNNMCMC, loads the BNNMCMC,
+    loads the BNNMCMC's weights.
 
-    # Load sampled weights
-    # combine sampled weights into a list
+    Parameters
+    ----------
+    dataset_filepath : str
+        The filepath to the JSON file that contains the array of given labels
+        (input to the BNNMCMC), the array of conditionals (expected output of
+        BNNMCMC) and the simplex transformation attributes: change of basis
+        matrix and origin adjust.
+    bnn_weights_file : str, optional
+        Filepath to the JSON file or directory of JSON files that contain the
+        BNN weights sets. In case of a single JSON file, it should just contain
+        a list of lists, the actual aggregated weights sets. If a directory,
+        expected to contain a dict of multiple BNNMCMC chain run results that
+        contain both the weights sets and the boolean of whether the specific
+        weights sets were accepted or rejected by the MCMC algorithm. The
+        accepted weights are extracted from these files recursively.
 
-    # Load dataset's labels (given = target, conditionals = pred)
-    if os.path.isfile(args.data.dataset_filepath):
-        with open(args.data.dataset_filepath, 'r') as f:
-            data = json.load(f)
-            pred = np.array(data['output'], dtype=np.float32)
-            givens = np.array(data['input'], dtype=np.float32)
+    Returns
+    -------
+    (np.ndarray, np.ndarray, list(np.ndarray), BNNMCMC)
+        Returns the array of given labels (input to BNNMCMC), the array of
+        predictor output labels (expected label output of BNNMCMC), the
+        different weights sets of the BNNMCMC, and the BNNMCMC instance.
+    """
+    givens, conds = load_bnn_io_json(dataset_filepath)
 
-        # load the euclidean simplex transform
-        simplex_transform = EuclideanSimplexTransform(pred.shape[1] + 1)
-        simplex_transform.origin_adjust = np.array(data['origin_adjust'])
-        # NOTE there is only a transpose for the older data.
-        simplex_transform.change_of_basis_matrix = np.array(
-            data['change_of_basis'],
-        ).T
-        del data
+    #sample_log_prob = partial(
+    #    bnn_transform.mcmc_sample_log_prob,
+    #    origin_adjust=origin_adjust,
+    #    rotation_mat=change_of_basis,
+    #    scale_identity_multiplier=bnn_args['scale_identity_multiplier'],
+    #)
 
-        if os.path.isfile(args.bnn_weights_file):
-            with open(args.bnn_weights_file, 'r') as f:
-                weights_sets = [np.array(x, dtype=np.float32) for x in json.load(f)]
-        elif os.path.isdir(args.bnn_weights_file):
-            weights_sets = load_sample_weights(args.bnn_weights_file)
-        else:
-            raise ValueError('bnn weights file must be a file or dir.')
+    if bnn_weights_file is None:
+        logging.warning(' '.join([
+            '`bnn_weights_file` was not given. Generating random initial',
+            'weights set of BNN MCMC',
+        ]))
+
+        weights_sets = [
+            np.random.normal(
+                scale=12**0.5,
+                size=(givens.shape[1] - 1, bnn_mcmc_args['num_hidden']),
+            ).astype(dtype),
+            np.zeros([bnn_mcmc_args['num_hidden']], dtype=dtype),
+            np.random.normal(
+                scale=0.48**0.5,
+                size=(bnn_mcmc_args['num_hidden'], givens.shape[1] - 1),
+            ).astype(dtype),
+            np.zeros([givens.shape[1] - 1], dtype=dtype),
+        ]
     else:
-        raise ValueError('data dataset_filepath needs to be a file')
+        weights_sets = load_sample_weights(bnn_weights_file)
 
     # Create instance of BNNMCMC
-    #bnn_mcmc = BNNMCMC(givens.shape[1], **vars(args.bnn))
-    bnn_mcmc_args = vars(args.bnn)
-    bnn_mcmc_args['dim'] = givens.shape[1]
-    bnn_mcmc_args['sess_config'] = io.get_tf_config(
-        #args.cpu_cores,
-        1,
-        args.cpu,
-        args.gpu,
-    )
+    if 'dim' in bnn_mcmc_args and bnn_mcmc_args['dim'] != givens.shape[1]:
+        raise ValueError(' '.join([
+            '`dim` was given as a BNNMCMC arg and equal to',
+            f'{bnn_mcmc_args["dim"]}, but the input data loaded has a',
+            'different sized dimension of givens.shape[1] =',
+            f'{givens.shape[1]}',
+        ]))
 
-    # Run KNNDE using BNNMCMC.predict(givens, weights)
-    logging.info('Perform KNNDE log prob on Train')
-    #log_probs = knn_density.euclid_bnn_knn_log_prob(
-    log_probs = knn_density.euclid_bnn_knn_log_prob_sequence(
-        givens,
-        pred,
-        simplex_transform,
-        bnn_mcmc_args,
-        weights_sets,
-        args.sjd.knn_num_neighbors,
-        False, # needs_transformed: No for prototyping
-        args.sjd.n_jobs,
-    )
+    if 'dim' not in bnn_mcmc_args:
+        bnn_mcmc_args['dim'] = givens.shape[1]
 
-    io.save_json(
-        args.output_dir,
-        {
-            'log_prob_sum': log_probs.sum(),
-            'log_probs': log_probs
-        },
-    )
+    return givens, conds, weights_sets, BNNMCMC(**bnn_mcmc_args)
