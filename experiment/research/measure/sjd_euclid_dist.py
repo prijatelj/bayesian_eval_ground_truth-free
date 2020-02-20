@@ -156,6 +156,8 @@ if __name__ == '__main__':
 
     if args.test_datapath is not None:
         test = load_bnn_io_json(args.data.dataset_filepath)
+    else:
+        test = None
 
     if args.src_candidates is None:
         args.src_candidates = [
