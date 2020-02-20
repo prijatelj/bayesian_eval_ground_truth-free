@@ -110,6 +110,64 @@ def get_l2dists(targets, preds, prob_simplex_normalize=False, axis=2):
     return np.linalg.norm(differences, axis=axis)
 
 
+def add_custom_args(parser):
+    proto_bnn_mcmc.add_custom_args(parser)
+
+    # add other args
+    parser.add_argument(
+        '--target_is_task_target',
+        action='store_true',
+        help=' '.join([
+            'Pass if target is task\'s target labels (Exp 2 where measure is',
+            'residuals), rather than where the predictor\'s predictions are',
+            'the target (Exp 1).',
+        ])
+    )
+
+    """
+    parser.add_argument(
+        '--loaded_bnn_outputs',
+        default=None,
+        action='store_true',
+        help=' '.join([
+            'Pass if the bnn_weights file is actually the bnn output, rather',
+            'than the expected BNN weight sets. NOT IMPLEMNETED yet.',
+        ])
+    )
+    """
+
+    parser.add_argument(
+        '--normalize',
+        default=None,
+        action='store_true',
+        help=' '.join([
+            'Pass if the Euclidean distances are to be normalized by the',
+            'largest distance between two points possible within the',
+            'probability simplex (aka distance between two vertices of the',
+            'probability simplex).',
+        ])
+    )
+
+    parser.add_argument(
+        '--quantiles_frac',
+        default=5,
+        type=int,
+        help=' '.join([
+            'The number of fractions 1 to serve as quantiles to be used. ie.',
+            'quantile of 4 results in 0 (min), 0.25, 0.5 (median), 0.75  and',
+            '1 (max). The min, max, and median are always calculated.',
+            'Quantiles_frac less than or equal to 2 results in no other',
+            'quantiles.',
+        ])
+    )
+
+    parser.add_argument(
+        '--do_not_save_raw',
+        action='store_true',
+        help='Pass if not to save the raw measurements.'
+    )
+
+
 if __name__ == '__main__':
     # TODO create argparser
 

@@ -25,73 +25,16 @@ import numpy as np
 from experiment import io
 from experiment.research.bnn.bnn_mcmc_fwd import load_bnn_fwd
 from experiment.research.bnn import proto_bnn_mcmc
-from experiment.research.measure.measure import save_measures, get_l2dists
+from experiment.research.measure import measure
 
 from psych_metric.distrib.bnn.bnn_mcmc import BNNMCMC
 from psych_metric.distrib.simplex.euclidean import EuclideanSimplexTransform
-
-def add_custom_args(parser):
-    proto_bnn_mcmc.add_custom_args(parser)
-
-    # add other args
-    parser.add_argument(
-        '--target_is_task_target',
-        action='store_true',
-        help=' '.join([
-            'Pass if target is task\'s target labels (Exp 2 where measure is',
-            'residuals), rather than where the predictor\'s predictions are',
-            'the target (Exp 1).',
-        ])
-    )
-
-    """
-    parser.add_argument(
-        '--loaded_bnn_outputs',
-        default=None,
-        action='store_true',
-        help=' '.join([
-            'Pass if the bnn_weights file is actually the bnn output, rather',
-            'than the expected BNN weight sets. NOT IMPLEMNETED yet.',
-        ])
-    )
-    """
-
-    parser.add_argument(
-        '--normalize',
-        default=None,
-        action='store_true',
-        help=' '.join([
-            'Pass if the Euclidean distances are to be normalized by the',
-            'largest distance between two points possible within the',
-            'probability simplex (aka distance between two vertices of the',
-            'probability simplex).',
-        ])
-    )
-
-    parser.add_argument(
-        '--quantiles_frac',
-        default=5,
-        type=int,
-        help=' '.join([
-            'The number of fractions 1 to serve as quantiles to be used. ie.',
-            'quantile of 4 results in 0 (min), 0.25, 0.5 (median), 0.75  and',
-            '1 (max). The min, max, and median are always calculated.',
-            'Quantiles_frac less than or equal to 2 results in no other',
-            'quantiles.',
-        ])
-    )
-
-    parser.add_argument(
-        '--do_not_save_raw',
-        action='store_true',
-        help='Pass if not to save the raw measurements.'
-    )
 
 if __name__ == "__main__":
     # Create argparser
     args = io.parse_args(
         ['sjd'],
-        custom_args=add_custom_args,
+        custom_args=measure.add_custom_args,
         description='Runs KNNDE for euclidean BNN given the sampled weights.',
     )
 
@@ -122,13 +65,13 @@ if __name__ == "__main__":
     # fwd pass of BNN if loaded weights.
     # Perform the measurement of euclidean distance on the BNN MCMC output to
     # the actual prediction
-    euclid_dists = get_l2dists(
+    euclid_dists = measure.get_l2dists(
         targets,
         bnn.predict(givens, weights_sets),
         args.normalize,
     )
 
-    save_measures(
+    measure.save_measures(
         output_dir,
         'euclid_dists',
         euclid_dists,

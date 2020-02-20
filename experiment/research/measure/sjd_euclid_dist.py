@@ -10,7 +10,6 @@ from experiment import io
 import experiment.distrib
 from experiment.research.sjd import src_candidates
 from experiment.research.measure import measure
-from experiment.research.measure import euclid_dist_bnn
 from experiment.research.bnn.bnn_mcmc_fwd import load_bnn_io_json
 
 
@@ -113,7 +112,7 @@ def exp1_givens_data(
 
 def add_custom_args(parser):
     # just adding a this script specific argument
-    euclid_dist_bnn.add_custom_args(parser)
+    measure.add_custom_args(parser)
 
     parser.add_argument(
         '--src_candidates',
