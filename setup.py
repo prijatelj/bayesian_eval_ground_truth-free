@@ -23,6 +23,7 @@ setup(
         'psych_metric.distrib.simplex',
         'psych_metric.distrib.conditional',
         'psych_metric.distrib.empirical_density',
+        'psych_metric.metrics',
     ],
     #scripts
     long_description=long_description,
