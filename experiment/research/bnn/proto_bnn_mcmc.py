@@ -24,8 +24,9 @@ def setup_rwm_sim(
     sample_size=10,
     scale_identity_multiplier=0.01,
     dim=3,
+    src_id='tight_dir_small_mvn',
 ):
-    rdm = src_candidates.get_src_sjd('tight_dir_small_mvn', dim)
+    rdm = src_candidates.get_src_sjd(src_id, dim)
     givens, conditionals = rdm.sample(sample_size)
     #data = rdm.transform_distrib.simplex_transform.to(s[0])
     #targets = rdm.transform_distrib.simplex_transform.to(s[1])
@@ -337,6 +338,12 @@ def add_custom_args(parser):
         help='Path to the bnn weights file.',
     )
 
+    parser.add_argument(
+        '--src_sjd_id',
+        default='tight_dir_small_mvn',
+        help='The id of joint distribution to use in simulation of samples.',
+    )
+
     #parser.add_argument(
     #    '--no_visuals',
     #    default=None,
@@ -412,6 +419,7 @@ if __name__ == '__main__':
             sample_size=args.num_samples,
             scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
             dim=args.dim,
+            src_id=args.src_sjd_id,
         )
 
         io.save_json(

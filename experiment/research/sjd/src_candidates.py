@@ -95,7 +95,7 @@ def get_src_sjd(sjd_id, dims, sjd_args=None):
 
         return SupervisedJointDistrib(**sjd_kws)
 
-    if sjd_id == 'separate_classes_dir_small_mvn':
+    if sjd_id == 'separable_classes_dir_small_mvn':
         # Random Dirichlet with random small MVN transformation. so the
         # identity transform with some noise over a dirichlet with a precision
         sjd_kws = {
