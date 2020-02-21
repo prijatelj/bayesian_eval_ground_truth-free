@@ -158,7 +158,13 @@ class BNNMCMC(object):
             'See `bnn_exp.py`',
         ]))
 
-    def predict(self, given_samples, weight_sets, sess_config=None):
+    def predict(
+        self,
+        given_samples,
+        weight_sets,
+        data_dim_first=True,
+        sess_config=None,
+    ):
         """Returns the predictions of the BNN with the given weight_sets.
 
         Returns
@@ -180,4 +186,5 @@ class BNNMCMC(object):
             self.input,
             dtype=self.dtype,
             sess_config=sess_config, # TODO, replace with class attrib?
+            data_dim_first=data_dim_first,
         )

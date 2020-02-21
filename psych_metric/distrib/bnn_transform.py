@@ -447,7 +447,8 @@ def assign_weights_bnn(
     tf_input,
     output_labels=None,
     dtype=tf.float32,
-    sess_config=None
+    sess_config=None,
+    data_dim_first=True,
 ):
     """Given BNN weights and tensors with data, forward pass through network.
     """
@@ -498,4 +499,13 @@ def assign_weights_bnn(
 
     if output_labels:
         return iter_results
+    if data_dim_first:
+        # reshape the output such that the shape corresponds to
+        #  [data samples, number of bnn weights sets, classes]
+        return np.stack(iter_results).reshape(
+            len(input_labels),
+            len(weights_sets),
+            input_labels.shape[1],
+        ).squeeze()
+    # Otherwise: [number of bnn weights sets, data samples, classes]
     return np.stack(iter_results).squeeze()
