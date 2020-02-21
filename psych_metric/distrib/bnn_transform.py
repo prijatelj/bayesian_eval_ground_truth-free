@@ -476,6 +476,8 @@ def assign_weights_bnn(
         iter_results = []
         if isinstance(weights_sets[0], np.ndarray):
             # list of the weight's np.ndarrays whose first idx is the samples
+            num_weights_sets = len(weights_sets[0])
+
             for sample_idx in range(weights_sets[0].shape[0]):
                 # Loop through the different placeholders and assign the values
                 for i, var_ph in enumerate(tf_placeholders):
@@ -487,6 +489,9 @@ def assign_weights_bnn(
                 ))
         elif isinstance(weights_sets[0], list):
             # a sample list of weights lists that contain the np.ndarrays
+            # TODO this needs confirmed.
+            num_weights_sets = len(weights_sets[0][0])
+
             for sample_idx in range(len(weights_sets)):
                 # Loop through the different placeholders and assign the values
                 for i, var_ph in enumerate(tf_placeholders):
@@ -504,7 +509,7 @@ def assign_weights_bnn(
         #  [data samples, number of bnn weights sets, classes]
         return np.stack(iter_results).reshape(
             len(input_labels),
-            len(weights_sets),
+            num_weights_sets,
             input_labels.shape[1],
         ).squeeze()
     # Otherwise: [number of bnn weights sets, data samples, classes]
