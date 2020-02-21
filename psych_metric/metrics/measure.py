@@ -49,3 +49,39 @@ def measure(measure_func, targets, preds):
         )
 
     return np.array(conditionals_measurements)
+
+
+def highest_density_credible_interval(vector, interval_size, granularity=1):
+    """Finds the highest density credible interval for a vector of values. This
+    interval is found by sorting the vector vlaues, then iterating through the
+    data checking for which interval of some % size (ie. 95% credible interval)
+    has the smallest difference of high quantile - low quantile. Given a static
+    interval size, the smallest distance in values of the given vector is the
+    highest density credible interval of that size.
+
+    Parameters
+    ----------
+    vector : np.ndarray
+        The vector of values whose credible interval is to be calculated.
+    interval_size : float
+        The
+
+    Returns
+    -------
+    (low_quantile, high_quantile)
+    """
+    if interval_size < 0 or interval_size > 1:
+        raise ValueError(
+            'The Credible interval size must be within the range [0,1]',
+        )
+
+    # Try to make efficient with broadcasting in numpy
+    # TODO sort vector
+
+    # TODO iterate through the vector with static interval size, checking
+    # differences
+
+    # minimum distance is the highest density credible interval
+
+    return
+    #return low_quantile, high_quantile
