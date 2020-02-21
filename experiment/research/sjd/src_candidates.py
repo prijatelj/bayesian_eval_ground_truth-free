@@ -95,6 +95,29 @@ def get_src_sjd(sjd_id, dims, sjd_args=None):
 
         return SupervisedJointDistrib(**sjd_kws)
 
+    if sjd_id == 'separate_classes_dir_small_mvn':
+        # Random Dirichlet with random small MVN transformation. so the
+        # identity transform with some noise over a dirichlet with a precision
+        sjd_kws = {
+            'target_distrib': tfp.distributions.Dirichlet(
+                **experiment.distrib.get_dirichlet_params(np.ones(dims) * 0.2),
+            ),
+            'transform_distrib': tfp.distributions.MultivariateNormalFullCovariance(
+                **experiment.distrib.get_multivariate_normal_full_cov_params(
+                    loc=0.0,
+                    covariance_matrix=np.eye(dims - 1) * 1e-4,
+                    sample_dim=dims - 1,
+                ),
+            ),
+            'independent': False,
+            'sample_dim': dims,
+        }
+
+        if sjd_args:
+            sjd_kws.update(sjd_args)
+
+        return SupervisedJointDistrib(**sjd_kws)
+
 
 def get_sjd_candidates(
     sjd_ids,
