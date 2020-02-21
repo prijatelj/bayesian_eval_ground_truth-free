@@ -51,13 +51,15 @@ def measure(measure_func, targets, preds):
     return np.array(conditionals_measurements)
 
 
-def highest_density_credible_interval(vector, interval_size, granularity=1):
+def highest_density_credible_interval(vector, interval_size):
     """Finds the highest density credible interval for a vector of values. This
     interval is found by sorting the vector vlaues, then iterating through the
     data checking for which interval of some % size (ie. 95% credible interval)
     has the smallest difference of high quantile - low quantile. Given a static
     interval size, the smallest distance in values of the given vector is the
     highest density credible interval of that size.
+
+    The granularity used to check the intervals is always by 1 sample.
 
     Parameters
     ----------
@@ -68,20 +70,25 @@ def highest_density_credible_interval(vector, interval_size, granularity=1):
 
     Returns
     -------
-    (low_quantile, high_quantile)
+    (low_quantile, high_quantile) : tuple
+        A tuple of the lower and upper quantiles that bound the highest density
+        crediblity interval of the given size.
     """
-    if interval_size < 0 or interval_size > 1:
+    if interval_size <= 0 or interval_size >= 1:
         raise ValueError(
-            'The Credible interval size must be within the range [0,1]',
+            'The Credible interval size must be within the range (0,1)',
         )
 
-    # Try to make efficient with broadcasting in numpy
-    # TODO sort vector
+    # Sort vector
+    sorted_vec = np.sort(vector)
+    vec_size = len(sorted_vec)
 
-    # TODO iterate through the vector with static interval size, checking
-    # differences
+    # Get the paired low and high quantiles
+    high_quantiles = sorted_vec[int(np.floor(vec_size * interval_size)):]
+    low_quantiles = sorted_vec[:int(np.ceil(vec_size * (1.0 - interval_size)))]
 
+    # Iterate through the vector with static interval size, check differences
     # minimum distance is the highest density credible interval
+    idx = np.argmin(high_quantiles - low_quantiles)
 
-    return
-    #return low_quantile, high_quantile
+    return low_quantiles[idx], high_quantiles[idx]
