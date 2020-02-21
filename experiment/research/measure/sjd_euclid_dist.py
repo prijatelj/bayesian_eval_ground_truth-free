@@ -213,7 +213,7 @@ if __name__ == '__main__':
             'euclid_dists_train',
             results[candidate]['train'],
             args.quantiles_frac,
-            args.do_not_save_raw,
+            not args.do_not_save_raw,
         )
 
         if test is not None:
@@ -225,5 +225,5 @@ if __name__ == '__main__':
                 'euclid_dists_test',
                 results[candidate]['test'],
                 args.quantiles_frac,
-                args.do_not_save_raw,
+                not args.do_not_save_raw,
             )
