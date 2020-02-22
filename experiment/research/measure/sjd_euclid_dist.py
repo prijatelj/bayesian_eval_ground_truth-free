@@ -194,12 +194,14 @@ if __name__ == '__main__':
             candidates,
              train,
              test,
+             sample_size=args.sample_size,
              normalize=args.normalize,
          )
     else:
         results = mult_candidates_exp1(
             candidates,
              train,
+             sample_size=args.sample_size,
              normalize=args.normalize,
          )
 
