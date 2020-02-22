@@ -307,3 +307,47 @@ def overlaid_pairplot(dfs, *args, **kwargs):
 
     for df in dfs:
         pair_plot_info(df, *args, **kwargs)
+
+
+def vertical_stacked_violins():
+    """Vertically stacks violin plots of different univariate data. Optionally
+    plot interval information on individual violin plots, such as the credible
+    interval.
+
+    Notes
+    -----
+    - Want to be able to use a histogram or any other KDE than just a gaussian
+    KDE
+    - Want to be able to use a:
+        - half violin: 1 hist/kde on one side and
+    nothing on the other: saves space
+        - split violin: two different distribs on opposite sides of same
+          violin. Good for comparing in sample and out of sample distribs of
+          measures.
+            - be able to give the two different splits different colors.
+        - full violin only for completion of general code.
+    - Want to be able to visualize both the mean and median of the data in the
+      violin with clearly marked dashed lines that makes it easy to distinguish
+      between the two given a legend for them and allows them to be both seen
+      when they overlap.
+    - Want to be able to clearly mark quantiles
+    - Want to be able to clearly mark given values as a credible interval (or
+      any interval, and multiple of them)
+        - Would like them to (optionally) extend to the entire hieght of distrib and optionally change color of background or use a very light transparent overlay of the interval.
+        - Also would like option to have the inverse of the interval
+          highlighted a color to indicate where is outside of the credible
+          interval (such as some contrasting color or given color, perhaps
+          default to a transparent red).
+
+
+    Returns
+    -------
+    """
+
+    # TODO return whatever to make it so multiple vertical stacked violin plots
+    # can be placed in a figure together, for easily visualizing the distribs
+    # on the different datasets.
+
+    # Could use Split violins, instead of juts halves and show the In Sample and
+    # Out of sample
+    return
