@@ -84,8 +84,8 @@ def highest_density_credible_interval(vector, interval_size):
     vec_size = len(sorted_vec)
 
     # Get the paired low and high quantiles
-    high_quantiles = sorted_vec[int(np.floor(vec_size * interval_size)):]
-    low_quantiles = sorted_vec[:int(np.ceil(vec_size * (1.0 - interval_size)))]
+    high_quantiles = sorted_vec[int(np.ceil(vec_size * interval_size)):]
+    low_quantiles = sorted_vec[:int(np.floor(vec_size * (1.0 - interval_size)))]
 
     # Iterate through the vector with static interval size, check differences
     # minimum distance is the highest density credible interval
