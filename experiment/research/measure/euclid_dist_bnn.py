@@ -45,11 +45,16 @@ if __name__ == "__main__":
     )
 
     if not args.target_is_task_target:
-        # Exp 1: predictor's prediction is the target: t(y) = y_hat
+        # Exp 1: predictor's prediction is the target: t(y) = y_hat;
+        # L2(pred - bnn draw)
         targets = pred
     else:
         # Exp 2: Original label is target where measurement is residuals.
+        # L2(given - bnn_draw)
         targets = givens
+
+        # TODO use the chosen distribution of the givens and sample from it
+        # (ie. Dirichlet)
     del pred
 
     # fwd pass of BNN if loaded weights.
