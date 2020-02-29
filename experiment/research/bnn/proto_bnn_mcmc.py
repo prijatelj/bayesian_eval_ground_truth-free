@@ -407,6 +407,15 @@ if __name__ == '__main__':
             with open(args.bnn_weights_file, 'r') as f:
                 init_state = json.load(f)
                 init_state = [np.array(x, dtype=np.float32) for x in init_state]
+
+                if args.bnn.num_hidden != init_state[0].shape[1]:
+                    raise ValueError(' '.join([
+                        '`args.bnn.num_hidden` does not equal the',
+                        'number of hidden units in the loaded weights file!',
+                        f'`args.bnn.num_hidden` = {args.bnn.num_hidden}',
+                        '`init_state[0].shape[1]` =',
+                        f'{init_state[0].shape[1]}',
+                    ]))
     else:
         if args.parallel_chains > 1:
             raise ValueError('The dataset_filepath is an invalid filepath.')
