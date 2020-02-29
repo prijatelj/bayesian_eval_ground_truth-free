@@ -309,9 +309,25 @@ def overlaid_pairplot(dfs, *args, **kwargs):
         pair_plot_info(df, *args, **kwargs)
 
 
-def vertical_stacked_violins():
-    """Vertically stacks violin plots of different univariate data. Optionally
-    plot interval information on individual violin plots, such as the credible
+def violins(
+    vectors,
+    paired_vectors=False,
+    full_violin=False,
+    axis=1,
+    ax=None,
+    positions=None,
+    vert=True,
+    widths=0.5,
+    showmean=False,
+    showextrema=False,
+    showmedian=False,
+    points=100,
+    bw_method=None,
+    *args,
+    **kwargs,
+):
+    """Creates violin plots of different univariate data. Optionally plot
+    interval information on individual violin plots, such as the credible
     interval.
 
     Notes
@@ -339,15 +355,103 @@ def vertical_stacked_violins():
           interval (such as some contrasting color or given color, perhaps
           default to a transparent red).
 
+    Parameters
+    ----------
+    vectors : list(np.ndarray)
+        A list of 1d arrays. Each array is a different set of data.
+    paired_vectors : bool, optional
+        If True, then the number of given vectors must be even and every two
+        vectors are then a different half of the same plot.
+    full_violin : bool, optional
+        If paired_vectors is False and this is False, then only half the
+        violins will be created to save space in the plot. This is the default
+        behavior. If full violins per vector are desired, where both sides of
+        the violin are representing the same data and are thus symmetric, then
+        full_violin must be provided as True.
+    keep_top : bool
+        Only applies if both `full_violin` and `paired_vectors` are both False,
+        and if so, then if this is True then the top (or left if `vert` is
+        True) part of the violin is kept to create the half violin, otherwise
+        if False, then the bottom (or right if `vert` is True) half of the
+        violin is kept.
+    axis : int, optional
+        The axis along which the violin plot is computed. The default is 1.
+    density : bool, optional
+        Finds the frequency of all values in order to fairly compare
+
+    positions :
+        Same as `matplotlib.axes.Axes.violinplot`.
+    vert :
+        Same as `matplotlib.axes.Axes.violinplot`.
+    widths :
+        Same as `matplotlib.axes.Axes.violinplot`.
+    showmean :
+        Same as `matplotlib.axes.Axes.violinplot`.
+    showextrema :
+        Same as `matplotlib.axes.Axes.violinplot`.
+    showmedian :
+        Same as `matplotlib.axes.Axes.violinplot`.
+    points :
+        Same as `matplotlib.axes.Axes.violinplot`.
+    bw_method :
+        Same as `matplotlib.axes.Axes.violinplot`.
 
     Returns
     -------
     """
+    # TODO Only necessary if seaborn plot cannot easily be given a credible interval
+    # to overlay on the violins.
+    # ax = sns.violinplot(x=vectors concatenated, y = model id, hue = train/test)
+    # If able to add the interval, then sns has everything I need, and this
+    # would just be making the dataframe given data and running the
+    # sns.violinplot appropriately.
 
     # TODO return whatever to make it so multiple vertical stacked violin plots
     # can be placed in a figure together, for easily visualizing the distribs
     # on the different datasets.
+    if ax is None:
+        fig, axx = plt.subplots()
+    else:
+        axx = ax
 
-    # Could use Split violins, instead of juts halves and show the In Sample and
-    # Out of sample
-    return
+    #if density:
+    #    # Turn all values into densities so the integral (area) sums to one.
+    #   NOTE just want the hists/kdes to be representative
+
+    # Create the individual violins as per normal.
+    violins_parts = axx.violinplot(
+        vectors,
+        positions,
+        vert,
+        widths,
+        showmeans,
+        showextrema,
+        showmedians,
+        points,
+        bw_method,
+        *args,
+    )
+
+    if paired_vectors:
+        # Create split violins from pairs of vectors
+        if len(vectors) % 2 != 0:
+            raise ValueError(
+                '`paired_vectors` is True, but number of vectors is odd.',
+            )
+
+    elif full_violin:
+        # Create standard symmetric violin per vector
+        if showmeans and showmedians:
+            # TODO change line type
+            pass
+    else:
+        # Create one-sided (half) violin per vector
+        pass
+
+        # clip the selected side to be removed based on keep_top
+
+    # TODO set shared axis range
+
+    # Could use Split violins, instead of juts halves and show the In Sample
+    # and Out of sample
+    return axx
