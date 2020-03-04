@@ -275,7 +275,9 @@ def save_stats(
     accept_rate,
     acf_log_prob,
     final_step_size,
-    log_prob_linregress=None
+    burnin,
+    lag,
+    log_prob_linregress=None,
 ):
     """Saves important information of the MCMC chain runs."""
     io.save_json(
@@ -496,6 +498,8 @@ if __name__ == '__main__':
             accept_rate,
             acf_log_prob,
             final_step_size,
+            args.mcmc.sample_chain.burnin,
+            args.mcmc.sample_chain.lag,
             #log_prob_linreg=scipy.stats.linregress(
             #    np.arange(args.mcmc.sample_chain.num_results),
             #    mcmc_results.accepted_results.target_log_prob,
@@ -555,6 +559,8 @@ if __name__ == '__main__':
                 accept_rate,
                 acf_log_prob,
                 final_step_size,
+                args.mcmc.sample_chain.burnin,
+                args.mcmc.sample_chain.lag,
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
                     mcmc_results.accepted_results.target_log_prob,
@@ -623,6 +629,8 @@ if __name__ == '__main__':
                 accept_rate,
                 acf_log_prob,
                 final_step_size,
+                args.mcmc.sample_chain.burnin,
+                args.mcmc.sample_chain.lag,
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
                     mcmc_results.target_log_prob
