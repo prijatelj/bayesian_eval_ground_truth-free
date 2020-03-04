@@ -277,6 +277,9 @@ def save_stats(
     final_step_size,
     burnin,
     lag,
+    num_hidden_units,
+    num_layers,
+    input_output_dim,
     log_prob_linregress=None,
 ):
     """Saves important information of the MCMC chain runs."""
@@ -293,6 +296,11 @@ def save_stats(
         '0.05': np.where(np.abs(acf_log_prob) < 0.05)[0][:10],
         '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
         'final_step_size': final_step_size,
+        'burnin': burnin,
+        'lag': lag,
+        'num_hidden_units': num_hidden_units,
+        'num_layers': num_layers,
+        'input_output_dim': input_output_dim,
     }
 
     if log_prob_linregress is not None:
@@ -500,6 +508,9 @@ if __name__ == '__main__':
             final_step_size,
             args.mcmc.sample_chain.burnin,
             args.mcmc.sample_chain.lag,
+            args.bnn.num_hidden,
+            args.bnn.num_layers,
+            givens.shape[1],
             #log_prob_linreg=scipy.stats.linregress(
             #    np.arange(args.mcmc.sample_chain.num_results),
             #    mcmc_results.accepted_results.target_log_prob,
@@ -561,6 +572,9 @@ if __name__ == '__main__':
                 final_step_size,
                 args.mcmc.sample_chain.burnin,
                 args.mcmc.sample_chain.lag,
+                args.bnn.num_hidden,
+                args.bnn.num_layers,
+                givens.shape[1],
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
                     mcmc_results.accepted_results.target_log_prob,
@@ -631,6 +645,9 @@ if __name__ == '__main__':
                 final_step_size,
                 args.mcmc.sample_chain.burnin,
                 args.mcmc.sample_chain.lag,
+                args.bnn.num_hidden,
+                args.bnn.num_layers,
+                givens.shape[1],
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
                     mcmc_results.target_log_prob
