@@ -1,0 +1,8 @@
+
+    "FacialBeauty": {
+        "dataset_filepath": "psych_metric/datasets/facial_beauty/facial_beauty_data/"
+    },
+
+%run sjd_log_prob_exp "psych_metric/datasets/facial_beauty/facial_beauty_data/"
+    --dataset_id 'FacialBeauty'
+    --label_src 'frequency'

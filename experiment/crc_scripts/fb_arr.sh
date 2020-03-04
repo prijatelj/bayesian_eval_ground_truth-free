@@ -6,7 +6,7 @@
 #$ -l gpu_card=1
 #$ -o logs/fb/rnxt50_mv/logs/
 #$ -e logs/fb/rnxt50_mv/logs/
-#$ -t 1-30
+#$ -t 1-5
 
 BASE_PATH="$HOME/Public/psych_metric"
 
@@ -25,9 +25,10 @@ python3 "$BASE_PATH/predictors.py" \
     --gpu 1 \
     --log_level INFO \
     --log_file "logs/fb/$SEED-rnxt50_mv.log" \
-    --output_dir "$BASE_PATH/results/predictors/" \
+    --output_dir "$BASE_PATH/results/predictors/period/" \
     --random_seeds "$SEED" \
-    --epochs 10 \
-    --batch_size 64 \
-    --model_id resnext50
-    --label_src majority_vote
+    --epochs 20 \
+    --batch_size 16 \
+    --model_id resnext50 \
+    --label_src majority_vote \
+    --period 1

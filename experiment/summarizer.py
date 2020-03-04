@@ -19,7 +19,14 @@ import matplotlib.pyplot as plt
 
 from psych_metric.datasets import data_handler
 
-def model_parameter_summarize(input_dir, summary_csv='summary.csv', annotation_aggregation_csv='annoatation_aggregation.csv', metrics_file='metrics.json', output='summary.json', quantiles=[0,0.25,0.5,0.75,1]):
+def model_parameter_summarize(
+    input_dir,
+    summary_csv='summary.csv',
+    annotation_aggregation_csv='annoatation_aggregation.csv',
+    metrics_file='metrics.json',
+    output='summary.json',
+    quantiles=[0, 0.25, 0.5, 0.75, 1],
+):
     """Traverses the given root directory to find directories that contain a
     summary.csv. then combines the summaries together forming the root directory
     summary.
@@ -155,15 +162,50 @@ def parse_args():
     argparse.Namespace
         The configuration variables for the experiments to be run.
     """
-    parser = argparse.ArgumentParser(description='Traverse the directory tree of the given directory and calculates the desired metrics of the saved annotation aggregation csv when compared to the ground truth of the dataset.')
+    parser = argparse.ArgumentParser(description=' '.join([
+        'Traverse the directory tree of the given directory and calculates',
+        'the desired metrics of the saved annotation aggregation csv when',
+        'compared to the ground truth of the dataset.',
+    ]})
 
-    parser.add_argument('input_dir', default=None, help='Enter the file path to the root input directory.')
-    parser.add_argument('-s', '--summary_csv', default='summary.csv', help='The expected filename of the summary csv.')
-    parser.add_argument('-a', '--annotation_aggregation_csv', default='annotation_aggregation.csv', help='The expected filename of the annotation aggregation csv.')
-    #parser.add_argument('-m', '--metrics', default=None, nargs='+', help='List of the metrics to use.')
-    parser.add_argument('-f', '--metrics_filename', default='metrics.json', help='The filename of the metric json.')
-    parser.add_argument('--no-meta', action='store_true', help='Providing this flag witholds the meta information from the metric jsons.')
-    parser.add_argument('--overwrite', action='store_true', help='Providing this flag will overwrite any preexisting metric files.')
+    parser.add_argument(
+        'input_dir',
+        default=None,
+        help='Enter the file path to the root input directory.',
+    )
+
+    parser.add_argument(
+        '-s',
+        '--summary_csv',
+        default='summary.csv',
+        help='The expected filename of the summary csv.',
+    )
+
+    parser.add_argument(
+        '-a',
+        '--annotation_aggregation_csv',
+        default='annotation_aggregation.csv',
+        help='The expected filename of the annotation aggregation csv.',
+    )
+
+    parser.add_argument(
+        '-f',
+        '--metrics_filename',
+        default='metrics.json',
+        help='The filename of the metric json.',
+    )
+
+    parser.add_argument(
+        '--no-meta',
+        action='store_true',
+        help='Providing this flag witholds the meta information from the metric jsons.',
+    )
+
+    parser.add_argument(
+        '--overwrite',
+        action='store_true',
+        help='Providing this flag will overwrite any preexisting metric files.',
+    )
 
     return parser.parse_args()
 

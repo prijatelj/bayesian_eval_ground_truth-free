@@ -1,5 +1,8 @@
 # Research Repository for ND CVRL + PA Joint Metric Research
 
+## Experiments
+To run the experiments, run python or ipython from the top level dir of the repository if you want to use the current code from `psych_metric` package, rather than an installed version of the package using `setup.py`.
+
 ## Repository Structure
 
 Loosely follows [Cookiecutter](https://drivendata.github.io/cookiecutter-data-science/) structure
