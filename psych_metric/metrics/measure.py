@@ -43,7 +43,7 @@ def measure(measure_func, targets, preds):
     # NOTE assumes preds of shape [targets, conditionals, classes]
 
     conditionals_measurements = []
-    for c_idx in range(len(preds.shape[1])):
+    for c_idx in range(preds.shape[1]):
         conditionals_measurements.append(
             measure_func(targets, preds[:, c_idx, :]),
         )
