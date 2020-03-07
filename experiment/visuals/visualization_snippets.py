@@ -299,7 +299,9 @@ def pair_plot_info(
 
 
 def overlaid_pairplot(dfs, *args, **kwargs):
-    """Creates a pair plot of overlaid data."""
+    """Creates a pair plot of overlaid data (ie. mutliple data depicted in
+    different colors).
+    """
 
     # TODO create / get joint axes for each plot
 
@@ -307,6 +309,13 @@ def overlaid_pairplot(dfs, *args, **kwargs):
 
     for df in dfs:
         pair_plot_info(df, *args, **kwargs)
+
+
+def add_interval_to_hist():
+    """Adds lines to a histogram indicating
+    """
+
+    return
 
 
 def violins(
