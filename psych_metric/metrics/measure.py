@@ -34,7 +34,7 @@ def measure(measure_func, targets, preds):
         # n-dim discrete sample
         return measure_func(targets, preds)
 
-    if not (len(preds.shape) != 3 and len(targets.shape) != 2):
+    if len(preds.shape) != 3 or len(targets.shape) != 2:
         raise ValueError(' '.join([
             'preds and targets are expected to have 3 and 2 dimensions',
             'respectively.',
