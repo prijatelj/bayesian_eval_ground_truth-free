@@ -18,14 +18,18 @@ Experiement 2 for residuals when target is given target label to predictor:
 """
 from experiment import io
 from experiment.research.bnn.bnn_mcmc_fwd import load_bnn_fwd
-from experiment.research.measure import measure
+from experiment.research.measure import kldiv
 
 if __name__ == "__main__":
     # Create argparser
     args = io.parse_args(
         ['sjd'],
-        custom_args=measure.add_custom_args,
-        description='Runs KNNDE for euclidean BNN given the sampled weights.',
+        custom_args=kldiv.add_custom_args,
+        description=' '.join([
+            'Runs Euclidean Distance on ouputs of euclidean BNN given the',
+            'sampled weights. Either expeirment 1 or 2 completed with this',
+            'script.',
+        ]),
     )
 
     output_dir = io.create_dirs(args.output_dir)
@@ -60,13 +64,13 @@ if __name__ == "__main__":
     # fwd pass of BNN if loaded weights.
     # Perform the measurement of euclidean distance on the BNN MCMC output to
     # the actual prediction
-    euclid_dists = measure.get_l2dists(
+    euclid_dists = kldiv.get_l2dists(
         targets,
         bnn.predict(givens, weights_sets),
         args.normalize,
     )
 
-    measure.save_measures(
+    kldiv.save_measures(
         output_dir,
         'euclid_dists',
         euclid_dists,

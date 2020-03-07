@@ -11,7 +11,7 @@ from psych_metric.distrib.supervised_joint_distrib import SupervisedJointDistrib
 from experiment import io
 import experiment.distrib
 from experiment.research.sjd import src_candidates
-from experiment.research.measure import measure
+from experiment.research.measure import kldiv
 from experiment.research.bnn.bnn_mcmc_fwd import load_bnn_io_json
 
 
@@ -116,12 +116,12 @@ def exp1_givens_data(
             axis=2,
         ).reshape(len(targets), sample_size, targets.shape[1])
 
-    return measure.get_l2dists(preds, conditional_samples, normalize)
+    return kldiv.get_l2dists(preds, conditional_samples, normalize)
 
 
 def add_custom_args(parser):
     # just adding a this script specific argument
-    measure.add_custom_args(parser)
+    kldiv.add_custom_args(parser)
 
     parser.add_argument(
         '--src_candidates',
@@ -210,7 +210,7 @@ if __name__ == '__main__':
         tmp_out_dir = io.create_dirs(
             os.path.join(output_dir, candidate, 'train'),
         )
-        measure.save_measures(
+        kldiv.save_measures(
             tmp_out_dir,
             'euclid_dists_train',
             results[candidate]['train'],
@@ -222,7 +222,7 @@ if __name__ == '__main__':
             tmp_out_dir = io.create_dirs(
                 os.path.join(output_dir, candidate, 'test'),
             )
-            measure.save_measures(
+            kldiv.save_measures(
                 tmp_out_dir,
                 'euclid_dists_test',
                 results[candidate]['test'],

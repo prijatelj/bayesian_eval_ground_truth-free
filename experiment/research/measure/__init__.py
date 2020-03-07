@@ -1,1 +1,1 @@
-from experiment.research.measure import measure
+from experiment.research.measure import kldiv
