@@ -82,7 +82,7 @@ def highest_density_credible_interval(vector, sample_density):
             'The Credible interval size must be within the range (0,1)',
         )
 
-    if not isinstance(vector, np.ndarray)
+    if not isinstance(vector, np.ndarray):
         vector = np.array(vector)
 
     if vector.shape > 1:
