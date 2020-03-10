@@ -62,6 +62,53 @@ def mcmc_sample_log_prob(
     )
 
 
+def l2_dist(
+    params,
+    data,
+    targets,
+    origin_adjust,
+    rotation_mat,
+):
+    """MCMC BNN that takes the original probability vectors and transforms them
+    into the conditional RV's probability vectors. This BNN ensures that the
+    output of the network is always a probability distribution via softmax.
+
+    Notes
+    -----
+    The BNN is rewritten here because TFP's MCMC target log prob does not play
+    well with creating the network outside of the target log prob function and
+    passed in as constant variables.
+    """
+    bnn_data = tf.convert_to_tensor(data.astype(np.float32), dtype=tf.float32)
+    bnn_target = tf.convert_to_tensor(
+        targets.astype(np.float32),
+        dtype=tf.float32,
+    )
+    bnn_rotation_mat = tf.convert_to_tensor(
+        rotation_mat.astype(np.float32),
+        dtype=tf.float32,
+    )
+    bnn_origin_adjust = tf.convert_to_tensor(
+        origin_adjust.astype(np.float32),
+        dtype=tf.float32,
+    )
+
+    hidden_weights, hidden_bias, output_weights, output_bias = params
+
+    bnn_data_rot = (bnn_data - bnn_origin_adjust) @ bnn_rotation_mat
+
+    hidden = tf.nn.sigmoid(bnn_data_rot @ hidden_weights + hidden_bias)
+
+    bnn_output = hidden @ output_weights + output_bias
+
+    output = tf.nn.softmax(
+        (bnn_output @ tf.transpose(bnn_rotation_mat)) + bnn_origin_adjust
+    )
+
+    # Max is 0, ow. negative values.
+    return -tf.reduce_sum(tf.norm(output - bnn_target, axis=1))
+
+
 def bnn_softmax(input_labels, simplex_transform, *args, **kwargs):
     """BNN of stochastic transform of given random variable (target label) to
     the respective conditional random variable (predictor's prediction). Input

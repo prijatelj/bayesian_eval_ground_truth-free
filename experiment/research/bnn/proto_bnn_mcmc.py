@@ -20,9 +20,10 @@ from experiment.research.sjd import src_candidates
 
 
 def setup_rwm_sim(
+    target_log_prob,
     width=10,
     sample_size=10,
-    scale_identity_multiplier=0.01,
+    #scale_identity_multiplier=0.01,
     dim=3,
     src_id='tight_dir_small_mvn',
 ):
@@ -38,10 +39,9 @@ def setup_rwm_sim(
         np.zeros([dim-1], dtype=np.float32)]
 
     sample_log_prob = partial(
-        bnn_transform.mcmc_sample_log_prob,
+        target_log_prob,
         origin_adjust=rdm.transform_distrib.simplex_transform.origin_adjust.astype(np.float32),
         rotation_mat=rdm.transform_distrib.simplex_transform.change_of_basis_matrix.astype(np.float32),
-        scale_identity_multiplier=scale_identity_multiplier,
     )
 
     #return data, targets, sample_log_prob, init_state
@@ -373,6 +373,13 @@ def add_custom_args(parser):
         help='If given, and dataset_filepath is a file and no bnn weights given, then the bnn weights are randomly initialized.',
     )
 
+    parser.add_argument(
+        '--mcmc_target_log_prob',
+        default='mcmc_sample_log_prob',
+        choices=['mcmc_sample_log_prob', 'l2_dist'],
+        help='The target log prob function to use for the MCMC.',
+    )
+
 
 if __name__ == '__main__':
     args = io.parse_args(custom_args=add_custom_args)
@@ -382,6 +389,15 @@ if __name__ == '__main__':
     output_dir = io.create_dirs(output_dir)
     logging.info('Created the output directories')
 
+    if args.mcmc_target_log_prob == 'l2_dist':
+        target_log_prob = bnn_transform.l2_dist
+    else:
+        # defaults to bnn_transform.mcmc_sample_log_prob (regression MVN)
+        target_log_prob = partial(
+            bnn_transform.mcmc_sample_log_prob,
+            scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+        )
+
     if os.path.isfile(args.data.dataset_filepath):
         with open(args.data.dataset_filepath, 'r') as f:
             data = json.load(f)
@@ -390,12 +406,12 @@ if __name__ == '__main__':
             change_of_basis = np.array(data['change_of_basis'], dtype=np.float32)
             origin_adjust = np.array(data['origin_adjust'], dtype=np.float32)
 
-        scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+        #scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
         sample_log_prob = partial(
-            bnn_transform.mcmc_sample_log_prob,
+            target_log_prob,
             origin_adjust=origin_adjust,
             rotation_mat=change_of_basis,
-            scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+            #scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
         )
 
         if args.random_bnn_init:
@@ -434,9 +450,10 @@ if __name__ == '__main__':
             raise ValueError('Must provide dim when doing simulation runs.')
 
         givens, conditionals, sample_log_prob, init_state, src = setup_rwm_sim(
+            target_log_prob,
             width=args.bnn.num_hidden,
             sample_size=args.num_samples,
-            scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+            #scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
             dim=args.dim,
             src_id=args.src_sjd_id,
         )
