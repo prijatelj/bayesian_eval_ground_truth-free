@@ -354,11 +354,11 @@ def add_custom_args(parser):
         help='The id of joint distribution to use in simulation of samples.',
     )
 
-    #parser.add_argument(
-    #    '--no_visuals',
-    #    default=None,
-    #    help='Does not save visuals.',
-    #)
+    parser.add_argument(
+        '--no_visuals',
+        action='store_true',
+        help='Does not save visuals if single chain (single process).',
+    )
 
     parser.add_argument(
         '--target_accept_prob',
@@ -534,14 +534,15 @@ if __name__ == '__main__':
             #),
         )
 
-        logging.info('Starting RandomWalkMetropolis specific visuals')
-        plt.plot(output[1].accepted_results.target_log_prob)
-        plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+        if not args.no_visuals:
+            logging.info('Starting RandomWalkMetropolis specific visuals')
+            plt.plot(output[1].accepted_results.target_log_prob)
+            plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
+            plt.close()
 
-        pd.DataFrame(acf_log_prob).plot(kind='bar')
-        plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+            pd.DataFrame(acf_log_prob).plot(kind='bar')
+            plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
+            plt.close()
 
     elif args.mcmc.kernel_id == 'HamiltonianMonteCarlo':
         output = run_hmc(
@@ -598,14 +599,16 @@ if __name__ == '__main__':
                 ),
             )
 
-            logging.info('Starting HamiltonianMonteCarlo specific visuals')
-            plt.plot(mcmc_results.accepted_results.target_log_prob)
-            plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
-            plt.close()
 
-            pd.DataFrame(acf_log_prob).plot(kind='bar')
-            plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
-            plt.close()
+            if not args.no_visuals:
+                logging.info('Starting HamiltonianMonteCarlo specific visuals')
+                plt.plot(mcmc_results.accepted_results.target_log_prob)
+                plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
+                plt.close()
+
+                pd.DataFrame(acf_log_prob).plot(kind='bar')
+                plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
+                plt.close()
         else:
             sampled_weights = {}
             for i in range(0, len(output)):
@@ -671,13 +674,14 @@ if __name__ == '__main__':
                 ),
             )
 
-        logging.info('Starting NoUTurnSampler specific visuals')
-        plt.plot(mcmc_results.target_log_prob)
-        plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+        if not args.no_visuals:
+            logging.info('Starting NoUTurnSampler specific visuals')
+            plt.plot(mcmc_results.target_log_prob)
+            plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
+            plt.close()
 
-        pd.DataFrame(acf_log_prob).plot(kind='bar')
-        plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+            pd.DataFrame(acf_log_prob).plot(kind='bar')
+            plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
+            plt.close()
 
     logging.info('Finished MCMC training and specific kernel givens saving.')
