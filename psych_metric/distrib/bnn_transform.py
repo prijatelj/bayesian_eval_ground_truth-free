@@ -54,6 +54,7 @@ def mcmc_sample_log_prob(
         (bnn_output @ tf.transpose(bnn_rotation_mat)) + bnn_origin_adjust
     )
 
+    # TODO Check the order of the bnn_output and bnn_target
     return tf.reduce_sum(
         tfp.distributions.MultivariateNormalDiag(
             loc=tf.zeros([data.shape[1]]),
@@ -107,6 +108,42 @@ def l2_dist(
 
     # Max is 0, ow. negative values.
     return -tf.reduce_sum(tf.norm(output - bnn_target, axis=1))
+
+
+def bnn_end2end_target_func(
+    params,
+    data,
+    targets,
+    scale_identity_multiplier=0.01,
+):
+    """MCMC BNN target log prob function that expects the BNN to be end-to-end
+    with no mathematical transforms.
+
+    Notes
+    -----
+    The BNN is rewritten here because TFP's MCMC target log prob does not play
+    well with creating the network outside of the target log prob function and
+    passed in as constant variables.
+    """
+    bnn_data = tf.convert_to_tensor(data.astype(np.float32), dtype=tf.float32)
+    bnn_target = tf.convert_to_tensor(
+        targets.astype(np.float32),
+        dtype=tf.float32,
+    )
+
+    hidden_weights, hidden_bias, output_weights, output_bias = params
+
+    hidden = tf.nn.sigmoid(bnn_data @ hidden_weights + hidden_bias)
+
+    bnn_output = hidden @ output_weights + output_bias
+
+    # TODO Check the order of the bnn_output and bnn_target
+    return tf.reduce_sum(
+        tfp.distributions.MultivariateNormalDiag(
+            loc=tf.zeros([data.shape[1]]),
+            scale_identity_multiplier=scale_identity_multiplier
+        ).log_prob(bnn_output - bnn_target),
+    )
 
 
 def bnn_softmax(input_labels, simplex_transform, *args, **kwargs):
