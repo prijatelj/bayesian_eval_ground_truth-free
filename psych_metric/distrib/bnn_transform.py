@@ -591,6 +591,6 @@ def assign_weights_bnn(
     if data_dim_first:
         # reshape the output such that the shape corresponds to
         #  [data samples, number of bnn weights sets, classes]
-        return np.swapaxes(np.stack(iter_results), 0, 1).squeeze()
+        return np.swapaxes(np.stack(iter_results), 1, 0).squeeze()
     # Otherwise: [number of bnn weights sets, data samples, classes]
     return np.stack(iter_results).squeeze()
