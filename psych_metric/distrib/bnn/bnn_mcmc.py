@@ -136,6 +136,8 @@ class BNNMCMC(object):
         #self.mcmc.fit(*args, **kwargs)
 
         # TODO First, find step size that yields desired acceptance rate.
+        #   Will have to repeated check the status of accept rate and possibly
+        #   loop back to this part if it diverges from the desired accept rate.
 
         # TODO Second, run MCMC chains until convergence or
 
