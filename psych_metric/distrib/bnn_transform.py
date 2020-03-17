@@ -529,7 +529,7 @@ def assign_weights_bnn(
     bnn_out,
     input_labels,
     tf_input,
-    output_labels=None,
+    #output_labels=None,
     dtype=tf.float32,
     sess_config=None,
     data_dim_first=True,
@@ -539,16 +539,16 @@ def assign_weights_bnn(
     feed_dict = {tf_input: input_labels}
     results_list = [bnn_out]
 
-    if output_labels:
-        # TODO this doesn't make sense. bnn isn't used for simplex differences
-        tf_output = tf.placeholder(
-            dtype=dtype,
-            shape=[None, output_labels.shape[1]],
-            name='output_labels',
-        )
-        results_list.append(bnn_out - tf_output)
-
-        feed_dict[tf_output] = output_labels
+    #if output_labels:
+    #    # TODO this doesn't make sense. bnn isn't used for simplex differences
+    #    tf_output = tf.placeholder(
+    #        dtype=dtype,
+    #        shape=[None, output_labels.shape[1]],
+    #        name='output_labels',
+    #    )
+    #    results_list.append(bnn_out - tf_output)
+    #
+    #    feed_dict[tf_output] = output_labels
 
     with tf.Session(config=sess_config) as sess:
         sess.run((
@@ -586,11 +586,11 @@ def assign_weights_bnn(
                     feed_dict=feed_dict,
                 ))
 
-    if output_labels:
-        return iter_results
+    #if output_labels:
+    #    return iter_results
     if data_dim_first:
         # reshape the output such that the shape corresponds to
         #  [data samples, number of bnn weights sets, classes]
-        return np.swapaxes(np.stack(iter_results), 1, 0).squeeze()
+        return np.swapaxes(np.stack(iter_results), 0, 1).squeeze()
     # Otherwise: [number of bnn weights sets, data samples, classes]
     return np.stack(iter_results).squeeze()
