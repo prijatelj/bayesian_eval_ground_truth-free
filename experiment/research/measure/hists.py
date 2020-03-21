@@ -31,7 +31,7 @@ def hist_plots(
     col_size = len(measures.columns)
     measures = pd.DataFrame(measures.values.flatten())
 
-    measures.hist(bins=bins, color=color, range=x_range)
+    measures.hist(bins=bins, color=color, range=x_range, density=density)
 
     if '{bins}' in title:
         title = title.replace('{bins}', str(bins))
