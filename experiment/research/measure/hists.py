@@ -42,7 +42,7 @@ def hist_plots(
 
     if '{bins}' in xlabel:
         xlabel = xlabel.replace('{bins}', str(bins))
-    if '{bnn_draws}' in title:
+    if '{bnn_draws}' in xlabel:
         xlabel = xlabel.replace('{bnn_draws}', str(col_size))
 
     plt.title(title)
