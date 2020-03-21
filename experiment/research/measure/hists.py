@@ -1,9 +1,11 @@
 import argparse
-import json
 import os
 
 from matplotlib import pyplot as plt
 import pandas as pd
+
+from experiment import io
+
 
 def hist_plots(
     measures_csv,
@@ -21,7 +23,7 @@ def hist_plots(
     """
     measures = pd.read_csv(measures_csv, header=None)
     col_size = len(measures.columns)
-    measure = pd.DataFrame(measures.values.flatten())
+    measures = pd.DataFrame(measures.values.flatten())
 
     measures.hist(bins=bins, color=color)
 
@@ -37,7 +39,7 @@ def hist_plots(
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
 
-    plt.savefig(measures_csv, dpi=dpi)
+    plt.savefig(io.create_filepath(output_filepath), dpi=dpi)
     plt.close()
 
 
