@@ -42,6 +42,8 @@ def hist_plots(
 
     if '{bins}' in xlabel:
         xlabel = xlabel.replace('{bins}', str(bins))
+    if '{bnn_draws}' in title:
+        xlabel = xlabel.replace('{bnn_draws}', str(col_size))
 
     plt.title(title)
     plt.xlabel(xlabel)
@@ -115,7 +117,7 @@ def parse_args():
     parser.add_argument(
         '-x',
         '--xlabel',
-        default='Normalized Euclidean Distance (bins={bins})',
+        default='Normalized Euclidean Distance (bins={bins}, {bnn_draws}draws/pred)',
         help='The label along the x axis.',
     )
 
