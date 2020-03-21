@@ -15,13 +15,18 @@ def hist_plots(
     xlabel,
     ylabel,
     density=False,
-    color='b',
+    color=None,
     dpi=400,
     x_range=(0.0, 1.0),
+    font_size=None,
+    pad_inches=0.1,
 ):
     """The Histogram plots used for visualizing the measures in experiments 1
     and 2.
     """
+    if font_size is not None:
+        plt.rcParams.update({'font.size': font_size})
+
     measures = pd.read_csv(measures_csv, header=None)
     col_size = len(measures.columns)
     measures = pd.DataFrame(measures.values.flatten())
@@ -29,18 +34,24 @@ def hist_plots(
     measures.hist(bins=bins, color=color, range=x_range)
 
     if '{bins}' in title:
-        title.replace('{bins}', str(bins))
+        title = title.replace('{bins}', str(bins))
     if '{bnn_draws}' in title:
-        title.replace('{bnn_draws}', str(col_size))
+        title = title.replace('{bnn_draws}', str(col_size))
+
+    title = title.replace('\n', '\n')
 
     if '{bins}' in xlabel:
-        xlabel.replace('{bins}', str(bins))
+        xlabel = xlabel.replace('{bins}', str(bins))
 
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
 
-    plt.savefig(io.create_filepath(output_filepath), dpi=dpi)
+    plt.savefig(
+        io.create_filepath(output_filepath),
+        dpi=dpi,
+        pad_inches=pad_inches,
+    )
     plt.close()
 
 
@@ -74,9 +85,23 @@ def parse_args():
     )
 
     parser.add_argument(
+        '--pad_inches',
+        default=0.1,
+        type=float,
+        help='The padding in inches of the histogram.',
+    )
+
+    parser.add_argument(
+        '--font_size',
+        default=14,
+        type=int,
+        help='The font size of labels on the histogram.',
+    )
+
+    parser.add_argument(
         '-c',
         '--color',
-        default='b',
+        default=None,
         help='The color of the histogram.',
     )
 
