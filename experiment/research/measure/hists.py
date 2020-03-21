@@ -17,6 +17,7 @@ def hist_plots(
     density=False,
     color='b',
     dpi=400,
+    x_range=(0.0, 1.0),
 ):
     """The Histogram plots used for visualizing the measures in experiments 1
     and 2.
@@ -25,7 +26,7 @@ def hist_plots(
     col_size = len(measures.columns)
     measures = pd.DataFrame(measures.values.flatten())
 
-    measures.hist(bins=bins, color=color)
+    measures.hist(bins=bins, color=color, range=x_range)
 
     if '{bins}' in title:
         title.replace('{bins}', str(bins))
