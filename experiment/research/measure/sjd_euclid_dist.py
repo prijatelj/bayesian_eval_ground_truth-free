@@ -119,6 +119,8 @@ def exp1_givens_data(
             1,
         )
 
+        # TODO optionally save samples.
+
     return kldiv.get_l2dists(preds, conditional_samples, normalize)
 
 
