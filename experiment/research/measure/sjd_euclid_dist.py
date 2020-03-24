@@ -108,13 +108,16 @@ def exp1_givens_data(
             len(targets) * sample_size,
         )[1].reshape(len(targets), sample_size, targets.shape[1])
     else:
-        conditional_samples = np.stack(
-            [
-                candidate.transform_distrib.sample(targets)
-                for i in range(sample_size)
-            ],
-            axis=2,
-        ).reshape(len(targets), sample_size, targets.shape[1])
+        conditional_samples = np.swapaxes(
+            np.stack(
+                [
+                    candidate.transform_distrib.sample(targets)
+                    for i in range(sample_size)
+                ],
+            ),
+            0,
+            1,
+        )
 
     return kldiv.get_l2dists(preds, conditional_samples, normalize)
 
