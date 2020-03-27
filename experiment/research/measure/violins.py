@@ -26,6 +26,8 @@ def split_violins(
     pad_inches=0.1,
     scale='area',
     orient='v',
+    linewidth=None,
+    overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
     and 2 using seaborn violinplot.
@@ -102,6 +104,7 @@ def split_violins(
                 scale=scale,
                 order=conditional_models,
                 orient=orient,
+                linewidth=linewidth,
             )
         else:
             ax = sns.violinplot(
@@ -114,10 +117,14 @@ def split_violins(
                 scale=scale,
                 order=conditional_models,
                 orient=orient,
+                linewidth=linewidth,
             )
 
         if measure_range is not None:
-            ax.set(ylim=measure_range)
+            if orient == 'v':
+                ax.set(ylim=measure_range)
+            else:
+                ax.set(xlim=measure_range)
     else:
         raise TypeError('Expected either pair of strs, or pair of lists.')
 
@@ -139,7 +146,7 @@ def split_violins(
     plt.ylabel(ylabel)
     """
     plt.savefig(
-        io.create_filepath(output_filepath),
+        io.create_filepath(output_filepath, overwrite=overwrite),
         dpi=dpi,
         pad_inches=pad_inches,
     )
