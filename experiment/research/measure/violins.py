@@ -14,7 +14,7 @@ def split_violins(
     test_csv,
     output_filepath,
     #bins,
-    #title,
+    title=None,
     #xlabel,
     measure_name='Normalized Euclidean Distance',
     conditional_models=None,
@@ -99,7 +99,7 @@ def split_violins(
                 measure_name,
                 hue='data_split',
                 split=True,
-                palette={'train': 'b', 'test':'darkgoldenrod'},
+                palette={'train': 'Default blue', 'test':'darkgoldenrod'},
                 data=measures,
                 scale=scale,
                 order=conditional_models,
@@ -112,7 +112,7 @@ def split_violins(
                 'model_ids',
                 hue='data_split',
                 split=True,
-                palette={'train': 'b', 'test':'darkgoldenrod'},
+                palette={'train': 'Default blue', 'test':'darkgoldenrod'},
                 data=measures,
                 scale=scale,
                 order=conditional_models,
@@ -128,23 +128,22 @@ def split_violins(
     else:
         raise TypeError('Expected either pair of strs, or pair of lists.')
 
-    """
-    if '{bins}' in title:
-        title = title.replace('{bins}', str(bins))
-    if '{bnn_draws}' in title:
-        title = title.replace('{bnn_draws}', str(col_size))
+    if title is not None:
+        #if '{bins}' in title:
+        #    title = title.replace('{bins}', str(bins))
+        #if '{bnn_draws}' in title:
+        #    title = title.replace('{bnn_draws}', str(col_size))
 
-    title = title.replace('\n', '\n')
+        #title = title.replace('\n', '\n')
+        plt.title(title)
 
-    if '{bins}' in xlabel:
-        xlabel = xlabel.replace('{bins}', str(bins))
-    if '{bnn_draws}' in xlabel:
-        xlabel = xlabel.replace('{bnn_draws}', str(col_size))
+    #if '{bins}' in xlabel:
+    #    xlabel = xlabel.replace('{bins}', str(bins))
+    #if '{bnn_draws}' in xlabel:
+    #    xlabel = xlabel.replace('{bnn_draws}', str(col_size))
+    #plt.xlabel(xlabel)
+    #plt.ylabel(ylabel)
 
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    """
     plt.savefig(
         io.create_filepath(output_filepath, overwrite=overwrite),
         dpi=dpi,
