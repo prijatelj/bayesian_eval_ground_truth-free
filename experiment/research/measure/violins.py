@@ -2,6 +2,7 @@ import argparse
 import os
 
 from matplotlib import pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -28,6 +29,8 @@ def split_violins(
     orient='v',
     linewidth=None,
     num_ticks=None,
+    tick_format=None,
+    sns_style='white_grid',
     overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
@@ -36,6 +39,9 @@ def split_violins(
     Parameters
     ----------
     """
+    if isinstance(sns_style, str):
+        sns.set_style(sns_style)
+
     if font_size is not None:
         plt.rcParams.update({'font.size': font_size})
 
@@ -103,6 +109,8 @@ def split_violins(
         if num_ticks is not None:
             y_min, y_may = ax.get_ylim()
             plt.yticks(np.linspace(y_min, y_may, num_ticks))
+            if isinstance(tick_format, str):
+                ax.yaxis.set_major_formatter(FormatStrFormatter(tick_format))
     else:
         ax = sns.violinplot(
             measure_label,
@@ -123,7 +131,8 @@ def split_violins(
         if num_ticks is not None:
             x_min, x_max = ax.get_xlim()
             plt.xticks(np.linspace(x_min, x_max, num_ticks))
-
+            if isinstance(tick_format, str):
+                ax.xaxis.set_major_formatter(FormatStrFormatter(tick_format))
 
     if title is not None:
         #if '{bins}' in title:
