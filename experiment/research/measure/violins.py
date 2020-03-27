@@ -14,7 +14,6 @@ from experiment import io
 def split_violins(
     train_csv,
     test_csv,
-    output_filepath,
     #bins,
     title=None,
     model_label='Conditional Probability Model IDs',
@@ -22,16 +21,19 @@ def split_violins(
     conditional_models=None,
     density=True,
     #color=None,
-    dpi=400,
     measure_range=(0.0, 1.0),
     font_size=None,
-    pad_inches=0.1,
     scale='area',
     orient='v',
     linewidth=None,
     num_major_ticks=None,
     num_minor_ticks=None,
     sns_style='whitegrid',
+    legend=True,
+    ax=None,
+    output_filepath=None,
+    dpi=400,
+    pad_inches=0.1,
     overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
@@ -43,8 +45,8 @@ def split_violins(
     if isinstance(sns_style, str):
         sns.set_style(sns_style)
 
-    if font_size is not None:
-        plt.rcParams.update({'font.size': font_size})
+    #if font_size is not None:
+    #    plt.rcParams.update({'font.size': font_size})
 
     # TODO load all of the csvs.
     if isinstance(train_csv, str) and isinstance(test_csv, str):
@@ -102,12 +104,14 @@ def split_violins(
             orient=orient,
             linewidth=linewidth,
             density=density,
+            ax=ax,
         )
 
         if measure_range is not None:
             ax.set(ylim=measure_range)
         if num_major_ticks is not None:
             ax.yaxis.set_major_locator(LinearLocator(num_major_ticks))
+            ax.grid(True, 'major', 'y', linewidth=1.0)
         if num_minor_ticks is not None:
             ax.yaxis.set_minor_locator(LinearLocator(num_minor_ticks))
             ax.grid(True, 'minor', 'y', linewidth=0.5, linestyle='--')
@@ -124,25 +128,33 @@ def split_violins(
             orient=orient,
             linewidth=linewidth,
             density=density,
+            ax=ax,
         )
 
         if measure_range is not None:
             ax.set(xlim=measure_range)
         if num_major_ticks is not None:
             ax.xaxis.set_major_locator(LinearLocator(num_major_ticks))
+            ax.grid(True, 'major', 'x', linewidth=1.0)
         if num_minor_ticks is not None:
             ax.xaxis.set_minor_locator(LinearLocator(num_minor_ticks))
             ax.grid(True, 'minor', 'x', linewidth=0.5, linestyle='--')
 
     if title is not None:
-        plt.title(title)
+        #plt.title(title)
+        ax.set_title(title)
+    if not legend:
+        ax.get_legend().set_visible(False)
 
-    plt.savefig(
-        io.create_filepath(output_filepath, overwrite=overwrite),
-        dpi=dpi,
-        pad_inches=pad_inches,
-    )
-    plt.close()
+    if isinstance(output_filepath, str):
+        plt.savefig(
+            io.create_filepath(output_filepath, overwrite=overwrite),
+            dpi=dpi,
+            pad_inches=pad_inches,
+        )
+        plt.close()
+
+    return ax
 
 
 def parse_args():
