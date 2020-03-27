@@ -1,8 +1,9 @@
 import argparse
 import os
 
-from matplotlib import pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
+import matplotlib.pyplot as plt
+from matplotlib.ticker import LinearLocator
+#from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -28,8 +29,9 @@ def split_violins(
     scale='area',
     orient='v',
     linewidth=None,
-    num_ticks=None,
-    tick_format=None,
+    num_major_ticks=None,
+    num_minor_ticks=None,
+    #tick_format=None,
     sns_style='whitegrid',
     which_grid=None,
     overwrite=False,
@@ -45,10 +47,6 @@ def split_violins(
 
     if font_size is not None:
         plt.rcParams.update({'font.size': font_size})
-
-    if isinstance(which_grid, str):
-        plt.grid(True, which_grid)
-
 
     # TODO load all of the csvs.
     if isinstance(train_csv, str) and isinstance(test_csv, str):
@@ -110,11 +108,17 @@ def split_violins(
 
         if measure_range is not None:
             ax.set(ylim=measure_range)
-        if num_ticks is not None:
-            y_min, y_may = ax.get_ylim()
-            plt.yticks(np.linspace(y_min, y_may, num_ticks))
-            if isinstance(tick_format, str):
-                ax.yaxis.set_major_formatter(FormatStrFormatter(tick_format))
+        if num_major_ticks is not None:
+            ax.yaxis.set_major_locator(LinearLocator(num_major_ticks))
+        if num_minor_ticks is not None:
+            ax.yaxis.set_minor_locator(LinearLocator(num_major_ticks))
+            #y_min, y_may = ax.get_ylim()
+            #plt.yticks(np.linspace(y_min, y_may, num_ticks))
+            #if isinstance(tick_format, str):
+            #    ax.yaxis.set_major_formatter(FormatStrFormatter(tick_format))
+
+        if isinstance(which_grid, str):
+            plt.grid(True, which_grid, axis='y')
     else:
         ax = sns.violinplot(
             measure_label,
@@ -132,11 +136,19 @@ def split_violins(
 
         if measure_range is not None:
             ax.set(xlim=measure_range)
-        if num_ticks is not None:
-            x_min, x_max = ax.get_xlim()
-            plt.xticks(np.linspace(x_min, x_max, num_ticks))
-            if isinstance(tick_format, str):
-                ax.xaxis.set_major_formatter(FormatStrFormatter(tick_format))
+        if num_major_ticks is not None:
+            ax.xaxis.set_major_locator(LinearLocator(num_major_ticks))
+        if num_minor_ticks is not None:
+            ax.xaxis.set_minor_locator(LinearLocator(num_major_ticks))
+        #if num_ticks is not None:
+        #    x_min, x_max = ax.get_xlim()
+        #    plt.xticks(np.linspace(x_min, x_max, num_ticks))
+        #    if isinstance(tick_format, str):
+        #        ax.xaxis.set_major_formatter(FormatStrFormatter(tick_format))
+
+        if isinstance(which_grid, str):
+            plt.grid(True, which_grid, axis='x')
+
 
     if title is not None:
         #if '{bins}' in title:
