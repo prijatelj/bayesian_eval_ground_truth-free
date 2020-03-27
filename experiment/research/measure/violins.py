@@ -31,6 +31,7 @@ def split_violins(
     num_ticks=None,
     tick_format=None,
     sns_style='whitegrid',
+    which_grid=None,
     overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
@@ -44,6 +45,9 @@ def split_violins(
 
     if font_size is not None:
         plt.rcParams.update({'font.size': font_size})
+
+    if isinstance(which_grid, str):
+        plt.grid(True, which_grid)
 
 
     # TODO load all of the csvs.
