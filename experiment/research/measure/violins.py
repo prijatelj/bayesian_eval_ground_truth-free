@@ -30,7 +30,7 @@ def split_violins(
     linewidth=None,
     num_ticks=None,
     tick_format=None,
-    sns_style='white_grid',
+    sns_style='whitegrid',
     overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
