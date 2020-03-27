@@ -15,8 +15,8 @@ def split_violins(
     output_filepath,
     #bins,
     title=None,
-    #xlabel,
-    measure_name='Normalized Euclidean Distance',
+    model_label='Conditional Probability Model IDs',
+    measure_label='Normalized Euclidean Distance',
     conditional_models=None,
     density=True,
     #color=None,
@@ -27,6 +27,7 @@ def split_violins(
     scale='area',
     orient='v',
     linewidth=None,
+    num_ticks=None,
     overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
@@ -47,7 +48,7 @@ def split_violins(
         # Create DataFrame for plotting
         measures = pd.DataFrame(
             np.concatenate([train, test]),
-            columns=[measure_name],
+            columns=[measure_label],
         )
         measures['data_split'] = ['train'] * len(train) + ['test'] * len(train)
         measures['model'] = conditional_models
@@ -74,9 +75,9 @@ def split_violins(
         # Create DataFrame for plotting
         measures = pd.DataFrame(
             np.concatenate(measures),
-            columns=[measure_name],
+            columns=[measure_label],
         )
-        measures['model_ids'] = model_ids
+        measures[model_label] = model_ids
         measures['data_split'] = data_splits
     else:
         raise TypeError('Expected either pair of strs, or pair of lists.')
@@ -84,8 +85,8 @@ def split_violins(
     # Plot violin
     if orient == 'v':
         ax = sns.violinplot(
-            'model_ids',
-            measure_name,
+            model_label,
+            measure_label,
             hue='data_split',
             split=True,
             palette={'train': 'tab:blue', 'test':'darkgoldenrod'},
@@ -99,10 +100,13 @@ def split_violins(
 
         if measure_range is not None:
             ax.set(ylim=measure_range)
+        if num_ticks is not None:
+            y_min, y_may = ax.get_ylim()
+            plt.yticks(np.linspace(y_min, y_may, num_ticks))
     else:
         ax = sns.violinplot(
-            measure_name,
-            'model_ids',
+            measure_label,
+            model_label,
             hue='data_split',
             split=True,
             palette={'train': 'tab:blue', 'test':'darkgoldenrod'},
@@ -116,6 +120,10 @@ def split_violins(
 
         if measure_range is not None:
             ax.set(xlim=measure_range)
+        if num_ticks is not None:
+            x_min, x_max = ax.get_xlim()
+            plt.xticks(np.linspace(x_min, x_max, num_ticks))
+
 
     if title is not None:
         #if '{bins}' in title:
