@@ -31,9 +31,7 @@ def split_violins(
     linewidth=None,
     num_major_ticks=None,
     num_minor_ticks=None,
-    #tick_format=None,
     sns_style='whitegrid',
-    which_grid=None,
     overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
@@ -111,14 +109,8 @@ def split_violins(
         if num_major_ticks is not None:
             ax.yaxis.set_major_locator(LinearLocator(num_major_ticks))
         if num_minor_ticks is not None:
-            ax.yaxis.set_minor_locator(LinearLocator(num_major_ticks))
-            #y_min, y_may = ax.get_ylim()
-            #plt.yticks(np.linspace(y_min, y_may, num_ticks))
-            #if isinstance(tick_format, str):
-            #    ax.yaxis.set_major_formatter(FormatStrFormatter(tick_format))
-
-        if isinstance(which_grid, str):
-            plt.grid(True, which_grid, axis='y')
+            ax.yaxis.set_minor_locator(LinearLocator(num_minor_ticks))
+            ax.grid(True, 'minor', 'y', linewidth=0.5, linestyle='--')
     else:
         ax = sns.violinplot(
             measure_label,
@@ -139,32 +131,11 @@ def split_violins(
         if num_major_ticks is not None:
             ax.xaxis.set_major_locator(LinearLocator(num_major_ticks))
         if num_minor_ticks is not None:
-            ax.xaxis.set_minor_locator(LinearLocator(num_major_ticks))
-        #if num_ticks is not None:
-        #    x_min, x_max = ax.get_xlim()
-        #    plt.xticks(np.linspace(x_min, x_max, num_ticks))
-        #    if isinstance(tick_format, str):
-        #        ax.xaxis.set_major_formatter(FormatStrFormatter(tick_format))
-
-        if isinstance(which_grid, str):
-            plt.grid(True, which_grid, axis='x')
-
+            ax.xaxis.set_minor_locator(LinearLocator(num_minor_ticks))
+            ax.grid(True, 'minor', 'x', linewidth=0.5, linestyle='--')
 
     if title is not None:
-        #if '{bins}' in title:
-        #    title = title.replace('{bins}', str(bins))
-        #if '{bnn_draws}' in title:
-        #    title = title.replace('{bnn_draws}', str(col_size))
-
-        #title = title.replace('\n', '\n')
         plt.title(title)
-
-    #if '{bins}' in xlabel:
-    #    xlabel = xlabel.replace('{bins}', str(bins))
-    #if '{bnn_draws}' in xlabel:
-    #    xlabel = xlabel.replace('{bnn_draws}', str(col_size))
-    #plt.xlabel(xlabel)
-    #plt.ylabel(ylabel)
 
     plt.savefig(
         io.create_filepath(output_filepath, overwrite=overwrite),
