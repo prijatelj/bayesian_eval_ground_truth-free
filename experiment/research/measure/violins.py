@@ -18,7 +18,7 @@ def split_violins(
     #xlabel,
     measure_name='Normalized Euclidean Distance',
     conditional_models=None,
-    #density=False,
+    density=True,
     #color=None,
     dpi=400,
     measure_range=(0.0, 1.0),
@@ -51,19 +51,6 @@ def split_violins(
         )
         measures['data_split'] = ['train'] * len(train) + ['test'] * len(train)
         measures['model'] = conditional_models
-
-        # Plot violin
-        sns.violinplot(
-            'model',
-            measure_name,
-            hue='data_split',
-            split=True,
-            palette={'train': 'b', 'test':'darkgoldenrod'},
-            data=measures,
-            scale=scale,
-            order=conditional_models,
-            orient=orient,
-        )
     elif (
         isinstance(train_csv, list)
         and isinstance(test_csv, list)
@@ -91,42 +78,44 @@ def split_violins(
         )
         measures['model_ids'] = model_ids
         measures['data_split'] = data_splits
-
-        # Plot violin
-        if orient == 'v':
-            ax = sns.violinplot(
-                'model_ids',
-                measure_name,
-                hue='data_split',
-                split=True,
-                palette={'train': 'tab:blue', 'test':'darkgoldenrod'},
-                data=measures,
-                scale=scale,
-                order=conditional_models,
-                orient=orient,
-                linewidth=linewidth,
-            )
-        else:
-            ax = sns.violinplot(
-                measure_name,
-                'model_ids',
-                hue='data_split',
-                split=True,
-                palette={'train': 'tab:blue', 'test':'darkgoldenrod'},
-                data=measures,
-                scale=scale,
-                order=conditional_models,
-                orient=orient,
-                linewidth=linewidth,
-            )
-
-        if measure_range is not None:
-            if orient == 'v':
-                ax.set(ylim=measure_range)
-            else:
-                ax.set(xlim=measure_range)
     else:
         raise TypeError('Expected either pair of strs, or pair of lists.')
+
+    # Plot violin
+    if orient == 'v':
+        ax = sns.violinplot(
+            'model_ids',
+            measure_name,
+            hue='data_split',
+            split=True,
+            palette={'train': 'tab:blue', 'test':'darkgoldenrod'},
+            data=measures,
+            scale=scale,
+            order=conditional_models,
+            orient=orient,
+            linewidth=linewidth,
+            density=density,
+        )
+
+        if measure_range is not None:
+            ax.set(ylim=measure_range)
+    else:
+        ax = sns.violinplot(
+            measure_name,
+            'model_ids',
+            hue='data_split',
+            split=True,
+            palette={'train': 'tab:blue', 'test':'darkgoldenrod'},
+            data=measures,
+            scale=scale,
+            order=conditional_models,
+            orient=orient,
+            linewidth=linewidth,
+            density=density,
+        )
+
+        if measure_range is not None:
+            ax.set(xlim=measure_range)
 
     if title is not None:
         #if '{bins}' in title:
