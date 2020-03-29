@@ -176,7 +176,7 @@ def exp1_givens_data(
         )
 
     if isinstance(output_path, str):
-        output_path = io.create_dirs(output_path)
+        output_path = io.create_filepath(output_path)
 
         with h5py.File(output_path) as hdf5:
             hdf5.create_dataset(
