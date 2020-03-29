@@ -229,7 +229,7 @@ def add_custom_args(parser):
     )
 
     parser.add_argument(
-        '--load_train',
+        '--load_conds',
         default=None,
         nargs='+',
         type=str,
@@ -258,32 +258,32 @@ if __name__ == '__main__':
         test = None
 
     # Load the candidates as the classes or the filepath to precomputed samples
-    if args.load_train is not None:
+    if args.load_conds is not None:
         # list of filepaths to hdf5 files of conditional samples
         # Handle when candidate is a valid filepath: ready to load 1 or 2 conds
         # samples
         # if no test, then only load first and put in first tuple idx
         # if test, then load 2 and put in order train, test for tuple.
         if args.skip_train_eval:
-            if not os.path.isfile(args.load_train[0]):
-                raise IOError('load_train is not a valid file')
-            if len(args.load_train) > 1:
+            if not os.path.isfile(args.load_conds[0]):
+                raise IOError('load_conds is not a valid file')
+            if len(args.load_conds) > 1:
                 raise ValueError(
-                    'load_train contains more entries than expected.',
+                    'load_conds contains more entries than expected.',
                 )
-            candidate = (None, args.load_train[0])
+            candidate = (None, args.load_conds[0])
         else:
-            if len(args.load_train) > 2:
+            if len(args.load_conds) > 2:
                 raise ValueError(
-                    'load_train contains more entries than expected.',
+                    'load_conds contains more entries than expected.',
                 )
-            if len(args.load_train) == 2 and args.test_datapath is None:
+            if len(args.load_conds) == 2 and args.test_datapath is None:
                 raise ValueError(
-                    'load_train contains more entries than expected. ' \
+                    'load_conds contains more entries than expected. ' \
                     + 'No given test_datapath, but given test conditional '\
                     + 'samples.',
                 )
-            candidate = tuple(args.load_train)
+            candidate = tuple(args.load_conds)
 
         # To make formats match as expected (dict)
         candidates = {args.src_candidates[0]: candidate}
