@@ -48,7 +48,7 @@ def mult_candidates_exp1(
     results = {}
 
     for key, kws in candidates.items():
-        if not isinstance(candidate, tuple):
+        if not isinstance(kws, tuple):
             if isinstance(kws, SupervisedJointDistrib):
                 candidate = kws
             else:
@@ -81,18 +81,12 @@ def mult_candidates_exp1(
                     conditional_samples = f['conditional_samples'][()]
             else:
                 if isinstance(output_dir, str):
-                    train_path = os.path.join(output_dir, key, 'train')
-
-                    if key == 'iid_dirs_adam':
-                        concentration = candidate.transform_distrib._parameters['concentration']
-                        concentration = str(concentration).replace(
-                            ' ','_').replace('[','').replace(']','')
-                        train_path = os.path.join(
-                            train_path,
-                            'conds_concentration_{concentration}.h5',
-                        )
-                    else:
-                        train_path = os.path.join(train_path, 'conds.h5')
+                    train_path = os.path.join(
+                        output_dir,
+                        key,
+                        'train',
+                        'conds.h5',
+                    )
                 else:
                     train_path = None
 
@@ -120,18 +114,12 @@ def mult_candidates_exp1(
                     conditional_samples = f['conditional_samples'][()]
             else:
                 if isinstance(output_dir, str):
-                    test_path = os.path.join(output_dir, key, 'test')
-
-                    if key == 'iid_dirs_adam':
-                        concentration = candidate.transform_distrib._parameters['concentration']
-                        concentration = str(concentration).replace(
-                            ' ','_').replace('[','').replace(']','')
-                        test_path = os.path.join(
-                            test_path,
-                            'conds_concentration_{concentration}.h5',
-                        )
-                    else:
-                        test_path = os.path.join(test_path, 'conds.h5')
+                    test_path = os.path.join(
+                        output_dir,
+                        key,
+                        'test',
+                        'conds.h5',
+                    )
                 else:
                     test_path = None
 
@@ -348,26 +336,46 @@ if __name__ == '__main__':
          )
 
     # Save the results of multiple candidates.
-    for candidate in args.src_candidates:
-        tmp_out_dir = io.create_dirs(
-            os.path.join(output_dir, candidate, 'train'),
-        )
+    for key, candidate in args.src_candidates.items():
+        if key == 'iid_dirs_adam':
+            concentration = candidate.transform_distrib._parameters['concentration']
+            concentration = str(concentration).replace(
+                ' ','_').replace('[','').replace(']','')
+            tmp_out_dir = io.create_dirs(
+                os.path.join(output_dir, key, concentration, 'train'),
+            )
+        else:
+            tmp_out_dir = io.create_dirs(
+                os.path.join(output_dir, key, 'train'),
+            )
+            concentration = None
+
         kldiv.save_measures(
             tmp_out_dir,
             'euclid_dists_train',
-            results[candidate]['train'],
+            results[key]['train'],
             args.quantiles_frac,
             not args.do_not_save_raw,
         )
 
         if test is not None:
-            tmp_out_dir = io.create_dirs(
-                os.path.join(output_dir, candidate, 'test'),
-            )
+            if key == 'iid_dirs_adam':
+                if concentration is None:
+                    concentration = candidate.transform_distrib._parameters['concentration']
+                    concentration = str(concentration).replace(
+                        ' ','_').replace('[','').replace(']','')
+                tmp_out_dir = io.create_dirs(
+                    os.path.join(output_dir, key, concentration, 'test'),
+                )
+            else:
+                tmp_out_dir = io.create_dirs(
+                    os.path.join(output_dir, key, 'test'),
+                )
+
             kldiv.save_measures(
                 tmp_out_dir,
                 'euclid_dists_test',
-                results[candidate]['test'],
+                results[key]['test'],
                 args.quantiles_frac,
                 not args.do_not_save_raw,
             )
