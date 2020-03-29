@@ -64,6 +64,7 @@ def mult_candidates_exp1(
         else:
             # params already saved, just load the conditional samples.
             candidate = kws
+            results[key] = {}
 
         # Fitting done, now for sampling and eval:
         if not skip_train_eval:
