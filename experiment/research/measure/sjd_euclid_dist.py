@@ -328,7 +328,7 @@ if __name__ == '__main__':
          )
 
     # Save the results of multiple candidates.
-    for key, result in args.src_candidates.items():
+    for key, result in results.items():
         tmp_out_dir = io.create_dirs(os.path.join(output_dir, key, 'train'))
 
         if 'params' in result:
