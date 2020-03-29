@@ -5,6 +5,7 @@ import logging
 import os
 
 import numpy as np
+import h5py
 
 from psych_metric.distrib.supervised_joint_distrib import SupervisedJointDistrib
 
@@ -21,6 +22,8 @@ def mult_candidates_exp1(
     test=None,
     sample_size=100,
     normalize=False,
+    output_dir=None,
+    skip_train_eval=False,
     ):
     """
     Runs multiple instances of experiment 1 with the given set of candidates
@@ -43,36 +46,107 @@ def mult_candidates_exp1(
     """
     # iterate through the candidate SJDs to obtain their results
     results = {}
+
     for key, kws in candidates.items():
-        if isinstance(kws, SupervisedJointDistrib):
-            candidate = kws
+        if not isinstance(candidate, tuple):
+            if isinstance(kws, SupervisedJointDistrib):
+                candidate = kws
+            else:
+                # fit appropriate SJDs to train data.
+                candidate = SupervisedJointDistrib(
+                    target=train[0],
+                    pred=train[1],
+                    **kws,
+                )
+
+            # Save parameters
+            results[key] = {'params': candidate.params}
+
+            if isinstance(output_dir, str):
+                test_path = os.path.join(
+                    output_dir,
+                    key,
+                    'test',
+                    'conds_test.h5',
+                )
         else:
-            # fit appropriate SJDs to train data.
-            candidate = SupervisedJointDistrib(
-                target=train[0],
-                pred=train[1],
-                **kws,
+            # params already saved, just load the conditional samples.
+            candidate = kws
+
+        # Fitting done, now for sampling and eval:
+        if not skip_train_eval:
+            if isinstance(candidate, tuple):
+                # Candidate is the str filepaths to the data to be loaded
+                with h5py.File(candidate[0], 'r') as f:
+                    conditional_samples = f['conditional_samples'][()]
+            else:
+                if isinstance(output_dir, str):
+                    train_path = os.path.join(output_dir, key, 'train')
+
+                    if key == 'iid_dirs_adam':
+                        concentration = candidate.transform_distrib._parameters['concentration']
+                        concentration = str(concentration).replace(
+                            ' ','_').replace('[','').replace(']','')
+                        train_path = os.path.join(
+                            train_path,
+                            'conds_concentration_{concentration}.h5',
+                        )
+                    else:
+                        train_path = os.path.join(train_path, 'conds.h5')
+                else:
+                    train_path = None
+
+                # Get log prob exp results on in-sample data:
+                conditional_samples = exp1_givens_data(
+                    candidate,
+                    train[0],
+                    train[1],
+                    sample_size,
+                    normalize,
+                    train_path,
+                )
+
+            results[key]['train'] = kldiv.get_l2dists(
+                train[1],
+                conditional_samples,
+                normalize,
             )
-
-        # Save parameters
-        results[key] = {'params': candidate.params}
-
-        # Get log prob exp results on in-sample data:
-        results[key]['train'] = exp1_givens_data(
-            candidate,
-            train[0],
-            train[1],
-            sample_size,
-            normalize=normalize,
-        )
 
         if test is not None:
             # Get out of sample log prob exp results
-            results[key]['test'] = exp1_givens_data(
-                candidate,
-                test[0],
+            if isinstance(candidate, tuple):
+                # Candidate is the str filepaths to the data to be loaded
+                with h5py.File(candidate[1], 'r') as f:
+                    conditional_samples = f['conditional_samples'][()]
+            else:
+                if isinstance(output_dir, str):
+                    test_path = os.path.join(output_dir, key, 'test')
+
+                    if key == 'iid_dirs_adam':
+                        concentration = candidate.transform_distrib._parameters['concentration']
+                        concentration = str(concentration).replace(
+                            ' ','_').replace('[','').replace(']','')
+                        test_path = os.path.join(
+                            test_path,
+                            'conds_concentration_{concentration}.h5',
+                        )
+                    else:
+                        test_path = os.path.join(test_path, 'conds.h5')
+                else:
+                    test_path = None
+
+                conditional_samples = exp1_givens_data(
+                    candidate,
+                    test[0],
+                    test[1],
+                    sample_size,
+                    normalize,
+                    test_path,
+                )
+
+            results[key]['test'] =  kldiv.get_l2dists(
                 test[1],
-                sample_size,
+                conditional_samples,
                 normalize,
             )
 
@@ -85,6 +159,7 @@ def exp1_givens_data(
     preds,
     sample_size=100,
     normalize=False,
+    output_path=None,
 ):
     """Calculates the euclidean distance of the candidate
     SupervisedJointDistrib models' conditional distrib samples to the actual
@@ -94,15 +169,16 @@ def exp1_givens_data(
 
     Parameters
     ----------
-    candidates : SupervisedJointDistrib
+    candidates : SupervisedJointDistrib | np.ndarray
         instance of a SupervisedJointDistrib whose log prob is to be estimated.
+        An array of the samples of the model of the conditional distribution.
     target : np.ndarray
         Used as input to the SJD to generate the conditoinal distribution to be
         evaluated against the actual predicitons via Euclidean distance
         (residuals)
     pred : np.ndarray
     """
-    # TODO sample from given candidate sjd, the conditional distrib only.
+    # Sample from given candidate sjd, the conditional distrib only.
     if candidate.independent:
         conditional_samples = candidate.sample(
             len(targets) * sample_size,
@@ -119,9 +195,16 @@ def exp1_givens_data(
             1,
         )
 
-        # TODO optionally save samples.
+    if isinstance(output_path, str):
+        output_path = io.create_dirs(output_path)
 
-    return kldiv.get_l2dists(preds, conditional_samples, normalize)
+        with h5py.File(output_path) as hdf5:
+            hdf5.create_dataset(
+                'conditional_samples',
+                data=conditional_samples,
+            )
+
+    return conditional_samples
 
 
 def add_custom_args(parser):
@@ -134,6 +217,12 @@ def add_custom_args(parser):
         nargs='+',
         type=str,
         help='The premade candidate SJDs to be tested.'
+    )
+
+    parser.add_argument(
+        '--save_conds',
+        action='store_true',
+        help='Save the predictions of the SJD results to this filepath.'
     )
 
     parser.add_argument(
@@ -151,6 +240,21 @@ def add_custom_args(parser):
             'The number of samples to draw from the conditional distribution',
             'per given sample.'
         ])
+    )
+
+    parser.add_argument(
+        '--skip_train_eval',
+        action='store_true',
+        help='Skips evaluating training.',
+    )
+
+    parser.add_argument(
+        '--load_train',
+        default=None,
+        nargs='+',
+        type=str,
+        help='Loads the conditional samples. Expects only 1 src candidate. ' \
+            + 'Expects 1 or 2 filepaths here.',
     )
 
 
@@ -173,41 +277,74 @@ if __name__ == '__main__':
     else:
         test = None
 
-    if args.src_candidates is None:
-        args.src_candidates = [
-            'iid_uniform_dirs',
-            'iid_dirs_mean',
-            #'iid_dirs_adam',
-            'dir-mean_mvn-umvu',
-            #'dir-adam_mvn-umvu',
-        ]
+    # Load the candidates as the classes or the filepath to precomputed samples
+    if args.load_train is not None:
+        # list of filepaths to hdf5 files of conditional samples
+        # Handle when candidate is a valid filepath: ready to load 1 or 2 conds
+        # samples
+        # if no test, then only load first and put in first tuple idx
+        # if test, then load 2 and put in order train, test for tuple.
+        if args.skip_train_eval:
+            if not os.path.isfile(args.load_train[0]):
+                raise IOError('load_train is not a valid file')
+            if len(args.load_train) > 1:
+                raise ValueError(
+                    'load_train contains more entries than expected.',
+                )
+            candidate = (None, args.load_train[0])
+        else:
+            if len(args.load_train) > 2:
+                raise ValueError(
+                    'load_train contains more entries than expected.',
+                )
+            if len(args.load_train) == 2 and args.test_datapath is None:
+                raise ValueError(
+                    'load_train contains more entries than expected. ' \
+                    + 'No given test_datapath, but given test conditional '\
+                    + 'samples.',
+                )
+            candidate = tuple(args.load_train)
 
-    logging.info('Getting candidates')
-    # Get candidates
-    candidates = src_candidates.get_sjd_candidates(
-        args.src_candidates,
-        train[0].shape[1],
-        vars(args.mle),
-        vars(args.sjd),
-        n_jobs=args.cpu_cores,
-    )
+        # To make formats match as expected (dict)
+        candidates = {args.src_candidates[0]: candidate}
+    else:
+        if args.src_candidates is None:
+            args.src_candidates = [
+                'iid_uniform_dirs',
+                'iid_dirs_mean',
+                #'iid_dirs_adam',
+                'dir-mean_mvn-umvu',
+                #'dir-adam_mvn-umvu',
+            ]
+
+        logging.info('Getting candidates')
+        # Get candidates
+        candidates = src_candidates.get_sjd_candidates(
+            args.src_candidates,
+            train[0].shape[1],
+            vars(args.mle),
+            vars(args.sjd),
+            n_jobs=args.cpu_cores,
+        )
 
     # Loop through candidates, fit givens and conds, sample conds given
     # data givens,
     if test is not None:
         results = mult_candidates_exp1(
             candidates,
-             train,
-             test,
-             sample_size=args.sample_size,
-             normalize=args.normalize,
+            train,
+            test,
+            sample_size=args.sample_size,
+            normalize=args.normalize,
+            output_dir=output_dir if args.save_conds else None,
          )
     else:
         results = mult_candidates_exp1(
             candidates,
-             train,
-             sample_size=args.sample_size,
-             normalize=args.normalize,
+            train,
+            sample_size=args.sample_size,
+            normalize=args.normalize,
+            output_dir=output_dir if args.save_conds else None,
          )
 
     # Save the results of multiple candidates.
