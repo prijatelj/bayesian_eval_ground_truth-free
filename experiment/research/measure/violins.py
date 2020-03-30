@@ -67,10 +67,8 @@ def split_violins(
         data_splits = []
         for i in range(len(train_csv)):
             train = pd.read_csv(train_csv[i], header=None).values.flatten()
-            measures += [
-                train,
-                pd.read_csv(test_csv[i], header=None).values.flatten(),
-            ]
+            test = pd.read_csv(test_csv[i], header=None).values.flatten()
+            measures += [train, test]
 
             model_ids += [conditional_models[i]] * len(train) + len(test)
             data_splits += ['train'] * len(train) + ['test'] * len(test)
