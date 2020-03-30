@@ -3,7 +3,6 @@ import os
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LinearLocator
-#from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -14,13 +13,11 @@ from experiment import io
 def split_violins(
     train_csv,
     test_csv,
-    #bins,
     title=None,
     model_label='Conditional Probability Model IDs',
     measure_label='Normalized Euclidean Distance',
     conditional_models=None,
     density=True,
-    #color=None,
     measure_range=(0.0, 1.0),
     font_size=None,
     scale='area',
@@ -45,11 +42,9 @@ def split_violins(
     if isinstance(sns_style, str):
         sns.set_style(sns_style)
 
-    #if font_size is not None:
-    #    plt.rcParams.update({'font.size': font_size})
-
-    # TODO load all of the csvs.
+    # Load all of the csvs.
     if isinstance(train_csv, str) and isinstance(test_csv, str):
+        # TODO adjust this to allow plotting for single (train,test) pair.
         train = pd.read_csv(train_csv, header=None).values.flatten()
         test = pd.read_csv(test_csv, header=None).values.flatten()
 
@@ -58,7 +53,7 @@ def split_violins(
             np.concatenate([train, test]),
             columns=[measure_label],
         )
-        measures['data_split'] = ['train'] * len(train) + ['test'] * len(train)
+        measures['data_split'] = ['train'] * len(train) + ['test'] * len(test)
         measures['model'] = conditional_models
     elif (
         isinstance(train_csv, list)
@@ -241,5 +236,42 @@ def parse_args():
 
     return args
 
+"""
+def dummy(
+    train_csv,
+    test_csv,
+    title=None,
+    model_label='Conditional Probability Model IDs',
+    measure_label='Normalized Euclidean Distance',
+    conditional_models=None,
+    density=True,
+    measure_range=(0.0, 1.0),
+    font_size=None,
+    scale='area',
+    orient='v',
+    linewidth=None,
+    num_major_ticks=None,
+    num_minor_ticks=None,
+    sns_style='whitegrid',
+    legend=True,
+    ax=None,
+    output_filepath=None,
+    dpi=400,
+    pad_inches=0.1,
+    overwrite=False,
+):
+    return
+"""
+
 if __name__ == '__main__':
-    hist_plots(**vars(parse_args()))
+    args = parse_args()
+
+    """
+    output_filepath = args.output_filepath
+    del args.output_filepath
+
+    fig, ax = plt.subplot(row, col, )
+
+
+    split_violins(**vars(args))
+    """
