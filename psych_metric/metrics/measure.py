@@ -102,3 +102,50 @@ def highest_density_credible_interval(vector, sample_density):
     idx = np.argmin(high_quantiles - low_quantiles)
 
     return low_quantiles[idx], high_quantiles[idx]
+
+
+def one_tailed_credible_interval(vector, sample_density, left_tail=True):
+    """Finds the one-tailed credible interval (left or right) for a vector of
+    values. This interval is found by sorting the vector vlaues, then using the
+    interval size to index the data and obtain the one tailed credible interval
+    of the desired % size (ie. 95% credible interval).
+
+    The granularity used to check the intervals is always by 1 sample.
+
+    Parameters
+    ----------
+    vector : np.ndarray
+        The vector of values whose credible interval is to be calculated.
+    sample_density : float
+        Float from (0,1) that represents the amount of data points that the
+        credible interval is to contain (ie. .95 results in a credible interval
+        that contains 95% of the sorted data with the highest density).
+    left : bool
+        Defaults to performing a left tailed test. Set to False for a right
+        tailed test.
+
+    Returns
+    -------
+    int | float
+        The location of the credible interval boundary.
+    """
+    if sample_density <= 0 or sample_density >= 1:
+        raise ValueError(
+            'The Credible interval size must be within the range (0,1)',
+        )
+
+    if not isinstance(vector, np.ndarray):
+        vector = np.array(vector)
+
+    if vector.shape > 1:
+        # If given multiple dim array, flatten into 1d
+        vector = np.ravel(vector)
+
+    # Sort vector
+    sorted_vec = np.sort(vector)
+    vec_size = len(sorted_vec)
+
+    if left_tail:
+        return sorted_vec[int(np.floor(vec_size * (1.0 - sample_density)))]
+    # Right tailed credible interval
+    return sorted_vec[int(np.ceil(vec_size * sample_density))]
