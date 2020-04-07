@@ -9,6 +9,8 @@ import seaborn as sns
 
 from experiment import io
 
+from psych_metric.metric import measure
+
 
 def split_violins(
     train_csv,
@@ -21,14 +23,14 @@ def split_violins(
     measure_range=(0.0, 1.0),
     font_size=None,
     scale='area',
-    orient='v',
+    orient='h',
     linewidth=None,
     num_major_ticks=None,
     num_minor_ticks=None,
     sns_style='whitegrid',
     legend=True,
     ax=None,
-    output_filepath=None,
+    output_path=None,
     dpi=400,
     pad_inches=0.1,
     overwrite=False,
@@ -139,9 +141,9 @@ def split_violins(
     if not legend:
         ax.get_legend().set_visible(False)
 
-    if isinstance(output_filepath, str):
+    if isinstance(output_path, str):
         plt.savefig(
-            io.create_filepath(output_filepath, overwrite=overwrite),
+            io.create_filepath(output_path, overwrite=overwrite),
             dpi=dpi,
             pad_inches=pad_inches,
         )
@@ -154,23 +156,34 @@ def parse_args():
     parser = argparse.ArgumentParser(description='')
 
     parser.add_argument(
-        'measures_csv',
-        help='CSV containing measurements.',
+        'train_paths',
+        help='CSV containing measurements on train.',
     )
 
     parser.add_argument(
-        'output_filepath',
+        'test_paths',
+        help='CSV containing measurements on test.',
+    )
+
+    parser.add_argument(
+        'output_path',
         default=None,
         help='The output file path of converted json.',
     )
 
     parser.add_argument(
-        '-b',
-        '--bins',
-        default=1000,
-        type=int,
-        help='The number of bins to use for the histogram.',
+        '--overwrite',
+        action='store_true',
+        help='If given, the script will overwrite pre-existing files.',
     )
+
+    #parser.add_argument(
+    #    '-b',
+    #    '--bins',
+    #    default=1000,
+    #    type=int,
+    #    help='The number of bins to use for the histogram.',
+    #)
 
     parser.add_argument(
         '--dpi',
@@ -193,24 +206,29 @@ def parse_args():
         help='The font size of labels on the histogram.',
     )
 
+    #parser.add_argument(
+    #    '-c',
+    #    '--color',
+    #    default=None,
+    #    help='The color of the histogram.',
+    #)
+
     parser.add_argument(
-        '-c',
-        '--color',
-        default=None,
-        help='The color of the histogram.',
+        '--orient',
+        default='h',
+        help='The orientation of the violin plot.',
     )
 
     parser.add_argument(
         '-t',
         '--title',
         default=None,
-        help='The title of the histogram.',
+        help='The title of the violin plot.',
     )
 
     parser.add_argument(
-        '-x',
-        '--xlabel',
-        default='Normalized Euclidean Distance (bins={bins}, {bnn_draws}draws/pred)',
+        '--measure_label',
+        default='Normalized Euclidean Distance',
         help='The label along the x axis.',
     )
 
@@ -222,54 +240,111 @@ def parse_args():
     )
 
     parser.add_argument(
-        '--density',
+        '--not_density',
         action='store_true',
         help='If given, the hidden layers DO NOT use biases (set to zeros)',
     )
 
+    parser.add_argument(
+        '--legend',
+        action='store_true',
+        help='If given, the script will include a legend on the plot.',
+    )
+
+    parser.add_argument(
+        '--measure_lower',
+        default=None,
+        type=float,
+        help='The lower bound of the measure.',
+    )
+
+    parser.add_argument(
+        '--measure_upper',
+        default=None,
+        type=float,
+        help='The upper bound of the measure.',
+    )
+
+    parser.add_argument(
+        '--num_major_ticks',
+        default=11,
+        type=int,
+        help='The number of major ticks in the violin plot.',
+    )
+
+    parser.add_argument(
+        '--num_minor_ticks',
+        default=21,
+        type=int,
+        help='The number of minor ticks in the violin plot.',
+    )
+
+    parser.add_argument(
+        '--linewidth',
+        default=0.1,
+        type=float,
+        help='The line width of the violin plot.',
+    )
+
+    parser.add_argument(
+        '--cred_interval',
+        default=None,
+        choices=['left', 'right', 'highest_density'],
+        help='The type of credibility interval to calculate.',
+    )
+
+    parser.add_argument(
+        '--credibility',
+        default=0.95,
+        type=float,
+        help='The credibility percent to calculate.',
+    )
+
     args = parser.parse_args()
+
+    # Handle args post parsing
+    args.density = not args.not_density
+    del args.not_density
 
     if args.density and args.ylabel == 'Occurrence Count':
         args.ylabel = 'Occurrence Density'
 
+    # if bins: Measure label: (bins={bins}, {bnn_draws}draws/pred)
+
+    if args.measure_lower is not None and args.measure is not None:
+        args.measure_range = (args.measure_lower, args.measure_upper)
+    else:
+        args.measure_range = (0, 1)
+
     return args
 
-"""
-def dummy(
-    train_csv,
-    test_csv,
-    title=None,
-    model_label='Conditional Probability Model IDs',
-    measure_label='Normalized Euclidean Distance',
-    conditional_models=None,
-    density=True,
-    measure_range=(0.0, 1.0),
-    font_size=None,
-    scale='area',
-    orient='v',
-    linewidth=None,
-    num_major_ticks=None,
-    num_minor_ticks=None,
-    sns_style='whitegrid',
-    legend=True,
-    ax=None,
-    output_filepath=None,
-    dpi=400,
-    pad_inches=0.1,
-    overwrite=False,
-):
-    return
-"""
 
 if __name__ == '__main__':
     args = parse_args()
 
-    """
-    output_filepath = args.output_filepath
-    del args.output_filepath
+    sns.set_style('whitegrid')
 
-    fig, ax = plt.subplot(row, col, )
+    fig, ax = plt.subplots(1, 1, figsize=(4,4))
 
+    ax = split_violins(
+        args.train_paths,
+        args.test_paths,
+        conditional_models=args.conditional_models,
+        orient=args.orient,
+        title=args.title,
+        linewidth=args.linewidth,
+        overwrite=args.overwrite,
+        num_major_ticks=args.num_major_ticks,
+        num_minor_ticks=args.num_minor_ticks,
+        ax=ax,
+        legend=args.legend,
+        measure_label=args.measure_label,
+    )
 
-    split_violins(**vars(args))
-    """
+    output_path = io.create_filepath(args.output_path, overwrite=args.overwrite)
+    fig.savefig(
+        output_path,
+        dpi=args.dpi,
+        pad_inches=args.pad_inches,
+        bbox_inches='tight',
+    )
