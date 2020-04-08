@@ -102,13 +102,13 @@ def get_cred(train_csv, test_csv, cred_interval, credibility=.95):
         }
 
     if cred_interval == 'left' or cred_interval == 'right':
-        train_interval = measure.highest_density_credible_interval(
+        train_interval = measure.one_tailed_credible_interval(
             train,
             credibility,
             cred_interval == 'left',
         )
 
-        test_interval = measure.highest_density_credible_interval(
+        test_interval = measure.one_tailed_credible_interval(
             test,
             credibility,
             cred_interval == 'left',
