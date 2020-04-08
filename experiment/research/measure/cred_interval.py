@@ -33,7 +33,8 @@ def parse_args():
     )
 
     parser.add_argument(
-        'output_path',
+        '-o',
+        '--output_path',
         default=None,
         help='The output file path of converted json.',
     )
