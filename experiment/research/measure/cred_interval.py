@@ -127,24 +127,24 @@ if __name__ == '__main__':
     intervals['credibility'] = args.credibility
     intervals['credibility_interval'] = args.cred_interval
 
-    if isinstance(args.train_path, str) and isinstance(args.test_path, str):
+    if isinstance(args.train_paths, str) and isinstance(args.test_paths, str):
         intervals[args.conditional_models] = get_cred(
-            args.train_path,
-            args.test_path,
+            args.train_paths,
+            args.test_paths,
             args.cred_interval,
             args.credibility,
         )
     elif (
-        isinstance(args.train_path, list)
-        and isinstance(args.test_path, list)
-        and len(args.train_path) == len(args.test_path)
+        isinstance(args.train_paths, list)
+        and isinstance(args.test_paths, list)
+        and len(args.train_paths) == len(args.test_paths)
         and args.conditional_models is not None
-        and len(args.train_path) == len(args.conditional_models)
+        and len(args.train_paths) == len(args.conditional_models)
     ):
-        for i in range(len(args.train_path)):
+        for i in range(len(args.train_paths)):
             intervals[args.conditional_models[i]] = get_cred(
-                args.train_path[i],
-                args.test_path[i],
+                args.train_paths[i],
+                args.test_paths[i],
                 args.cred_interval,
                 args.credibility,
             )
