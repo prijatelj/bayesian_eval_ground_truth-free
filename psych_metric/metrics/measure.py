@@ -102,7 +102,7 @@ def highest_density_credible_interval(vector, sample_density):
     if not isinstance(vector, np.ndarray):
         vector = np.array(vector)
 
-    if vector.shape > 1:
+    if len(vector.shape) > 1:
         # If given multiple dim array, flatten into 1d
         vector = np.ravel(vector)
 
@@ -154,7 +154,7 @@ def one_tailed_credible_interval(vector, sample_density, left_tail=True):
     if not isinstance(vector, np.ndarray):
         vector = np.array(vector)
 
-    if vector.shape > 1:
+    if len(vector.shape) > 1:
         # If given multiple dim array, flatten into 1d
         vector = np.ravel(vector)
 
