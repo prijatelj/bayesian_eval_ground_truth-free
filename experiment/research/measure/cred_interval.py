@@ -47,12 +47,6 @@ def parse_args():
 
     # Data  speccific args
     parser.add_argument(
-        '--measure_label',
-        default='Normalized Euclidean Distance',
-        help='The label along the x axis.',
-    )
-
-    parser.add_argument(
         '--conditional_models',
         default='conditional_model',
         nargs='+',
@@ -121,7 +115,7 @@ def get_cred(train_csv, test_csv, cred_interval, credibility=.95):
 
         return {'train': train_interval, 'test': test_interval}
 
-    raise ValueError(f'Unexpected cred_interval value = {cred_interval}'}
+    raise ValueError(f'Unexpected cred_interval value = {cred_interval}')
 
 
 if __name__ == '__main__':
@@ -132,24 +126,24 @@ if __name__ == '__main__':
     intervals['credibility'] = args.credibility
     intervals['credibility_interval'] = args.cred_interval
 
-    if isinstance(train_csv, str) and isinstance(test_csv, str):
+    if isinstance(args.train_path, str) and isinstance(args.test_path, str):
         intervals[args.conditional_models] = get_cred(
-            train_csv,
-            test_csv,
+            args.train_path,
+            args.test_path,
             args.cred_interval,
             args.credibility,
         )
     elif (
-        isinstance(train_csv, list)
-        and isinstance(test_csv, list)
-        and len(train_csv) == len(test_csv)
-        and conditional_models is not None
-        and len(train_csv) == len(conditional_models)
+        isinstance(args.train_path, list)
+        and isinstance(args.test_path, list)
+        and len(args.train_path) == len(args.test_path)
+        and args.conditional_models is not None
+        and len(args.train_path) == len(args.conditional_models)
     ):
-        for i in range(len(train_csv)):
+        for i in range(len(args.train_path)):
             intervals[args.conditional_models[i]] = get_cred(
-                train_csv[i],
-                test_csv[i],
+                args.train_path[i],
+                args.test_path[i],
                 args.cred_interval,
                 args.credibility,
             )
