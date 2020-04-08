@@ -20,6 +20,8 @@ def split_violins(
     measure_label='Normalized Euclidean Distance',
     conditional_models=None,
     density=True,
+    cred_interval=None,
+    credibilty=.95,
     measure_range=(0.0, 1.0),
     font_size=None,
     scale='area',
@@ -233,9 +235,8 @@ def parse_args():
     )
 
     parser.add_argument(
-        '-y',
-        '--ylabel',
-        default='Occurrence Count',
+        '--model_label',
+        default='Conditional Probability Model IDs',
         help='The label along the y axis.',
     )
 
@@ -306,8 +307,8 @@ def parse_args():
     args.density = not args.not_density
     del args.not_density
 
-    if args.density and args.ylabel == 'Occurrence Count':
-        args.ylabel = 'Occurrence Density'
+    #if args.density and args.ylabel == 'Occurrence Count':
+    #    args.ylabel = 'Occurrence Density'
 
     # if bins: Measure label: (bins={bins}, {bnn_draws}draws/pred)
 
@@ -329,9 +330,10 @@ if __name__ == '__main__':
     ax = split_violins(
         args.train_paths,
         args.test_paths,
+        title=args.title,
+        model_label=args.model_label,
         conditional_models=args.conditional_models,
         orient=args.orient,
-        title=args.title,
         linewidth=args.linewidth,
         overwrite=args.overwrite,
         num_major_ticks=args.num_major_ticks,
