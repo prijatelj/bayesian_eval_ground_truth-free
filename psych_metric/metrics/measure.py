@@ -51,6 +51,23 @@ def measure(measure_func, targets, preds):
     return np.array(conditionals_measurements)
 
 
+def credible_interval(vector, sample_density, version='highest_density'):
+    """Wraps the density based credible interval functions."""
+    if version == 'highest_density':
+        return highest_density_credible_interval(vector, sample_density)
+
+    if version == 'left':
+        return one_tailed_credible_interval(vector, sample_density, True)
+
+    if version == 'right':
+        return one_tailed_credible_interval(vector, sample_density, False)
+
+    raise ValueError(' '.join([
+        'Expected `version` to be one of "highest density", "left", or',
+        f'"right"; not {version}',
+    ]))
+
+
 def highest_density_credible_interval(vector, sample_density):
     """Finds the highest density credible interval (aka highest posterior
     density interval) for a vector of values. This interval is found by sorting
