@@ -18,14 +18,14 @@ def split_violins(
     title=None,
     model_label='Conditional Probability Model IDs',
     measure_label='Normalized Euclidean Distance',
-    conditional_models=None,
+    conditional_models=['conditional_model'],
     density=True,
-    cred_interval=None,
-    credibilty=.95,
+    cred_intervals=None,
     measure_range=(0.0, 1.0),
     font_size=None,
     scale='area',
     orient='h',
+    alpha=.8,
     linewidth=None,
     num_major_ticks=None,
     num_minor_ticks=None,
@@ -58,7 +58,7 @@ def split_violins(
             columns=[measure_label],
         )
         measures['data_split'] = ['train'] * len(train) + ['test'] * len(test)
-        measures['model'] = conditional_models
+        measures['model'] = conditional_models[0]
     elif (
         isinstance(train_csv, list)
         and isinstance(test_csv, list)
@@ -102,6 +102,7 @@ def split_violins(
             linewidth=linewidth,
             density=density,
             ax=ax,
+            alpha=alpha,
         )
 
         if measure_range is not None:
@@ -112,6 +113,22 @@ def split_violins(
         if num_minor_ticks is not None:
             ax.yaxis.set_minor_locator(LinearLocator(num_minor_ticks))
             ax.grid(True, 'minor', 'y', linewidth=0.5, linestyle='--')
+
+        if isinstance(cred_intervals, list):
+            # Plot the given values over the entire violin plot
+            # NOTE requires post processing as svg if multiple violins
+            # may be able to find ymin and ymax from plot...
+            color_switch = False
+            for interval in cred_intervals:
+                ax.axhline(
+                    interval,
+                    linewidth=1.1,
+                    color='darkgoldenrod' if color_switch else 'tab:blue',
+                    linestyle='-.',
+                )
+
+                if len(cred_intervals) == 2 * len(conditional_models):
+                    color_switch ^= True
     else:
         ax = sns.violinplot(
             measure_label,
@@ -126,6 +143,7 @@ def split_violins(
             linewidth=linewidth,
             density=density,
             ax=ax,
+            alpha=alpha,
         )
 
         if measure_range is not None:
@@ -137,11 +155,28 @@ def split_violins(
             ax.xaxis.set_minor_locator(LinearLocator(num_minor_ticks))
             ax.grid(True, 'minor', 'x', linewidth=0.5, linestyle='--')
 
+        if isinstance(cred_intervals, list):
+            # Plot the given values over the entire violin plot
+            # NOTE requires post processing as svg if multiple violins
+            # may be able to find ymin and ymax from plot...
+            color_switch = False
+            for interval in cred_intervals:
+                ax.axvline(
+                    interval,
+                    linewidth=1.1,
+                    color='darkgoldenrod' if color_switch else 'tab:blue',
+                    linestyle='-.',
+                )
+
+                if len(cred_intervals) == 2 * len(conditional_models):
+                    color_switch ^= True
+
     if title is not None:
         #plt.title(title)
         ax.set_title(title)
     if not legend:
         ax.get_legend().set_visible(False)
+
 
     if isinstance(output_path, str):
         plt.savefig(
@@ -159,12 +194,26 @@ def parse_args():
 
     parser.add_argument(
         'train_paths',
+        default=None,
+        nargs='+',
+        type=str,
         help='CSV containing measurements on train.',
     )
 
     parser.add_argument(
-        'test_paths',
+        '--test_paths',
+        default=None,
+        nargs='+',
+        type=str,
         help='CSV containing measurements on test.',
+    )
+
+    parser.add_argument(
+        '--conditional_models',
+        default=None,
+        nargs='+',
+        type=str,
+        help='Names of the different conditional models.',
     )
 
     parser.add_argument(
@@ -288,17 +337,11 @@ def parse_args():
     )
 
     parser.add_argument(
-        '--cred_interval',
+        '--cred_intervals',
         default=None,
-        choices=['left', 'right', 'highest_density'],
-        help='The type of credibility interval to calculate.',
-    )
-
-    parser.add_argument(
-        '--credibility',
-        default=0.95,
+        nargs='+',
         type=float,
-        help='The credibility percent to calculate.',
+        help='The credibility interval to overlay the violin plot.',
     )
 
     args = parser.parse_args()
@@ -316,6 +359,8 @@ def parse_args():
         args.measure_range = (args.measure_lower, args.measure_upper)
     else:
         args.measure_range = (0, 1)
+
+    #TODO if args.test_paths is None:
 
     return args
 
