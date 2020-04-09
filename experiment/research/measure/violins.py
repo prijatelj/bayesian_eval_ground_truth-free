@@ -380,6 +380,7 @@ if __name__ == '__main__':
         conditional_models=args.conditional_models,
         orient=args.orient,
         linewidth=args.linewidth,
+        cred_intervals=args.cred_intervals,
         overwrite=args.overwrite,
         num_major_ticks=args.num_major_ticks,
         num_minor_ticks=args.num_minor_ticks,
