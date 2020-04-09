@@ -109,10 +109,11 @@ def highest_density_credible_interval(vector, sample_density):
     # Sort vector
     sorted_vec = np.sort(vector)
     vec_size = len(sorted_vec)
+    start_idx = int(np.ceil(vec_size * sample_density))
 
     # Get the paired low and high quantiles
-    high_quantiles = sorted_vec[int(np.ceil(vec_size * sample_density)):]
-    low_quantiles = sorted_vec[:int(np.ceil(vec_size * (1.0 - sample_density)))]
+    high_quantiles = sorted_vec[start_idx:]
+    low_quantiles = sorted_vec[:vec_size - start_idx]
 
     # Iterate through the vector with static interval size, check differences
     # minimum distance is the highest density credible interval
@@ -161,8 +162,9 @@ def one_tailed_credible_interval(vector, sample_density, left_tail=True):
     # Sort vector
     sorted_vec = np.sort(vector)
     vec_size = len(sorted_vec)
+    start_idx = int(np.ceil(vec_size * sample_density))
 
     if left_tail:
-        return sorted_vec[int(np.ceil(vec_size * (1.0 - sample_density)))]
+        return sorted_vec[vec_size - start_idx]
     # Right tailed credible interval
-    return sorted_vec[int(np.ceil(vec_size * sample_density))]
+    return sorted_vec[start_idx]
