@@ -9,7 +9,7 @@ import seaborn as sns
 
 from experiment import io
 
-from psych_metric.metric import measure
+from psych_metric.metrics import measure
 
 
 def split_violins(
