@@ -127,7 +127,7 @@ def split_violins(
                     linestyle='-.',
                 )
 
-                if len(cred_intervals) == 2 * len(conditional_models):
+                if len(cred_intervals) >= 2 * len(conditional_models):
                     color_switch ^= True
     else:
         ax = sns.violinplot(
@@ -168,7 +168,7 @@ def split_violins(
                     linestyle='-.',
                 )
 
-                if len(cred_intervals) == 2 * len(conditional_models):
+                if len(cred_intervals) >= 2 * len(conditional_models):
                     color_switch ^= True
 
     if title is not None:
