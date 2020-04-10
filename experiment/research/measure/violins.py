@@ -25,8 +25,9 @@ def split_violins(
     font_size=None,
     scale='area',
     orient='h',
-    alpha=.8,
+    alpha=1.0,
     linewidth=None,
+    cred_interval_linewidth=1.1,
     num_major_ticks=None,
     num_minor_ticks=None,
     sns_style='whitegrid',
@@ -122,7 +123,7 @@ def split_violins(
             for interval in cred_intervals:
                 ax.axhline(
                     interval,
-                    linewidth=1.1,
+                    linewidth=cred_interval_linewidth,
                     color='darkgoldenrod' if color_switch else 'tab:blue',
                     linestyle='-.',
                 )
@@ -163,7 +164,7 @@ def split_violins(
             for interval in cred_intervals:
                 ax.axvline(
                     interval,
-                    linewidth=1.1,
+                    linewidth=cred_interval_linewidth,
                     color='darkgoldenrod' if color_switch else 'tab:blue',
                     linestyle='-.',
                 )
@@ -337,6 +338,13 @@ def parse_args():
     )
 
     parser.add_argument(
+        '--cred_interval_linewidth',
+        default=1.1,
+        type=float,
+        help='The line width of the violin plot.',
+    )
+
+    parser.add_argument(
         '--cred_intervals',
         default=None,
         nargs='+',
@@ -381,6 +389,7 @@ if __name__ == '__main__':
         orient=args.orient,
         linewidth=args.linewidth,
         cred_intervals=args.cred_intervals,
+        cred_interval_linewidth=args.cred_interval_linewidth,
         overwrite=args.overwrite,
         num_major_ticks=args.num_major_ticks,
         num_minor_ticks=args.num_minor_ticks,
