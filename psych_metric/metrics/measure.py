@@ -8,6 +8,8 @@ Notes
 All this assumes discrete distributions.
 """
 import numpy as np
+from sklearn.metrics import normalized_mutual_info_score
+from sklearn.preprocessing import LabelEncoder
 
 # TODO consider adding axes for: conditionals_axis=None, target_axis=0
 def measure(measure_func, targets, preds):
@@ -168,3 +170,52 @@ def one_tailed_credible_interval(vector, sample_density, left_tail=True):
         return sorted_vec[vec_size - start_idx]
     # Right tailed credible interval
     return sorted_vec[start_idx]
+
+
+def discretize_multidim_continuous(x, bins):
+    """Returns discretized multidimensional continuous random variable."""
+
+    # Bin each dimension (column) of the RV's by the dim's respective quantiles
+    for i in x.shape[1]:
+        x[:, i] = np.digitize(x[:, i], np.quantile(x[:, i], bins))
+
+    # Treat each row as a symbol.
+    le = LabelEncoder()
+    return le.fit_transform([np.array2string(row) for row in x])
+
+
+def mutual_information(x, y, method='bin', num_bins=10):
+    """Normalized Mutual information for multi dimensional continuous random
+    variables. Uses quantiles to bin to result in essentially uniform marginal
+    distributions, and thus able to calculate Mutual Information as the Copula
+    Entropy.
+
+    Parameters
+    ----------
+    x : np.ndarray
+    y : np.ndarray
+    method : str
+        If 'bin' then discretizes the
+    bins : int
+        number of bins to discretize each element by.
+    quantile_binning : bool
+        The binning is done based on the quantiles if True, otherwise binning
+        is evenly spaced bins within the interval.
+    """
+    # Create the 'bins', as in the quantiles to use to create the bins
+    bins = np.linspace(0, 1, num_bins + 1)
+
+    x_discrete = discretize_multidim_continuous(x, bins)
+    y_discrete = discretize_multidim_continuous(y, bins)
+
+    unique, counts = np.unique([
+        frozenset(x_discrete[i], y_discrete[i])
+        for i in range(len(x_discrete))
+    ])
+
+    return normalized_mutual_info_score(y_discrete, x_discrete)
+
+    # MI based on copula entropy
+    #probs = counts / len(x_discrete)
+    #mutual_information_est = (probs * np.log(probs)).sum()
+    #return how to normalize? need to estimate entropy as well?
