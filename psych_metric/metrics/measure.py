@@ -7,6 +7,8 @@ Notes
 -----
 All this assumes discrete distributions.
 """
+from multiprocessing import Pool
+
 import numpy as np
 from sklearn.metrics import normalized_mutual_info_score
 from sklearn.preprocessing import LabelEncoder
@@ -172,19 +174,21 @@ def one_tailed_credible_interval(vector, sample_density, left_tail=True):
     return sorted_vec[start_idx]
 
 
-def discretize_multidim_continuous(x, bins):
+def discretize_multidim_continuous(x, bins, copy=True):
     """Returns discretized multidimensional continuous random variable."""
+    if copy:
+        x = x.copy()
 
     # Bin each dimension (column) of the RV's by the dim's respective quantiles
-    for i in x.shape[1]:
+    for i in range(x.shape[1]):
         x[:, i] = np.digitize(x[:, i], np.quantile(x[:, i], bins))
 
     # Treat each row as a symbol.
     le = LabelEncoder()
-    return le.fit_transform([np.array2string(row) for row in x])
+    return le.fit_transform([f'{row}' for row in x])
 
 
-def mutual_information(x, y, method='bin', num_bins=10):
+def mutual_information(x, y, method='bin', num_bins=10, cpus=1):
     """Normalized Mutual information for multi dimensional continuous random
     variables. Uses quantiles to bin to result in essentially uniform marginal
     distributions, and thus able to calculate Mutual Information as the Copula
@@ -202,20 +206,44 @@ def mutual_information(x, y, method='bin', num_bins=10):
         The binning is done based on the quantiles if True, otherwise binning
         is evenly spaced bins within the interval.
     """
+    if x.shape != y.shape:
+        raise ValueError(
+            f'x and y must have the same shape: {x.shape} and {y.shape}'
+        )
+
     # Create the 'bins', as in the quantiles to use to create the bins
     bins = np.linspace(0, 1, num_bins + 1)
 
-    x_discrete = discretize_multidim_continuous(x, bins)
-    y_discrete = discretize_multidim_continuous(y, bins)
-
-    unique, counts = np.unique([
-        frozenset(x_discrete[i], y_discrete[i])
-        for i in range(len(x_discrete))
-    ])
+    if cpus <= 1:
+        x_discrete = discretize_multidim_continuous(x, bins)
+        y_discrete = discretize_multidim_continuous(y, bins)
+    else:
+        with Pool(processes=2) as pool:
+            x_discrete, y_discrete = pool.starmap(
+                discretize_multidim_continuous,
+                [(x, bins), (y, bins)],
+            )
 
     return normalized_mutual_info_score(y_discrete, x_discrete)
 
+    # TODO possibly compute yourself using below Copula entropy technique
+
+    print('finished discretization of marginals')
+
+    unique, counts = np.unique(
+        [f'{x_discrete[i]} {y_discrete[i]}' for i in range(len(x_discrete))],
+        return_counts=True,
+    )
+
+    print(unique)
+    print(unique.shape)
+    print(counts)
+    print(counts.shape)
+
+
     # MI based on copula entropy
-    #probs = counts / len(x_discrete)
-    #mutual_information_est = (probs * np.log(probs)).sum()
-    #return how to normalize? need to estimate entropy as well?
+    probs = counts / len(x_discrete)
+    print(probs)
+    mutual_information_est = (probs * np.log2(probs)).sum()
+    return mutual_information_est
+    # how to normalize? need to estimate entropy as well?
