@@ -275,7 +275,6 @@ def run_experiment(
 
         if focus_fold:
             # TODO run single train, test, maybe put in kfold_cv? idk.
-            pass
             # TODO add focus fold implementation
             raise NotImplementedError('`focus_fold` for loading and testing a specific fold given `k` folds and data is not yet implemented.')
         else:
