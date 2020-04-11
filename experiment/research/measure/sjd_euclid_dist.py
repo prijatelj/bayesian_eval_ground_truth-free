@@ -308,6 +308,8 @@ if __name__ == '__main__':
             n_jobs=args.cpu_cores,
         )
 
+    logging.info('Candidates obtained. Beginning the experiment loop.')
+
     # Loop through candidates, fit givens and conds, sample conds given
     # data givens,
     if test is not None:
@@ -327,6 +329,9 @@ if __name__ == '__main__':
             normalize=args.normalize,
             output_dir=output_dir if args.save_conds else None,
          )
+
+    logging.info('Looped through all candidates.')
+    logging.info('Saving results.')
 
     # Save the results of multiple candidates.
     for key, result in results.items():
