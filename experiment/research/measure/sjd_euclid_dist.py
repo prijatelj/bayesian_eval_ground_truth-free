@@ -294,7 +294,7 @@ if __name__ == '__main__':
                 'iid_uniform_dirs',
                 'iid_dirs_mean',
                 #'iid_dirs_adam',
-                'dir-mean_mvn-umvu',
+                'dir-mean_mvn-umvu-zero',
                 #'dir-adam_mvn-umvu',
             ]
 
