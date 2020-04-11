@@ -53,6 +53,7 @@ class DifferencesTransform(object):
         input_dim=None,
         mle_args=None,
         sess_config=None,
+        zero_mean=False,
     ):
         if given_samples is not None and conditional_samples is not None:
             input_dim = given_samples.shape[1]
@@ -75,6 +76,7 @@ class DifferencesTransform(object):
             conditional_samples,
             distrib,
             mle_args,
+            zero_mean,
         )
         self._create_sample_attributes(sess_config)
         self._create_log_prob_attributes(sess_config)
@@ -149,6 +151,7 @@ class DifferencesTransform(object):
         conditional_samples,
         distrib='MultivariateNormal',
         mle_args=None,
+        zero_mean=False,
     ):
         """Fits and returns the transform distribution."""
         if isinstance(distrib, tfd.Distribution):
@@ -188,7 +191,10 @@ class DifferencesTransform(object):
             # infinitesimal
             if distrib == 'MultivariateNormal':
                 return tfd.MultivariateNormalFullCovariance(
-                    np.mean(differences, axis=0),
+                    np.zeros(differences.shape[1]) if zero_mean else np.mean(
+                        differences,
+                        axis=0
+                    ),
                     np.cov(differences, bias=False, rowvar=False),
                 )
             elif distrib == 'MultivariateCuachy':
@@ -198,7 +204,11 @@ class DifferencesTransform(object):
                     distrib,
                     differences,
                     init_params={
-                        'loc': np.mean(differences, axis=0),
+                        'loc': np.zeros(differences.shape[1]) if zero_mean
+                            else np.mean(
+                                differences,
+                                axis=0
+                        ),
                         'scale': np.cov(differences, bias=False, rowvar=False),
                     },
                     **mle_args,
@@ -213,7 +223,11 @@ class DifferencesTransform(object):
                     differences,
                     init_params={
                         'df': 3.0,
-                        'loc': np.mean(differences, axis=0),
+                        'loc': np.zeros(differences.shape[1]) if zero_mean
+                            else np.mean(
+                                differences,
+                                axis=0
+                        ),
                         'scale': np.cov(differences, bias=False, rowvar=False),
                     },
                     **mle_args,
@@ -370,7 +384,7 @@ class DifferencesTransform(object):
         #    given_samples = tf
         #    # NOTE the tf log prob contains transforms itself.
         if tfp_log_prob:
-            # Using tfp log prob means ignoring the simplex boundary in the
+            # Using tfp log prob implies ignoring the simplex boundary in the
             # case of the Euclidean (Cartesian) only transform, but it can only
             # be used when Hyperbolic transform is used to compare to other
             # RV's.
