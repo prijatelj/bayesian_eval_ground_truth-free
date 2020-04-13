@@ -28,11 +28,11 @@ def halve(
     out_1 = in_content.copy()
     out_2 = in_content.copy()
 
-    fold_indices = KFold(2, shuffle=True).split(in_content[keys[0]])
+    fold_indices = next(KFold(2, shuffle=True).split(in_content[keys[0]]))
 
     for key in keys:
-        out_1[key] = out_1[key][fold_indices]
-        out_2[key] = out_2[key][fold_indices]
+        out_1[key] = out_1[key][fold_indices[0]]
+        out_2[key] = out_2[key][fold_indices[1]]
 
     io.save_json(f'{out_file}_half_1.json', out_1)
     io.save_json(f'{out_file}_half_2.json', out_2)
