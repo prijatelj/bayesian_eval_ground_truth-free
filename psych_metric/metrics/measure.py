@@ -13,6 +13,8 @@ import numpy as np
 from sklearn.metrics import normalized_mutual_info_score
 from sklearn.preprocessing import LabelEncoder
 
+#from psych_metric.distrib.conditional.G
+
 # TODO consider adding axes for: conditionals_axis=None, target_axis=0
 def measure(measure_func, targets, preds):
     """
@@ -188,7 +190,7 @@ def discretize_multidim_continuous(x, bins, copy=True):
     return le.fit_transform([f'{row}' for row in x])
 
 
-def mutual_information(x, y, method='bin', num_bins=10, cpus=1):
+def mutual_information(x, y, num_bins=10, cpus=1, simplex=True):
     """Normalized Mutual information for multi dimensional continuous random
     variables. Uses quantiles to bin to result in essentially uniform marginal
     distributions, and thus able to calculate Mutual Information as the Copula
@@ -221,7 +223,7 @@ def mutual_information(x, y, method='bin', num_bins=10, cpus=1):
         with Pool(processes=2) as pool:
             x_discrete, y_discrete = pool.starmap(
                 discretize_multidim_continuous,
-                [(x, bins), (y, bins)],
+                [(x, bins, False), (y, bins, False)],
             )
 
     return normalized_mutual_info_score(y_discrete, x_discrete)
