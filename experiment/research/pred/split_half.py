@@ -7,7 +7,12 @@ from sklearn.model_selection import KFold
 
 from experiment import io
 
-def halve(in_file, out_file=None, keys=['conditionals', 'givens']):
+def halve(
+    in_file,
+    out_file=None,
+    keys=['conditionals', 'givens'],
+    shuffle=True,
+):
     """Converts format from `load_fold_save_pred` to given and conditional of
     a single data split (train XOR test)
     """
