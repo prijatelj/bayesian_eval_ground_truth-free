@@ -11,6 +11,7 @@ from multiprocessing import Pool
 
 import numpy as np
 from sklearn.metrics import normalized_mutual_info_score
+from sklearn.metrics import mutual_info_score
 from sklearn.preprocessing import LabelEncoder
 
 #from psych_metric.distrib.conditional.G
@@ -190,7 +191,14 @@ def discretize_multidim_continuous(x, bins, copy=True):
     return le.fit_transform([f'{row}' for row in x])
 
 
-def mutual_information(x, y, num_bins=10, cpus=1, simplex=True):
+def mutual_information(
+    x,
+    y,
+    num_bins=10,
+    cpus=1,
+    simplex=True,
+    normalized=False,
+):
     """Normalized Mutual information for multi dimensional continuous random
     variables. Uses quantiles to bin to result in essentially uniform marginal
     distributions, and thus able to calculate Mutual Information as the Copula
@@ -226,7 +234,9 @@ def mutual_information(x, y, num_bins=10, cpus=1, simplex=True):
                 [(x, bins, False), (y, bins, False)],
             )
 
-    return normalized_mutual_info_score(y_discrete, x_discrete)
+    if normalized:
+        return normalized_mutual_info_score(y_discrete, x_discrete)
+    return mutual_info_score(y_discrete, x_discrete)
 
     # TODO possibly compute yourself using below Copula entropy technique
 
