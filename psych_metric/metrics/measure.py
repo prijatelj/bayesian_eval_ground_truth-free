@@ -177,6 +177,23 @@ def one_tailed_credible_interval(vector, sample_density, left_tail=True):
     return sorted_vec[start_idx]
 
 
+def kldiv_probs(p, q):
+    """Given two discrete probability vectors, calculate Kullback-Lebler
+    Divergence.
+    """
+    return (p * np.log2(p / q)).sum()
+
+
+def entropy_probs(p):
+    """Given a discrete probability vector, calculate entropy."""
+    return -(p * np.log2(p)).sum()
+
+
+def mutual_info_probs(p, q,):
+    """Given two probability vectors, calculate Mutual Information."""
+    return
+
+
 def discretize_multidim_continuous(x, bins, copy=True):
     """Returns discretized multidimensional continuous random variable."""
     if copy:
@@ -191,7 +208,7 @@ def discretize_multidim_continuous(x, bins, copy=True):
     return le.fit_transform([f'{row}' for row in x])
 
 
-def mutual_information(
+def binned_mutual_information(
     x,
     y,
     num_bins=10,
