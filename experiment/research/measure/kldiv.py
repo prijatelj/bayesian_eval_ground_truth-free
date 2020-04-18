@@ -2,7 +2,6 @@
 import os
 
 import numpy as np
-from scipy.stats import entropy
 
 from psych_metric.metrics.measure import measure
 
@@ -226,7 +225,7 @@ if __name__ == '__main__':
     del pred
 
     measurements = measure(
-        entropy,
+        measure.kldiv_probs,
         targets,
         bnn.predict(givens, weights_sets),
     )
