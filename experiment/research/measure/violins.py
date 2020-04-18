@@ -363,12 +363,12 @@ def parse_args():
 
     # if bins: Measure label: (bins={bins}, {bnn_draws}draws/pred)
 
-    if args.measure_lower is not None and args.measure is not None:
-        args.measure_range = (args.measure_lower, args.measure_upper)
+    if args.measure_lower is None and args.measure_upper is None:
+        args.measure_range = None
     else:
-        args.measure_range = (0, 1)
+        args.measure_range = (args.measure_lower, args.measure_upper)
 
-    #TODO if args.test_paths is None:
+    #TODO if args.test_paths is None: del the test portion of the violin
 
     return args
 
