@@ -281,6 +281,8 @@ def save_stats(
     num_layers,
     input_output_dim,
     log_prob_linregress=None,
+    acf_thresholds=[.5, .4, .3, .2, .1, .05, .01],
+    first_n_acf=10,
 ):
     """Saves important information of the MCMC chain runs."""
     io.save_json(
@@ -288,13 +290,15 @@ def save_stats(
         weights_sets,
     )
 
+
+
     acf_lag = {
         'accept_total': accept_total,
         'accept_rate': accept_rate,
-        '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
-        '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
-        '0.05': np.where(np.abs(acf_log_prob) < 0.05)[0][:10],
-        '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
+        'acf_thresholds': {
+            x: np.where(np.abs(acf_log_prob) <= x)[0][:first_n_acf]
+            for x in acf_thresholds
+        },
         'final_step_size': final_step_size,
         'burnin': burnin,
         'lag': lag,
