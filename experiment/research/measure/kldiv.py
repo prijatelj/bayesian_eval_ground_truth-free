@@ -94,7 +94,9 @@ def save_measures(
     )
 
 
-def get_l2dists(targets, preds, prob_simplex_normalize=False, axis=2):
+def get_l2dists(targets, preds, prob_simplex_normalize=False, axis=2, copy=True):
+    if copy:
+        preds = preds.copy()
     """Obtains euclidean distances from sampling of the predictions."""
     for target_idx in range(len(targets)):
         # NOTE assumes shape of [targets, conditionals, classes]
