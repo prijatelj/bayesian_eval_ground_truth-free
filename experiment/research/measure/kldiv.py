@@ -71,6 +71,7 @@ def save_measures(
     measurements,
     quantiles_frac=None,
     save_raw=True,
+    axis=1,
 ):
     """Convenience function to save measurement output and summarize."""
     if save_raw:
@@ -84,13 +85,13 @@ def save_measures(
     # Save the summary of the euclidean distances
     io.save_json(
         os.path.join(output_dir, f'{measure_id}_summary.json'),
-        summary_dict(measurements, quantile_set, axis=1),
+        summary_dict(measurements, quantile_set, axis=axis),
     )
 
     # Save the flattening of the conditionals via different summarization methods
     io.save_json(
         os.path.join(output_dir, f'{measure_id}_target_samples_flat.json'),
-        summary_arr(measurements, quantile_set, axis=1),
+        summary_arr(measurements, quantile_set, axis=axis),
     )
 
 

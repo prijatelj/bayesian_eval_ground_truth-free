@@ -18,7 +18,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # TODO consider adding axes for: conditionals_axis=None, target_axis=0
 def measure(measure_func, targets, preds):
-    """
+    """Obtain measure per conditional sample
 
     Parameters
     ----------
@@ -181,7 +181,7 @@ def kldiv_probs(p, q, axis=1):
     """Given two discrete probability vectors, calculate Kullback-Lebler
     Divergence.
     """
-    return (p * np.log2(p / q)).sum(axis=1)
+    return (p * np.log2(p / q)).sum(axis=axis)
 
 
 def entropy_probs(p, axis=1):
