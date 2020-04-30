@@ -31,6 +31,7 @@ def split_violins(
     num_major_ticks=None,
     num_minor_ticks=None,
     sns_style='whitegrid',
+    inner='box',
     legend=True,
     ax=None,
     output_path=None,
@@ -104,6 +105,7 @@ def split_violins(
             density=density,
             ax=ax,
             alpha=alpha,
+            inner=inner,
         )
 
         if measure_range is not None:
@@ -145,6 +147,7 @@ def split_violins(
             density=density,
             ax=ax,
             alpha=alpha,
+            inner=inner,
         )
 
         if measure_range is not None:
@@ -352,6 +355,13 @@ def parse_args():
         help='The credibility interval to overlay the violin plot.',
     )
 
+    parser.add_argument(
+        '--inner',
+        default='box',
+        choices=['box', 'quartile', 'point', 'stick', 'None'],
+        help='The line width of the violin plot.',
+    )
+
     args = parser.parse_args()
 
     # Handle args post parsing
@@ -367,6 +377,9 @@ def parse_args():
         args.measure_range = None
     else:
         args.measure_range = (args.measure_lower, args.measure_upper)
+
+    if args.inner is 'None':
+        args.inner = None
 
     #TODO if args.test_paths is None: del the test portion of the violin
 
@@ -396,6 +409,7 @@ if __name__ == '__main__':
         ax=ax,
         legend=args.legend,
         measure_label=args.measure_label,
+        inner=args.inner,
     )
 
     output_path = io.create_filepath(args.output_path, overwrite=args.overwrite)
