@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from psych_metric.metrics.measure import measure
+from psych_metric.metrics import measure
 
 from experiment import io
 from experiment.research.bnn.bnn_mcmc_fwd import load_bnn_fwd
@@ -226,7 +226,7 @@ if __name__ == '__main__':
         # (ie. Dirichlet)
     del pred
 
-    measurements = measure(
+    measurements = measure.measure(
         measure.kldiv_probs,
         targets,
         bnn.predict(givens, weights_sets),
