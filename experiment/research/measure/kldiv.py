@@ -52,11 +52,14 @@ def summary_dict(measurements, quantile_set=None, axis=1):
     }
 
 
-def save_raw_measurements(output_dir, measure_id, measurements):
+def save_raw_measurements(output_dir, measure_id, measurements, overwrite=False):
     """Saves raw measures as csv or hdf5 file."""
     if len(measurements.shape) <= 2:
         np.savetxt(
-            os.path.join(output_dir, f'{measure_id}.csv'),
+            io.create_filepath(
+                os.path.join(output_dir, f'{measure_id}.csv'),
+                overwrite,
+            ),
             measurements,
             delimiter=',',
         )
