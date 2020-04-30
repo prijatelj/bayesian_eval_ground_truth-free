@@ -95,7 +95,7 @@ def split_violins(
             measure_label,
             hue='data_split',
             split=True,
-            palette={'train': '#dae8fc', 'test':'#fff2cc'},
+            palette={'train': '#6c8ebf', 'test':'#d6b656'},
             data=measures,
             scale=scale,
             order=conditional_models,
@@ -124,7 +124,7 @@ def split_violins(
                 ax.axhline(
                     interval,
                     linewidth=cred_interval_linewidth,
-                    color='#fff2cc' if color_switch else '#dae8fc',
+                    color='#d6b656' if color_switch else '#6c8ebf',
                     linestyle='-.',
                 )
 
@@ -136,7 +136,7 @@ def split_violins(
             model_label,
             hue='data_split',
             split=True,
-            palette={'train': '#dae8fc', 'test':'#fff2cc'},
+            palette={'train': '#6c8ebf', 'test':'#d6b656'},
             data=measures,
             scale=scale,
             order=conditional_models,
@@ -165,7 +165,7 @@ def split_violins(
                 ax.axvline(
                     interval,
                     linewidth=cred_interval_linewidth,
-                    color='#fff2cc' if color_switch else '#dae8fc',
+                    color='#d6b656' if color_switch else '#6c8ebf',
                     linestyle='-.',
                 )
 
