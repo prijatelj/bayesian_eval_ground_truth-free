@@ -57,11 +57,11 @@ if __name__ == "__main__":
 
     # Perform the measurement
     if args.measure == 'all' or args.measure == 'euclid_dist':
-        measurements = kldiv.get_l2dists(givens, conds, args.normalize)
+        measurements = kldiv.get_l2dists(givens, conds, args.normalize, axis=0)
 
         kldiv.save_measures(
             output_dir,
-            args.measurement,
+            args.measure,
             measurements,
             args.quantiles_frac,
             save_raw=not args.do_not_save_raw,
@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
         kldiv.save_measures(
             output_dir,
-            args.measurement,
+            args.measure,
             measurements,
             args.quantiles_frac,
             save_raw=not args.do_not_save_raw,
