@@ -280,9 +280,12 @@ def save_stats(
     num_hidden_units,
     num_layers,
     input_output_dim,
+    bnn_weights_file,
+    data_file,
     log_prob_linregress=None,
     acf_thresholds=[.5, .4, .3, .2, .1, .05, .01],
     first_n_acf=10,
+    note=None,
 ):
     """Saves important information of the MCMC chain runs."""
     io.save_json(
@@ -305,7 +308,14 @@ def save_stats(
         'num_hidden_units': num_hidden_units,
         'num_layers': num_layers,
         'input_output_dim': input_output_dim,
+        'paths': {
+            'bnn_weights_file': bnn_weights_file,
+            'data_file': data_file,
+        },
     }
+
+    if note is not None:
+        acf_lag['note'] = note
 
     if log_prob_linregress is not None:
         acf_lag['target_func_linreg'] = {
@@ -382,6 +392,13 @@ def add_custom_args(parser):
         default='mcmc_sample_log_prob',
         choices=['mcmc_sample_log_prob', 'l2_dist'],
         help='The target log prob function to use for the MCMC.',
+    )
+
+    parser.add_argument(
+        '--note',
+        default=None,
+        type=str,
+        help='A Note to be added in the results JSON.',
     )
 
 
@@ -532,6 +549,9 @@ if __name__ == '__main__':
             args.bnn.num_hidden,
             args.bnn.num_layers,
             givens.shape[1],
+            args.bnn_weights_file,
+            args.data.dataset_filepath,
+            note=args.note,
             #log_prob_linreg=scipy.stats.linregress(
             #    np.arange(args.mcmc.sample_chain.num_results),
             #    mcmc_results.accepted_results.target_log_prob,
@@ -597,10 +617,13 @@ if __name__ == '__main__':
                 args.bnn.num_hidden,
                 args.bnn.num_layers,
                 givens.shape[1],
+                args.bnn_weights_file,
+                args.data.dataset_filepath,
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
                     mcmc_results.accepted_results.target_log_prob,
                 ),
+                note=args.note,
             )
 
 
@@ -672,10 +695,13 @@ if __name__ == '__main__':
                 args.bnn.num_hidden,
                 args.bnn.num_layers,
                 givens.shape[1],
+                args.bnn_weights_file,
+                args.data.dataset_filepath,
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
                     mcmc_results.target_log_prob
                 ),
+                note=args.note,
             )
 
         if not args.no_visuals:
