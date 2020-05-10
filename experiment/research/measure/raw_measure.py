@@ -8,6 +8,7 @@ Experiement 2 for residuals when target is given target label to predictor:
     generates the distribution of residuals, which is a distribution of a
     measure and part of experiment 2.
 """
+from scipy.stats import entropy
 from sklearn.metrics import roc_auc_score
 
 from psych_metric.metrics import measure
@@ -57,11 +58,11 @@ if __name__ == "__main__":
 
     # Perform the measurement
     if args.measure == 'all' or args.measure == 'euclid_dist':
-        measurements = kldiv.get_l2dists(givens, conds, args.normalize, axis=0)
+        measurements = kldiv.get_l2dists(givens, conds, args.normalize, axis=1)
 
         kldiv.save_measures(
             output_dir,
-            args.measure,
+            'euclid_dist',
             measurements,
             args.quantiles_frac,
             save_raw=not args.do_not_save_raw,
@@ -69,26 +70,31 @@ if __name__ == "__main__":
         )
 
     if args.measure == 'all' or args.measure == 'kldiv':
-        measurements = measure.measure(measure.kldiv_probs, givens, conds)
+        #measurements = measure.measure(measure.kldiv_probs, givens, conds)
+        measurements = entropy(givens, conds, axis=1)
 
         kldiv.save_measures(
             output_dir,
-            args.measure,
+            'kldiv',
             measurements,
             args.quantiles_frac,
             save_raw=not args.do_not_save_raw,
             axis=0,
         )
 
-    if args.measure == 'all' or args.measure == 'roc_auc':
-        measurements = roc_auc_score(
-            givens,
-            conds,
-            multi_class=args.multi_class,
-        )
+    #if args.measure == 'all' or args.measure == 'roc_auc':
+    #    measurements = roc_auc_score(
+    #        givens,
+    #        conds,
+    #        #givens.argmax(axis=1).reshape(-1,1),
+    #        #conds.argmax(axis=1).reshape(-1,1),
+    #        multi_class=args.multi_class,
+    #    )
+    #
+    #    # Save the ROC AUC
+    #    io.save_json(
+    #        {'roc_auc': measurements},
+    #        os.path.join(output_dir, 'roc_auc.json'),
+    #    )
 
-        # Save the ROC AUC
-        io.save_json(
-            {'roc_auc': measurements},
-            os.path.join(output_dir, 'roc_auc.json'),
-        )
+    # TODO multiclass ROC in sklearn does not seem to be working. May need to make this myself.
