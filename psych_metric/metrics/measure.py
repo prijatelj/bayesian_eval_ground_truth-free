@@ -181,6 +181,8 @@ def kldiv_probs(p, q, axis=1):
     """Given two discrete probability vectors, calculate Kullback-Lebler
     Divergence.
     """
+    # TODO add and subtract a very small value from the probs when zeros are
+    # encountered.
     return (p * np.log2(p / q)).sum(axis=axis)
 
 
