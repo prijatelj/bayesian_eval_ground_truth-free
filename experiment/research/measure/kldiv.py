@@ -1,7 +1,9 @@
 """General functions used in experiments 1, 2, and 3."""
+from functools import partial
 import os
 
 import numpy as np
+from scipy.stats import entropy
 
 from psych_metric.metrics import measure
 
@@ -231,7 +233,8 @@ if __name__ == '__main__':
     del pred
 
     measurements = measure.measure(
-        measure.kldiv_probs,
+        #measure.kldiv_probs,
+        partial(entropy, base=2.0, axis=1)
         targets,
         bnn.predict(givens, weights_sets),
     )
