@@ -97,6 +97,8 @@ if __name__ == "__main__":
                     givens_argmax,
                     conds,
                     multi_class=args.multi_class,
+                    # TODO labels, whenever givens argmax is missing a class it
+                    # fails, happens in test and all_half_1 in CHA Learn.
                 ),
                 'matthews_corrcoef': matthews_corrcoef(
                     givens_argmax,
