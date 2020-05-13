@@ -33,8 +33,8 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    matrix = np.loadtxt(args.in_file)
-
-    matrix.mean(axis=args.axis)
-
-    np.savetxt(io.create_filepath(args.output_file), matrix)
+    matrix = np.loadtxt(args.input_file, delimiter=',')
+    np.savetxt(
+        io.create_filepath(args.output_file),
+        matrix.mean(axis=args.axis)
+    )
