@@ -82,19 +82,18 @@ if __name__ == "__main__":
             axis=0,
         )
 
-    #if args.measure == 'all' or args.measure == 'roc_auc':
-    #    measurements = roc_auc_score(
-    #        givens,
-    #        conds,
-    #        #givens.argmax(axis=1).reshape(-1,1),
-    #        #conds.argmax(axis=1).reshape(-1,1),
-    #        multi_class=args.multi_class,
-    #    )
-    #
-    #    # Save the ROC AUC
-    #    io.save_json(
-    #        {'roc_auc': measurements},
-    #        os.path.join(output_dir, 'roc_auc.json'),
-    #    )
+    # TODO Be aware that the BNN measures per col need to be done on axis=0
+    if args.measure == 'all' or args.measure == 'roc_auc':
+        measurements = roc_auc_score(
+            givens.argmax(axis=1),
+            conds.argmax(axis=1),
+            multi_class=args.multi_class,
+        )
+
+        # Save the ROC AUC
+        io.save_json(
+            {'roc_auc': measurements},
+            io.create_filepath(os.path.join(output_dir, 'roc_auc.json')),
+        )
 
     # TODO multiclass ROC in sklearn does not seem to be working. May need to make this myself.
