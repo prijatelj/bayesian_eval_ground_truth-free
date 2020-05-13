@@ -234,7 +234,7 @@ if __name__ == '__main__':
 
     measurements = measure.measure(
         #measure.kldiv_probs,
-        partial(entropy, base=2.0, axis=1)
+        partial(entropy, base=2.0, axis=1),
         targets,
         bnn.predict(givens, weights_sets),
     )
