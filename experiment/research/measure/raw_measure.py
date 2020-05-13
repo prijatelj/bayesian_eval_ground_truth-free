@@ -8,8 +8,10 @@ Experiement 2 for residuals when target is given target label to predictor:
     generates the distribution of residuals, which is a distribution of a
     measure and part of experiment 2.
 """
+import os
+
 from scipy.stats import entropy
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, matthews_corrcoef
 
 from psych_metric.metrics import measure
 
@@ -84,15 +86,22 @@ if __name__ == "__main__":
 
     # TODO Be aware that the BNN measures per col need to be done on axis=0
     if args.measure == 'all' or args.measure == 'roc_auc':
-        measurements = roc_auc_score(
-            givens.argmax(axis=1),
-            conds.argmax(axis=1),
-            multi_class=args.multi_class,
-        )
+        givens_argmax = givens.argmax(axis=1)
+        conds_argmax = conds.argmax(axis=1)
 
         # Save the ROC AUC
         io.save_json(
-            {'roc_auc': measurements},
+            {
+                'roc_auc':  roc_auc_score(
+                    givens_argmax,
+                    conds,
+                    multi_class=args.multi_class,
+                ),
+                'matthews_corrcoef': matthews_corrcoef(
+                    givens_argmax,
+                    conds_argmax,
+                ),
+            },
             io.create_filepath(os.path.join(output_dir, 'roc_auc.json')),
         )
 
