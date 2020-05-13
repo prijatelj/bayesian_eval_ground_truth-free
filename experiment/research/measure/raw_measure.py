@@ -91,6 +91,7 @@ if __name__ == "__main__":
 
         # Save the ROC AUC
         io.save_json(
+            io.create_filepath(os.path.join(output_dir, 'roc_auc.json')),
             {
                 'roc_auc':  roc_auc_score(
                     givens_argmax,
@@ -102,7 +103,6 @@ if __name__ == "__main__":
                     conds_argmax,
                 ),
             },
-            io.create_filepath(os.path.join(output_dir, 'roc_auc.json')),
         )
 
     # TODO multiclass ROC in sklearn does not seem to be working. May need to make this myself.
