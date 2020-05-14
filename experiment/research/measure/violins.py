@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 
 import matplotlib.pyplot as plt
@@ -193,6 +194,33 @@ def split_violins(
     return ax
 
 
+def get_cred_intervals(filepath, keys, concat_intervals=None):
+    """Gets cred intervals in order of keys given from JSON."""
+    with open(filepath, 'r') as f:
+        content = json.load(f)
+        cred_intervals = []
+
+        # loop through all keys (conditional predictors)
+        for key in keys:
+            # loop through train and test and possibly val sets
+            if (
+                isinstance(content[key]['train'], dict)
+                and isinstance(content[key]['train'], dict)
+            ):
+                cred_intervals.append(content[key]['train']['lower_quantile'])
+                cred_intervals.append(content[key]['test']['lower_quantile'])
+                cred_intervals.append(content[key]['train']['higher_quantile'])
+                cred_intervals.append(content[key]['test']['higher_quantile'])
+            else:
+                cred_intervals.append(content[key]['train'])
+                cred_intervals.append(content[key]['test'])
+
+        if concat_intervals is not None:
+            cred_intervals += concat_intervals
+
+    return cred_intervals
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='')
 
@@ -356,6 +384,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        '--cred_intervals_json',
+        default=None,
+        help='JSON containing credibility intervals to put on violin plot.',
+    )
+
+    parser.add_argument(
         '--inner',
         default='box',
         choices=['box', 'quartile', 'point', 'stick', 'None'],
@@ -382,6 +416,14 @@ def parse_args():
         args.inner = None
 
     #TODO if args.test_paths is None: del the test portion of the violin
+
+    # If given cred_intervals_json put at beginning of cred_intevals
+    if args.cred_intevals_json is not None:
+        args.cred_intervals = get_cred_intervals(
+            args.cred_intevals_json,
+            args.conditional_models,
+            args.cred_intervals,
+        )
 
     return args
 
