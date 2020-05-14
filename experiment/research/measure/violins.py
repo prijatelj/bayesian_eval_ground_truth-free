@@ -38,6 +38,7 @@ def split_violins(
     output_path=None,
     dpi=400,
     pad_inches=0.1,
+    mark_lines=None,
     overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
@@ -133,6 +134,16 @@ def split_violins(
 
                 if len(cred_intervals) >= 2 * len(conditional_models):
                     color_switch ^= True
+
+        if isinstance(mark_lines, list):
+            for mark in mark_lines:
+                ax.axhline(
+                    mark,
+                    linewidth=cred_interval_linewidth,
+                    color='red',
+                    #linestyle='-.',
+                )
+
     else:
         ax = sns.violinplot(
             measure_label,
@@ -175,6 +186,15 @@ def split_violins(
 
                 if len(cred_intervals) >= 2 * len(conditional_models):
                     color_switch ^= True
+
+        if isinstance(mark_lines, list):
+            for mark in mark_lines:
+                ax.axvline(
+                    mark,
+                    linewidth=cred_interval_linewidth,
+                    color='red',
+                    #linestyle='-.',
+                )
 
     if title is not None:
         #plt.title(title)
@@ -390,6 +410,14 @@ def parse_args():
         '--cred_intervals_json',
         default=None,
         help='JSON containing credibility intervals to put on violin plot.',
+    )
+
+    parser.add_argument(
+        '--mark_lines',
+        default=None,
+        nargs='+',
+        type=float,
+        help='Lines of importance to be marked on plot on measure axis',
     )
 
     parser.add_argument(
