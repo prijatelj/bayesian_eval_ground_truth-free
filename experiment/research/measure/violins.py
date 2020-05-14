@@ -420,7 +420,7 @@ def parse_args():
     # If given cred_intervals_json put at beginning of cred_intevals
     if args.cred_intervals_json is not None:
         args.cred_intervals = get_cred_intervals(
-            args.cred_intevals_json,
+            args.cred_intervals_json,
             args.conditional_models,
             args.cred_intervals,
         )
