@@ -418,7 +418,7 @@ def parse_args():
     #TODO if args.test_paths is None: del the test portion of the violin
 
     # If given cred_intervals_json put at beginning of cred_intevals
-    if args.cred_intevals_json is not None:
+    if args.cred_intervals_json is not None:
         args.cred_intervals = get_cred_intervals(
             args.cred_intevals_json,
             args.conditional_models,
