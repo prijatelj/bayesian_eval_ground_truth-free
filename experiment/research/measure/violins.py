@@ -483,6 +483,7 @@ if __name__ == '__main__':
         legend=args.legend,
         measure_label=args.measure_label,
         inner=args.inner,
+        mark_lines=args.mark_lines,
     )
 
     output_path = io.create_filepath(args.output_path, overwrite=args.overwrite)
