@@ -39,6 +39,7 @@ def split_violins(
     dpi=400,
     pad_inches=0.1,
     mark_lines=None,
+    no_inf=True,
     overwrite=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
@@ -55,6 +56,10 @@ def split_violins(
         # TODO adjust this to allow plotting for single (train,test) pair.
         train = pd.read_csv(train_csv, header=None).values.flatten()
         test = pd.read_csv(test_csv, header=None).values.flatten()
+
+        if no_inf:
+            train = train[x != np.inf]
+            test = test[x != np.inf]
 
         # Create DataFrame for plotting
         measures = pd.DataFrame(
@@ -76,6 +81,11 @@ def split_violins(
         for i in range(len(train_csv)):
             train = pd.read_csv(train_csv[i], header=None).values.flatten()
             test = pd.read_csv(test_csv[i], header=None).values.flatten()
+
+            if no_inf:
+                train = train[x != np.inf]
+                test = test[x != np.inf]
+
             measures += [train, test]
 
             model_ids += [conditional_models[i]] * (len(train) + len(test))
@@ -440,6 +450,7 @@ def parse_args():
 
     if args.measure_lower is None and args.measure_upper is None:
         args.measure_range = None
+        #TODO pass measure_range
     else:
         args.measure_range = (args.measure_lower, args.measure_upper)
 
