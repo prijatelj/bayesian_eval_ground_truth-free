@@ -203,7 +203,8 @@ def get_cred_intervals(filepath, keys, concat_intervals=None):
         # loop through all keys (conditional predictors)
         for key in keys:
             if key not in content:
-                pass
+                continue
+
             # loop through train and test and possibly val sets
             if (
                 isinstance(content[key]['train'], dict)
