@@ -101,7 +101,11 @@ def split_violins(
         measures[model_label] = model_ids
         measures['data_split'] = data_splits
     else:
-        raise TypeError('Expected either pair of strs, or pair of lists.')
+        raise TypeError(' '.join([
+            'Expected either pair of strs, or pair of lists.',
+            f'Instead recieved train_csv: {train_csv}',
+            f'Instead recieved test_csv: {test_csv}',
+        ]))
 
     # Plot violin
     if orient == 'v':
