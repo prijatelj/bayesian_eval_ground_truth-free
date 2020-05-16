@@ -491,6 +491,7 @@ if __name__ == '__main__':
         linewidth=args.linewidth,
         cred_intervals=args.cred_intervals,
         cred_interval_linewidth=args.cred_interval_linewidth,
+        measure_range=args.measure_range,
         overwrite=args.overwrite,
         num_major_ticks=args.num_major_ticks,
         num_minor_ticks=args.num_minor_ticks,
