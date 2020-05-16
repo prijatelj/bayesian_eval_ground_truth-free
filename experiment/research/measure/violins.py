@@ -58,8 +58,15 @@ def split_violins(
         test = pd.read_csv(test_csv, header=None).values.flatten()
 
         if no_inf:
-            train = train[np.isfinite(train)]
-            test = test[np.isfinite(test)]
+            train_finite = np.isfinite(train)
+            if len(train_finite) == len(train):
+                raise ValueError('All of train is not finite!')
+            train = train[train_finite]
+
+            test_finite = np.isfinite(test)
+            if len(test_finite) == len(test):
+                raise ValueError('All of test is not finite!')
+            test = test[test_finite]
 
         # Create DataFrame for plotting
         measures = pd.DataFrame(
@@ -83,8 +90,15 @@ def split_violins(
             test = pd.read_csv(test_csv[i], header=None).values.flatten()
 
             if no_inf:
-                train = train[np.isfinite(train)]
-                test = test[np.isfinite(test)]
+                train_finite = np.isfinite(train)
+                if len(train_finite) == len(train):
+                    raise ValueError('All of train is not finite!')
+                train = train[train_finite]
+
+                test_finite = np.isfinite(test)
+                if len(test_finite) == len(test):
+                    raise ValueError('All of test is not finite!')
+                test = test[test_finite]
 
             measures += [train, test]
 
