@@ -58,6 +58,12 @@ python3 "$BASE_PATH/experiment/research/measure/kldiv.py" \
     --log_file "$BASE_PATH/logs/fb/all_half_1/exp2/kldiv.log" \
     --log_level 'INFO'
 
+# TODO if fix the expected orientation of kldiv measure csv, change these two
 python3 "$BASE_PATH/experiment/research/measure/col_means.py" \
     "$OUTPUT_DIR/kldivergence.csv" \
-    "$OUTPUT_DIR/kldivergence_means_per_weight_sets.csv"
+    "$OUTPUT_DIR/kldivergence_means_per_weight_sets.csv" \
+    --axis 1
+
+python3 "$BASE_PATH/experiment/research/measure/col_means.py" \
+    "$OUTPUT_DIR/kldivergence.csv" \
+    "$OUTPUT_DIR/kldivergence_means_per_sample.csv"
