@@ -29,7 +29,7 @@ def parse_args():
     )
 
     parser.add_argument(
-        '--keep_infinte',
+        '--keep_infinite',
         action='store_true',
         help='If given, inf and nans are kept and used in the mean',
     )
