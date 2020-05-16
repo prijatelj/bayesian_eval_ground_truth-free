@@ -58,6 +58,7 @@ def split_violins(
         test = pd.read_csv(test_csv, header=None).values.flatten()
 
         if no_inf:
+            # isfinite() is fine to do here because of the flatten.
             train_finite = np.isfinite(train)
             if len(train_finite) == len(train):
                 raise ValueError('All of train is not finite!')
@@ -90,6 +91,7 @@ def split_violins(
             test = pd.read_csv(test_csv[i], header=None).values.flatten()
 
             if no_inf:
+                # isfinite() is fine to do here because of the flatten.
                 train_finite = np.isfinite(train)
                 if len(train_finite) == len(train):
                     raise ValueError('All of train is not finite!')
