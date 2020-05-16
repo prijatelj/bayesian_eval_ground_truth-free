@@ -58,8 +58,8 @@ def split_violins(
         test = pd.read_csv(test_csv, header=None).values.flatten()
 
         if no_inf:
-            train = train[train != np.inf]
-            test = test[test != np.inf]
+            train = train[np.isfinite(train)]
+            test = test[np.isfinite(test)]
 
         # Create DataFrame for plotting
         measures = pd.DataFrame(
@@ -83,10 +83,8 @@ def split_violins(
             test = pd.read_csv(test_csv[i], header=None).values.flatten()
 
             if no_inf:
-                train = train[train != np.inf]
-                test = test[test != np.inf]
-                #train = train[train != np.inf and np.isnan(train)]
-                #test = test[test != np.inf and np.isnan(test)]
+                train = train[np.isfinite(train)]
+                test = test[np.isfinite(test)]
 
             measures += [train, test]
 
