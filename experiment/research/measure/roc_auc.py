@@ -1,6 +1,7 @@
 """Performs the Experiment 2 of paper using ROC AUC and MCC"""
 from functools import partial
 
+import numpy as np
 from sklearn.metrics import roc_auc_score, matthews_corrcoef
 
 from psych_metric.metrics import measure
