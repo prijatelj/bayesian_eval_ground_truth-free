@@ -56,7 +56,7 @@ if __name__ == "__main__":
     del pred
 
     givens_argmax = givens.argmax(1)
-    bnn_pred = bnn.predict(givens, weights_sets),
+    bnn_pred = bnn.predict(givens, weights_sets)
     bnn_pred_argmax = bnn_pred.argmax(2)
 
     if args.measure == 'both' or args.measure == 'mcc':
