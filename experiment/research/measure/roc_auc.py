@@ -60,12 +60,22 @@ if __name__ == "__main__":
     bnn_pred = bnn.predict(givens, weights_sets)
     bnn_pred_argmax = bnn_pred.argmax(2)[..., np.newaxis]
 
+    print('givens shape = ', givens_argmax.shape)
+    print('bnn_pred shape = ', bnn_pred.shape)
+    print('bnn_pred_argmax shape = ', bnn_pred_argmax.shape)
+
+    print('args.measure = ', args.measure)
+
     if args.measure == 'both' or args.measure == 'mcc':
         measurements = measure.measure(
             matthews_corrcoef,
             givens_argmax,
             bnn_pred_argmax,
-        )
+        ).reshape(-1, 1)
+
+        print('measure = mcc')
+        print(measurements.shape)
+        print(measurements)
 
         kldiv.save_measures(
             output_dir,
@@ -77,10 +87,18 @@ if __name__ == "__main__":
 
     if args.measure == 'both' or args.measure == 'roc_auc':
         measurements = measure.measure(
-            partial(roc_auc_score, multi_class=args.multi_class),
-            givens_argmax,
+            partial(
+                roc_auc_score,
+                multi_class=args.multi_class,
+                labels=np.arange(args.bnn.num_hidden + 1),
+            ),
+            givens_argmax.squeeze(),
             bnn_pred,
-        )
+        ).reshape(-1, 1)
+
+        print('roc_auc')
+        print(measurements.shape)
+        print(measurements)
 
         kldiv.save_measures(
             output_dir,

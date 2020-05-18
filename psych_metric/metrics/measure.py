@@ -36,15 +36,17 @@ def measure(measure_func, targets, preds):
         classes] where conditionals is the number of multiple pred samples per
         target sample. This latter shape is
     """
-    if len(preds.shape) in {1, 2}:
+    if len(preds.shape) == 1 or (len(preds.shape) == 2 and preds.shape[1] == 1):
         # Assumed structure is then shape of 2, and non-target axis is the
         # n-dim discrete sample
         return measure_func(targets, preds)
 
-    if len(preds.shape) != 3 or len(targets.shape) != 2:
+    if len(preds.shape) != 3 or len(targets.shape) > 2:
         raise ValueError(' '.join([
             'preds and targets are expected to have 3 and 2 dimensions',
             'respectively.',
+            f'Given preds has shape of {preds.shape}.',
+            f'Given targets has shape of {targets.shape}.',
         ]))
 
     # NOTE assumes preds of shape [targets, conditionals, classes]
