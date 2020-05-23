@@ -5,6 +5,17 @@ LabelMe : Multi-class classification; annotations from Amazon Mechanical Turk
     Image Classification of scenes ; what type of location they originate from.
     This has _actual_ ground truth.
     1000 samples annotated by average 2.547 Amazon Mechanical Turk workers.
+    59 unique annotators (had to remove no info annotators)
+    With uninformative annotators (those who vote 1 symbol only)
+        Annotations per annotator:
+            mean: 43.169
+                       0 .25 .5 .75  1
+            quantiles: 3, 9, 27, 66, 182
+        Annotator per sample:
+            mean: 10.547
+                       0 .25  .5  .75 1
+            quantiles: 9, 10, 11, 11, 11
+
     8 classes:
         highway, inside city, tall building, street, forest, coast, mountain or open country
 
