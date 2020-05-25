@@ -308,7 +308,6 @@ def save_stats(
                 'final_step_size': final_step_size,
                 'burnin': burnin,
                 'lag': lag,
-                'scale_identity_multiplier': scale_identity_multiplier,
             },
             'results':{
                 'accept_total': is_accepted.sum(),
@@ -328,6 +327,7 @@ def save_stats(
                 'num_hidden_units': num_hidden_units,
                 'num_layers': num_layers,
                 'input_output_dim': input_output_dim,
+                'scale_identity_multiplier': scale_identity_multiplier,
             },
         },
     }
