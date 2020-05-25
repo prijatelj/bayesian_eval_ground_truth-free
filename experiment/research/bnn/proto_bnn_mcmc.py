@@ -294,7 +294,7 @@ def save_stats(
         weights_sets,
     )
 
-    idx_30percent = np.ceil(len(is_accepted) * .3)
+    idx_30percent = int(np.ceil(len(is_accepted) * .3))
 
     acf_lag = {
         'datetime_saving': datetime.now().strftime(datetime_fmt),
