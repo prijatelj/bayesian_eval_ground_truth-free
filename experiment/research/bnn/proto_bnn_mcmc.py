@@ -1,4 +1,5 @@
 """Prototyping bnn mcmc on CRC."""
+from datetime import datetime
 import logging
 import os
 import json
@@ -271,8 +272,7 @@ def sample_chain_run(
 def save_stats(
     output_dir,
     weights_sets,
-    accept_total,
-    accept_rate,
+    is_accepted,
     acf_log_prob,
     final_step_size,
     burnin,
@@ -286,6 +286,7 @@ def save_stats(
     acf_thresholds=[.5, .4, .3, .2, .1, .05, .01],
     first_n_acf=10,
     note=None,
+    datetime_fmt='%Y-%m-%d_%H-%M-%S',
 ):
     """Saves important information of the MCMC chain runs."""
     io.save_json(
@@ -293,24 +294,39 @@ def save_stats(
         weights_sets,
     )
 
-
+    idx_30percent = np.ceil(len(is_accepted) * .3)
 
     acf_lag = {
-        'accept_total': accept_total,
-        'accept_rate': accept_rate,
-        'acf_thresholds': {
-            x: np.where(np.abs(acf_log_prob) <= x)[0][:first_n_acf]
-            for x in acf_thresholds
-        },
-        'final_step_size': final_step_size,
-        'burnin': burnin,
-        'lag': lag,
-        'num_hidden_units': num_hidden_units,
-        'num_layers': num_layers,
-        'input_output_dim': input_output_dim,
+        'datetime_saving': datetime.now().strftime(datetime_fmt),
         'paths': {
             'bnn_weights_file': bnn_weights_file,
             'data_file': data_file,
+        },
+        'mcmc':{
+            'params':{
+                'final_step_size': final_step_size,
+                'burnin': burnin,
+                'lag': lag,
+            },
+            'results':{
+                'accept_total': is_accepted.sum(),
+                'accept_rate': {
+                    'overall': is_accepted.mean(),
+                    'first_30%': is_accepted[:idx_30percent].mean(),
+                    'in_between':
+                        is_accepted[idx_30percent : -idx_30percent].mean(),
+                    'last_30%': is_accepted[-idx_30percent:].mean(),
+                },
+                'acf_thresholds': {
+                    x: np.where(np.abs(acf_log_prob) <= x)[0][:first_n_acf]
+                    for x in acf_thresholds
+                },
+            },
+            'bnn':{
+                'num_hidden_units': num_hidden_units,
+                'num_layers': num_layers,
+                'input_output_dim': input_output_dim,
+            },
         },
     }
 
@@ -527,9 +543,6 @@ if __name__ == '__main__':
         )
         logging.info('Finished RandomWalkMetropolis')
 
-        accept_total = output[1].is_accepted.sum()
-        accept_rate = output[1].is_accepted.mean()
-
         acf_log_prob = acf(
             output[1].accepted_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -540,8 +553,7 @@ if __name__ == '__main__':
         save_stats(
             output_dir,
             new_starting_state,
-            accept_total,
-            accept_rate,
+            output[1].is_accepted,
             acf_log_prob,
             final_step_size,
             args.mcmc.sample_chain.burnin,
@@ -597,9 +609,6 @@ if __name__ == '__main__':
                 mcmc_results = output[1]
                 final_step_size = args.mcmc.kernel.step_size
 
-            accept_total = mcmc_results.is_accepted.sum()
-            accept_rate = mcmc_results.is_accepted.mean()
-
             acf_log_prob = acf(
                 mcmc_results.accepted_results.target_log_prob,
                 nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -608,8 +617,7 @@ if __name__ == '__main__':
             save_stats(
                 output_dir,
                 new_starting_state,
-                accept_total,
-                accept_rate,
+                mcmc_results.is_accepted,
                 acf_log_prob,
                 final_step_size,
                 args.mcmc.sample_chain.burnin,
@@ -674,9 +682,6 @@ if __name__ == '__main__':
             mcmc_results = output[1]
             final_step_size = args.mcmc.kernel.step_size
 
-        accept_total = mcmc_results.is_accepted.sum()
-        accept_rate = mcmc_results.is_accepted.mean()
-
         acf_log_prob = acf(
             mcmc_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -686,8 +691,7 @@ if __name__ == '__main__':
             save_stats(
                 output_dir,
                 new_starting_state,
-                accept_total,
-                accept_rate,
+                mcmc_results.is_accepted,
                 acf_log_prob,
                 final_step_size,
                 args.mcmc.sample_chain.burnin,
