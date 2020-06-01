@@ -25,6 +25,8 @@ def split_violins(
     measure_range=(0.0, 1.0),
     font_size=None,
     scale='area',
+    scale_hue=True,
+    cut=2.0,
     orient='h',
     alpha=1.0,
     linewidth=None,
@@ -131,6 +133,8 @@ def split_violins(
             palette={'train': '#6c8ebf', 'test':'#d6b656'},
             data=measures,
             scale=scale,
+            scale_hue=scale_hue,
+            cut=cut,
             order=conditional_models,
             orient=orient,
             linewidth=linewidth,
@@ -183,6 +187,8 @@ def split_violins(
             palette={'train': '#6c8ebf', 'test':'#d6b656'},
             data=measures,
             scale=scale,
+            scale_hue=scale_hue,
+            cut=cut,
             order=conditional_models,
             orient=orient,
             linewidth=linewidth,
@@ -457,6 +463,26 @@ def parse_args():
         help='The line width of the violin plot.',
     )
 
+    parser.add_argument(
+        '--scale',
+        default='area',
+        choices=['area', 'width', 'count'],
+        help='The line width of the violin plot.',
+    )
+
+    parser.add_argument(
+        '--no_scale_hue',
+        action='store_true',
+        help='If given, seaborn violinplot scale_hue set to False.',
+    )
+
+    parser.add_argument(
+        '--cut',
+        default=2.0,
+        type=float,
+        help='The seaborn violin plot cut param.',
+    )
+
     args = parser.parse_args()
 
     # Handle args post parsing
@@ -476,6 +502,9 @@ def parse_args():
 
     if args.inner is 'None':
         args.inner = None
+
+    args.scale_hue = not args.no_scale_hue
+    del args.no_scale_hue
 
     #TODO if args.test_paths is None: del the test portion of the violin
 
@@ -508,6 +537,9 @@ if __name__ == '__main__':
         cred_intervals=args.cred_intervals,
         cred_interval_linewidth=args.cred_interval_linewidth,
         measure_range=args.measure_range,
+        scale=args.scale,
+        scale_hue=args.scale_hue,
+        cut=args.cut,
         overwrite=args.overwrite,
         num_major_ticks=args.num_major_ticks,
         num_minor_ticks=args.num_minor_ticks,
