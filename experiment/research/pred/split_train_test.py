@@ -28,7 +28,7 @@ def split(
         in_content[key] = np.array(in_content[key])
 
     for fold_num, (train_idx, test_idx) in enumerate(
-        KFold(k_folds, shuffle=shuffle, random_state=random_seed).split(
+        KFold(kfolds, shuffle=shuffle, random_state=random_seed).split(
             in_content[keys[0]]
         )
     ):
@@ -73,7 +73,7 @@ def parse_args():
     )
 
     parser.add_argument(
-        '--k_folds',
+        '--kfolds',
         default=3,
         type=int,
         help='The number of folds to split the data into. Default is 3.',
