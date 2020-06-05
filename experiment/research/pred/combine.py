@@ -52,13 +52,14 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Combines given JSONs')
 
     parser.add_argument(
-        'files',
-        help='A list of JSON files in format of `save_pred.load_fold_save_pred()`.',
+        'out_file',
+        help='The output file path of converted json.',
     )
 
     parser.add_argument(
-        'out_file',
-        help='The output file path of converted json.',
+        'files',
+        nargs='+',
+        help='A list of JSON files in format of `save_pred.load_fold_save_pred()`.',
     )
 
     parser.add_argument(
