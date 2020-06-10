@@ -26,7 +26,8 @@ def split_violins(
     font_size=None,
     scale='area',
     scale_hue=True,
-    cut=2.0,
+    bw='scott',
+    cut=0.0,
     orient='h',
     alpha=1.0,
     linewidth=None,
@@ -134,6 +135,7 @@ def split_violins(
             data=measures,
             scale=scale,
             scale_hue=scale_hue,
+            bw=bw,
             cut=cut,
             order=conditional_models,
             orient=orient,
@@ -188,6 +190,7 @@ def split_violins(
             data=measures,
             scale=scale,
             scale_hue=scale_hue,
+            bw=bw,
             cut=cut,
             order=conditional_models,
             orient=orient,
@@ -478,9 +481,16 @@ def parse_args():
 
     parser.add_argument(
         '--cut',
-        default=2.0,
+        default=0.0,
         type=float,
-        help='The seaborn violin plot cut param.',
+        help='The seaborn violin plot cut param. Defaults to stop at extrema.',
+    )
+
+    parser.add_argument(
+        '--bw',
+        default='scott',
+        type=str,
+        help='The seaborn violin plot bandwidth param.',
     )
 
     args = parser.parse_args()
@@ -505,6 +515,9 @@ def parse_args():
 
     args.scale_hue = not args.no_scale_hue
     del args.no_scale_hue
+
+    if args.bw != 'scott' or args.bw != 'silverman':
+        args.bw = float(args.bw)
 
     #TODO if args.test_paths is None: del the test portion of the violin
 
@@ -539,6 +552,7 @@ if __name__ == '__main__':
         measure_range=args.measure_range,
         scale=args.scale,
         scale_hue=args.scale_hue,
+        bw=args.bw,
         cut=args.cut,
         overwrite=args.overwrite,
         num_major_ticks=args.num_major_ticks,
