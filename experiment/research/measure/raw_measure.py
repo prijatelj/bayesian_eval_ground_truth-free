@@ -89,6 +89,17 @@ if __name__ == "__main__":
         givens_argmax = givens.argmax(axis=1)
         conds_argmax = conds.argmax(axis=1)
 
+        if (
+            'cha' in args.data.dataset_filepath.lower()
+            and 'test' in args.data.dataset_filepath.lower()
+        ):
+            # labels, whenever givens argmax is missing a class it
+            # fails, happens in test and all_half_1 in CHA Learn.
+            # NOTE hardcoded hotfix
+            labels = np.arange(20)
+        else:
+            labels = None
+
         # Save the ROC AUC
         io.save_json(
             io.create_filepath(os.path.join(output_dir, 'roc_auc.json')),
@@ -97,8 +108,7 @@ if __name__ == "__main__":
                     givens_argmax,
                     conds,
                     multi_class=args.multi_class,
-                    # TODO labels, whenever givens argmax is missing a class it
-                    # fails, happens in test and all_half_1 in CHA Learn.
+                    labels=labels,
                 ),
                 'matthews_corrcoef': matthews_corrcoef(
                     givens_argmax,
