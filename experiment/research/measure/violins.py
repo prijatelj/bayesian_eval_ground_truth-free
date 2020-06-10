@@ -516,7 +516,7 @@ def parse_args():
     args.scale_hue = not args.no_scale_hue
     del args.no_scale_hue
 
-    if args.bw != 'scott' or args.bw != 'silverman':
+    if args.bw != 'scott' and args.bw != 'silverman':
         args.bw = float(args.bw)
 
     #TODO if args.test_paths is None: del the test portion of the violin
