@@ -44,6 +44,7 @@ def split_violins(
     mark_lines=None,
     no_inf=True,
     overwrite=False,
+    cut_to_measure_range=False,
 ):
     """The violin plots used for visualizing the measures in experiments 1
     and 2 using seaborn violinplot.
@@ -71,6 +72,15 @@ def split_violins(
             if test_finite.sum() == 0:
                 raise ValueError('All of test is not finite!')
             test = test[test_finite]
+        if cut_to_measure_range:
+            train = train[np.logical_and(
+                train >= measure_range[0],
+                train <= measure_range[1],
+            )]
+            test = test[np.logical_and(
+                test >= measure_range[0],
+                test <= measure_range[1],
+            )]
 
         # Create DataFrame for plotting
         measures = pd.DataFrame(
@@ -104,6 +114,15 @@ def split_violins(
                 if test_finite.sum() == 0:
                     raise ValueError('All of test is not finite!')
                 test = test[test_finite]
+            if cut_to_measure_range:
+                train = train[np.logical_and(
+                    train >= measure_range[0],
+                    train <= measure_range[1],
+                )]
+                test = test[np.logical_and(
+                    test >= measure_range[0],
+                    test <= measure_range[1],
+                )]
 
             measures += [train, test]
 
@@ -410,6 +429,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        '--cut_to_measure_range',
+        action='store_true',
+        help='If given, all elements outside of the range are removed.',
+    )
+
+    parser.add_argument(
         '--num_major_ticks',
         default=11,
         type=int,
@@ -562,6 +587,7 @@ if __name__ == '__main__':
         measure_label=args.measure_label,
         inner=args.inner,
         mark_lines=args.mark_lines,
+        cut_to_measure_range=args.cut_to_measure_range,
     )
 
     output_path = io.create_filepath(args.output_path, overwrite=args.overwrite)
