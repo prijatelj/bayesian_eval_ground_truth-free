@@ -10,6 +10,7 @@ Experiement 2 for residuals when target is given target label to predictor:
 """
 import os
 
+import numpy as np
 from scipy.stats import entropy
 from sklearn.metrics import roc_auc_score, matthews_corrcoef
 
