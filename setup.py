@@ -11,8 +11,8 @@ with open('requirements.txt', 'r') as f:
 setup(
     name='psych_metric',
     version='0.1.0',
-    author='Derek Prijatelj',
-    author_email='dprijate@nd.edu',
+    author='',
+    author_email='',
     packages=[
         'psych_metric',
         'psych_metric.datasets',

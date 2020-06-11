@@ -1,6 +1,4 @@
 """Converts given data txt file into a more parsable formatted csv.
-
-author: Derek S. Prijatelj
 """
 import argparse
 

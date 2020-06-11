@@ -11,8 +11,8 @@ with open('requirements.txt', 'r') as f:
 setup(
     name='experiment',
     version='0.1.0',
-    author='Derek Prijatelj',
-    author_email='dprijate@nd.edu',
+    author='',
+    author_email='',
     packages=[
         'experiment',
         #'experiment.crowd_layer',
