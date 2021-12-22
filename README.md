@@ -1,43 +1,46 @@
-# Research Repository for ND CVRL + PA Joint Metric Research
+# A Bayesian Evaluation Framework for Subjectively Annotated Visual Recognition Tasks
+
+This is the research repository for the [Pattern Recognition paper](https://www.sciencedirect.com/science/article/pii/S0031320321005604) completed as a joint project by the University of Notre Dame's Computer Vision and Research Lab and Perceptive Automata.
+
+## Directory Structure
+
+When installing out code, we recommend using a virtual environment, such as venv or conda.
+The models used in experimentation are contained within `psych_metric` and the experiments are contained under `experiments`.
+
 
 ## Experiments
 To run the experiments, run python or ipython from the top level dir of the repository if you want to use the current code from `psych_metric` package, rather than an installed version of the package using `setup.py`.
 
-## Repository Structure
+Install using `python setup.py install`
 
-Loosely follows [Cookiecutter](https://drivendata.github.io/cookiecutter-data-science/) structure
+The code and scripts for the experiments are contained within `experiments`
 
-`makefile` contains useful commands that are run often. run `make jupyter.port` to open a jupyter notebook to be accessed in a web browser at `localhost:16123`
+### License
 
-## Initializing Environment
+Our code contributions within this repository are released under the MIT License located in `LICENSE.txt`
 
-[INSTALL.md](INSTALL.md)
+### Citations
 
-## Communication
+If you use our work, please use the following Bibtex to cite our paper:
 
-Slack `#metric` channel on ND CVRL Slack
+```
+@article{prijatelj_bayesian_2021,
+	title = {A {Bayesian} {Evaluation} {Framework} for {Subjectively} {Annotated} {Visual} {Recognition} {Tasks}},
+	issn = {0031-3203},
+	url = {https://www.sciencedirect.com/science/article/pii/S0031320321005604},
+	doi = {10.1016/j.patcog.2021.108395},
+	language = {en},
+	urldate = {2021-11-08},
+	journal = {Pattern Recognition},
+	author = {Prijatelj, Derek S. and McCurrie, Mel and Anthony, Samuel E. and Scheirer, Walter J.},
+	month = {oct},
+	year = {2021},
+	keywords = {Bayesian inference, Bayesian modeling, Epistemic uncertainty, mine, Supervised learning, Uncertainty estimation},
+	pages = {108395},
+}
+```
 
+### Verisoning
 
-## Reports, Proposals, Ideas
-
-Shared Google Drive Folder
-
-## Final Paper
-
-Sharelatex / Overleaf
-
-## Code and Data
-
-The preferred process is:
-1. Create a new branch
-2. edit that branch
-3. `git pull --rebase` changes from master
-4. Make a merge request
-5. Discuss changes
-6. Merge with master
-
-But given the nature of the project trivial changes to the repository can be pushed to master without that process.
-
-Data should be linked in shared google drive folders, make sure to add data folders to .gitignore before pushing.
-
-After creating something useful, add a simple jupyter notebook in the proper folder as an example of how to use it, e.g. adding a new dataset.
+This project uses [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
+This project's version will remain < 1.0.0 until adequate unit test coverage exists.
