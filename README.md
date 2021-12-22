@@ -2,6 +2,10 @@
 
 This is the research repository for the [Pattern Recognition paper](https://www.sciencedirect.com/science/article/pii/S0031320321005604) completed as a joint project by the University of Notre Dame's Computer Vision and Research Lab and Perceptive Automata.
 
+This work uses Tensorflow and Tensorflow Probability (TFP) prior to the Tensorflow v2 release.
+TFP is used for the Bayesian Evaluator models.
+This includes the distributions and the HMC Bayesian Neural Network (BNN).
+
 ## Directory Structure
 
 When installing out code, we recommend using a virtual environment, such as venv or conda.
