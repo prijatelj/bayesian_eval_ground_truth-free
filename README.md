@@ -7,6 +7,8 @@ This is the research repository for the [Pattern Recognition paper](https://www.
 When installing out code, we recommend using a virtual environment, such as venv or conda.
 The models used in experimentation are contained within `psych_metric` and the experiments are contained under `experiments`.
 
+Note that use of this repo for the Bayesian Evaluators requires installing via setup.py for the main package and `setup_exp.py` for the experiments in your python virtual environment.
+Any other files are unnecessary for that portion of the project, as well as for the LabelMe and SCUT-FB5500 predictors.
 
 ## Experiments
 To run the experiments, run python or ipython from the top level dir of the repository if you want to use the current code from `psych_metric` package, rather than an installed version of the package using `setup.py`.
