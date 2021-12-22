@@ -1,12 +1,14 @@
 """General functions used in experiments 1, 2, and 3."""
+from functools import partial
 import os
 
-import h5py
 import numpy as np
+from scipy.stats import entropy
 
-from psych_metric.metrics.measure import measure
+from psych_metric.metrics import measure
 
 from experiment import io
+from experiment.research.bnn.bnn_mcmc_fwd import load_bnn_fwd
 from experiment.research.bnn import proto_bnn_mcmc
 
 # TODO load bnn in experiment/research/bnn
@@ -52,11 +54,14 @@ def summary_dict(measurements, quantile_set=None, axis=1):
     }
 
 
-def save_raw_measurements(output_dir, measure_id, measurements):
+def save_raw_measurements(output_dir, measure_id, measurements, overwrite=False):
     """Saves raw measures as csv or hdf5 file."""
     if len(measurements.shape) <= 2:
         np.savetxt(
-            os.path.join(output_dir, f'{measure_id}.csv'),
+            io.create_filepath(
+                os.path.join(output_dir, f'{measure_id}.csv'),
+                overwrite,
+            ),
             measurements,
             delimiter=',',
         )
@@ -71,6 +76,7 @@ def save_measures(
     measurements,
     quantiles_frac=None,
     save_raw=True,
+    axis=1,
 ):
     """Convenience function to save measurement output and summarize."""
     if save_raw:
@@ -84,17 +90,19 @@ def save_measures(
     # Save the summary of the euclidean distances
     io.save_json(
         os.path.join(output_dir, f'{measure_id}_summary.json'),
-        summary_dict(measurements, quantile_set, axis=1),
+        summary_dict(measurements, quantile_set, axis=axis),
     )
 
     # Save the flattening of the conditionals via different summarization methods
     io.save_json(
         os.path.join(output_dir, f'{measure_id}_target_samples_flat.json'),
-        summary_arr(measurements, quantile_set, axis=1),
+        summary_arr(measurements, quantile_set, axis=axis),
     )
 
 
-def get_l2dists(targets, preds, prob_simplex_normalize=False, axis=2):
+def get_l2dists(targets, preds, prob_simplex_normalize=False, axis=2, copy=True):
+    if copy:
+        preds = preds.copy()
     """Obtains euclidean distances from sampling of the predictions."""
     for target_idx in range(len(targets)):
         # NOTE assumes shape of [targets, conditionals, classes]
@@ -150,6 +158,16 @@ def add_custom_args(parser):
     )
 
     parser.add_argument(
+        '--use_givens_distrib_samples',
+        default=None,
+        action='store_true',
+        help=' '.join([
+            'Pass if to use samples of the distirb that models givens, rather',
+            'than just the givens data itself.',
+        ])
+    )
+
+    parser.add_argument(
         '--quantiles_frac',
         default=5,
         type=int,
@@ -171,13 +189,60 @@ def add_custom_args(parser):
 
 if __name__ == '__main__':
     # TODO create argparser
+    # Create argparser
+    args = io.parse_args(
+        ['sjd'],
+        custom_args=add_custom_args,
+        description=' '.join([
+            'Runs KL Divergence on ouputs of euclidean BNN given the',
+            'sampled weights. Expeirment 2 for KL Divergence completed with',
+            'this script.',
+        ]),
+    )
+
+    output_dir = io.create_dirs(args.output_dir)
+
+    # Manage bnn mcmc args from argparse
+    bnn_mcmc_args = vars(args.bnn)
+    bnn_mcmc_args['sess_config'] = io.get_tf_config(
+        args.cpu_cores,
+        args.cpu,
+        args.gpu,
+    )
 
     # TODO Load the data
+    givens, pred, weights_sets, bnn = load_bnn_fwd(
+        args.data.dataset_filepath,
+        args.bnn_weights_file,
+        bnn_mcmc_args,
+    )
 
-    # Do exp 1 (euclidean dists) or exp 2 using using KLDiv, euclid dist
-    # (residuals) or confusion matrix
+    # Do exp 2 using using KLDiv, euclid dist
+    # in future consider confusion matrix?
+    if args.use_givens_distrib_samples:
+        # TODO specify if testing only the conditional (use givens as input to
+        # BNN) or if using samples from some distrib modeling the givens (ie.
+        # Dirichlet)
+        # targets = load from file OR sample from given distirb
+        raise NotImplementedError
+    else:
+        targets = givens
 
-    # TODO if euclidean measure call other scripts and return results
+        # TODO use the chosen distribution of the givens and sample from it
+        # (ie. Dirichlet)
+    del pred
 
-    # TODO save results
-    pass
+    measurements = measure.measure(
+        #measure.kldiv_probs,
+        partial(entropy, base=2.0, axis=1),
+        targets,
+        bnn.predict(givens, weights_sets),
+    )
+
+    save_measures(
+        output_dir,
+        'kldivergence',
+        measurements,
+        args.quantiles_frac,
+        save_raw=not args.do_not_save_raw,
+    )

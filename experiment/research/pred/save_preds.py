@@ -96,4 +96,5 @@ if __name__ == '__main__':
             summary_name=args.human_sjd.summary_name,
             data=data,
             save_labels=args.save_labels,
+            pred_name=args.human_sjd.pred_name,
         )

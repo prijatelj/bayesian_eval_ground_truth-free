@@ -39,7 +39,29 @@ def load_sample_weights(weights_dir, filename='.json', dtype=np.float):
     # Handles the case where it is given a single json of accepted weights.
     elif os.path.isfile(weights_dir):
         with open(weights_dir, 'r') as f:
-            weights_sets = [np.array(x, dtype=dtype) for x in json.load(f)]
+            contents = json.load(f)
+
+            if isinstance(contents, list):
+                weights_sets = [np.array(x, dtype=dtype) for x in contents]
+            elif isinstance(contents, dict):
+                if 'is_accepted' in  contents and 'weights' in contents:
+                    weights_sets = [np.array(x, dtype=dtype)['is_accepted']
+                        for x in contents['weights']
+                    ]
+                else:
+                    for vals in weights.values():
+                        if weights_sets:
+                            for i, w in enumerate(vals['weights']):
+                                weights_sets[i] = np.vstack((
+                                    weights_sets[i],
+                                    np.array(w, dtype=dtype)[vals['is_accepted']],
+                                ))
+                        else:
+                            weights_sets += [
+                                np.array(w, dtype=dtype)[vals['is_accepted']]
+                                for w in vals['weights']
+                            ]
+
         return weights_sets
 
     raise ValueError(' '.join([

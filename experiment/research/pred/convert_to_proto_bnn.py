@@ -52,7 +52,7 @@ def parse_args():
 
     parser.add_argument(
         'in_file_path',
-        help='The file in format of `save_pred.load_fold_save_pred()`.',
+        help='The JSON file in format of `save_pred.load_fold_save_pred()`.',
     )
 
     parser.add_argument(

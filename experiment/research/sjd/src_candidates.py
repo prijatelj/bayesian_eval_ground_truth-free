@@ -191,6 +191,19 @@ def get_sjd_candidates(
             'mle_args': None,
             'n_jobs': n_jobs,
         })
+
+    if 'dir-mean_mvn-umvu-zero' in sjd_ids:
+        # target: Dirichlet: concentration is mean of data
+        # transform: Multivariate Normal: loc and cov matrix from data
+        candidates['dir-mean_mvn-umvu-zero'] = sjd_args.copy() if sjd_args else {}
+        candidates['dir-mean_mvn-umvu-zero'].update({
+            'target_distrib': 'Dirichlet',
+            'transform_distrib': 'MultivariateNormal',
+            'independent': False,
+            'mle_args': None,
+            'n_jobs': n_jobs,
+            'zero_mean': True,
+        })
     if 'dir-adam_mvn-umvu' in sjd_ids:
         # target: Dirichlet: concentration is mean of data * mle precision
         # transform: Multivariate Normal: loc and cov matrix from data

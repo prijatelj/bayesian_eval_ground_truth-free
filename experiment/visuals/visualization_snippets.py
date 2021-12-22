@@ -50,9 +50,12 @@ def many_jointplots(df, title=None, axes_lim=None, diag_kind='kde', color=None):
         t = pp.fig.suptitle(title, fontsize=14)
 
 
-def scatter3d(df, cols, **scatter_kws):
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111, projection='3d')
+def scatter3d(df, cols, ax=None, **scatter_kws):
+    if ax is None:
+        fig = plt.figure(figsize=(8, 6))
+        ax = fig.add_subplot(111, projection='3d')
+    else:
+        fig = None
 
     xs = df[cols[0]]
     ys = df[cols[1]]
@@ -299,7 +302,9 @@ def pair_plot_info(
 
 
 def overlaid_pairplot(dfs, *args, **kwargs):
-    """Creates a pair plot of overlaid data."""
+    """Creates a pair plot of overlaid data (ie. mutliple data depicted in
+    different colors).
+    """
 
     # TODO create / get joint axes for each plot
 
@@ -307,6 +312,13 @@ def overlaid_pairplot(dfs, *args, **kwargs):
 
     for df in dfs:
         pair_plot_info(df, *args, **kwargs)
+
+
+def add_interval_to_hist():
+    """Adds lines to a histogram indicating
+    """
+
+    return
 
 
 def violins(

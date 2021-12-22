@@ -54,11 +54,95 @@ def mcmc_sample_log_prob(
         (bnn_output @ tf.transpose(bnn_rotation_mat)) + bnn_origin_adjust
     )
 
+    # TODO Check the order of the bnn_output and bnn_target
     return tf.reduce_sum(
         tfp.distributions.MultivariateNormalDiag(
             loc=tf.zeros([data.shape[1]]),
             scale_identity_multiplier=scale_identity_multiplier
         ).log_prob(output - bnn_target),
+    )
+
+
+def l2_dist(
+    params,
+    data,
+    targets,
+    origin_adjust,
+    rotation_mat,
+):
+    """MCMC BNN that takes the original probability vectors and transforms them
+    into the conditional RV's probability vectors. This BNN ensures that the
+    output of the network is always a probability distribution via softmax.
+
+    Notes
+    -----
+    The BNN is rewritten here because TFP's MCMC target log prob does not play
+    well with creating the network outside of the target log prob function and
+    passed in as constant variables.
+    """
+    bnn_data = tf.convert_to_tensor(data.astype(np.float32), dtype=tf.float32)
+    bnn_target = tf.convert_to_tensor(
+        targets.astype(np.float32),
+        dtype=tf.float32,
+    )
+    bnn_rotation_mat = tf.convert_to_tensor(
+        rotation_mat.astype(np.float32),
+        dtype=tf.float32,
+    )
+    bnn_origin_adjust = tf.convert_to_tensor(
+        origin_adjust.astype(np.float32),
+        dtype=tf.float32,
+    )
+
+    hidden_weights, hidden_bias, output_weights, output_bias = params
+
+    bnn_data_rot = (bnn_data - bnn_origin_adjust) @ bnn_rotation_mat
+
+    hidden = tf.nn.sigmoid(bnn_data_rot @ hidden_weights + hidden_bias)
+
+    bnn_output = hidden @ output_weights + output_bias
+
+    output = tf.nn.softmax(
+        (bnn_output @ tf.transpose(bnn_rotation_mat)) + bnn_origin_adjust
+    )
+
+    # Max is 0, ow. negative values.
+    return -tf.reduce_sum(tf.norm(output - bnn_target, axis=1))
+
+
+def bnn_end2end_target_func(
+    params,
+    data,
+    targets,
+    scale_identity_multiplier=0.01,
+):
+    """MCMC BNN target log prob function that expects the BNN to be end-to-end
+    with no mathematical transforms.
+
+    Notes
+    -----
+    The BNN is rewritten here because TFP's MCMC target log prob does not play
+    well with creating the network outside of the target log prob function and
+    passed in as constant variables.
+    """
+    bnn_data = tf.convert_to_tensor(data.astype(np.float32), dtype=tf.float32)
+    bnn_target = tf.convert_to_tensor(
+        targets.astype(np.float32),
+        dtype=tf.float32,
+    )
+
+    hidden_weights, hidden_bias, output_weights, output_bias = params
+
+    hidden = tf.nn.sigmoid(bnn_data @ hidden_weights + hidden_bias)
+
+    bnn_output = hidden @ output_weights + output_bias
+
+    # TODO Check the order of the bnn_output and bnn_target
+    return tf.reduce_sum(
+        tfp.distributions.MultivariateNormalDiag(
+            loc=tf.zeros([data.shape[1]]),
+            scale_identity_multiplier=scale_identity_multiplier
+        ).log_prob(bnn_output - bnn_target),
     )
 
 
@@ -445,7 +529,7 @@ def assign_weights_bnn(
     bnn_out,
     input_labels,
     tf_input,
-    output_labels=None,
+    #output_labels=None,
     dtype=tf.float32,
     sess_config=None,
     data_dim_first=True,
@@ -455,16 +539,16 @@ def assign_weights_bnn(
     feed_dict = {tf_input: input_labels}
     results_list = [bnn_out]
 
-    if output_labels:
-        # TODO this doesn't make sense. bnn isn't used for simplex differences
-        tf_output = tf.placeholder(
-            dtype=dtype,
-            shape=[None, output_labels.shape[1]],
-            name='output_labels',
-        )
-        results_list.append(bnn_out - tf_output)
-
-        feed_dict[tf_output] = output_labels
+    #if output_labels:
+    #    # TODO this doesn't make sense. bnn isn't used for simplex differences
+    #    tf_output = tf.placeholder(
+    #        dtype=dtype,
+    #        shape=[None, output_labels.shape[1]],
+    #        name='output_labels',
+    #    )
+    #    results_list.append(bnn_out - tf_output)
+    #
+    #    feed_dict[tf_output] = output_labels
 
     with tf.Session(config=sess_config) as sess:
         sess.run((
@@ -502,15 +586,16 @@ def assign_weights_bnn(
                     feed_dict=feed_dict,
                 ))
 
-    if output_labels:
-        return iter_results
+    #if output_labels:
+    #    return iter_results
     if data_dim_first:
         # reshape the output such that the shape corresponds to
         #  [data samples, number of bnn weights sets, classes]
-        return np.stack(iter_results).reshape(
-            len(input_labels),
-            num_weights_sets,
-            input_labels.shape[1],
-        ).squeeze()
+        results = np.stack(iter_results)
+
+        if results.shape[0] == num_weights_sets and results.shape[2] == input_labels.shape[0]:
+            return np.swapaxes(results, 0, 2).squeeze()
+        return np.swapaxes(results, 0, 1).squeeze()
+
     # Otherwise: [number of bnn weights sets, data samples, classes]
     return np.stack(iter_results).squeeze()

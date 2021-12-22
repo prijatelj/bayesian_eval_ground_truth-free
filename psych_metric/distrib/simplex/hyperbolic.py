@@ -183,18 +183,10 @@ def rotate_around(rotation_simplex, angle):
     mat = np.eye(n)
 
     k = 0
-    print(f'k = {k}')
-
-    print(f'v:\n{v}')
-    print(f'mat:\n{mat}')
 
     for r in range(1, n-1):
-        print(f'\nr = {r}, from [1, {n-1}).')
         for c in list(range(r, n))[::-1]:
-            print(f'\t-----\n\tc = {c}, from ({n}, {r}].')
             k += 1
-            print(f'\tk = {k}')
-            print(f'\trot k={k}\'s angle = {np.arctan2(v[r, c], v[r, c - 1])}')
             rot = givens_rotation(
                 n,
                 c,
@@ -204,10 +196,6 @@ def rotate_around(rotation_simplex, angle):
             v = v @ rot
             mat = mat @ rot
 
-            print(f'\trot:\n{rot}')
-            print(f'\tv:\n{v}')
-            print(f'\tmat:\n{mat}')
-
     return (
         translation_vector,
         mat @ givens_rotation(n, n - 2, n - 1, angle) @ np.linalg.inv(mat),
@@ -216,7 +204,7 @@ def rotate_around(rotation_simplex, angle):
 
 def get_simplex_boundary_pts(prob_vectors, copy=True):
     """Returns the boundary points of the regular simplex whose circumscribed
-    hypersphere's radius intersects through the provided points in Barycentric
+    hypersphenre's radius intersects through the provided points in Barycentric
     coordinates. The given points define the angle of the line that passes
     through the center of the simplex, the given point, and the respectie point
     on the boundary of the simplex.
@@ -285,9 +273,9 @@ class Rotator(object):
         )
 
 
-class EuclideanSimplexTransform(object):
+class ProbabilitySimplexTransform(object):
     """Creates and contains the objects needed to convert to and from the
-    Euclidean Simplex basis.
+    Probability Simplex basis.
 
     Attributes
     ----------
@@ -305,7 +293,7 @@ class EuclideanSimplexTransform(object):
 
     Note
     ----
-    This EuclideanSimplexTransform takes more time and more memory than the
+    This ProbabilitySimplexTransform takes more time and more memory than the
     original that used QR or SVD to find the rotation matrix. However, this
     version preserves the simplex dimensions, keeping the simplex regular,
     while the QR and SVD found rotation matrices do not.
@@ -351,7 +339,7 @@ class EuclideanSimplexTransform(object):
 
     @property
     def input_dim(self):
-        # TODO wrap all code for obtaining cart_simllex in EuclideanTransform
+        # TODO wrap all code for obtaining cart_simllex in ProbabilityTransform
         #return self.euclid_simplex_transform.input_dim
         return self.cart_simplex.shape[0]
 
@@ -388,26 +376,26 @@ class HyperbolicSimplexTransform(object):
     """
 
     def __init__(self, dim):
-        self.est = EuclideanSimplexTransform(dim)
+        self.pst = ProbabilitySimplexTransform(dim)
 
         # Save the radius of the simplex's circumscribed hypersphere
-        self.circumscribed_radius = np.linalg.norm(self.est.cart_simplex[:, 0])
+        self.circumscribed_radius = np.linalg.norm(self.pst.cart_simplex[:, 0])
 
     @property
     def input_dim(self):
-        # TODO wrap all code for obtaining cart_simllex in EuclideanTransform
-        return self.est.input_dim
+        # TODO wrap all code for obtaining cart_simllex in ProbabilityTransform
+        return self.pst.input_dim
 
     @property
     def output_dim(self):
-        return self.est.output_dim
+        return self.pst.output_dim
 
     def to(self, vectors):
         """Transform given vectors into hyperbolic probability simplex space."""
         # Convert from probability simplex to the Cartesian coordinates of the
         # centered, regular simplex
         #aligned = vectors @ self.aligned_simplex.T
-        aligned = self.est.to(vectors, drop_dim=True)
+        aligned = self.pst.to(vectors, drop_dim=True)
 
         # Stretch simplex into hypersphere, no longer conserving the angles
         hyperspherical = cartesian_to_hypersphere(aligned)
@@ -424,7 +412,7 @@ class HyperbolicSimplexTransform(object):
 
         # get boundary points radius
         boundary_radii = np.linalg.norm(
-            self.est.to(boundaries, drop_dim=True),
+            self.pst.to(boundaries, drop_dim=True),
             axis=1,
         )
 
@@ -453,7 +441,7 @@ class HyperbolicSimplexTransform(object):
 
         # Circumscribed hypersphere to Cartesian simplex:
         # vectors is the boundaries of the simplex, but in cart simplex.
-        simplex = self.est.back(hypersphere_to_cartesian(hyperspherical))
+        simplex = self.pst.back(hypersphere_to_cartesian(hyperspherical))
         non_edge_case = (simplex == 0).sum(axis=1) < simplex.shape[1] - 1
 
         # Get the boundaries in Barycentric coordinates (probability vectors)
@@ -464,7 +452,7 @@ class HyperbolicSimplexTransform(object):
 
         # Get boundary points radius
         boundary_radii = np.linalg.norm(
-            self.est.to(boundaries, drop_dim=True),
+            self.pst.to(boundaries, drop_dim=True),
             axis=1,
         )
 
@@ -475,7 +463,7 @@ class HyperbolicSimplexTransform(object):
         )
 
         # Cartesian simplex to probability distribution (Barycentric coord)
-        return self.est.back(hypersphere_to_cartesian(hyperspherical))
+        return self.pst.back(hypersphere_to_cartesian(hyperspherical))
 
     def tf_from(self, vectors):
         """Transform given vectors out of n-1 probability simplex space done in

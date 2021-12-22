@@ -64,6 +64,7 @@ class SupervisedJointDistrib(object):
         sample_dim=None,
         dtype=np.float32,
         n_jobs=1,
+        zero_mean=False,
     ):
         """
         Parameters
@@ -163,6 +164,7 @@ class SupervisedJointDistrib(object):
             knn_num_neighbors,
             n_jobs,
             hyperbolic,
+            zero_mean=zero_mean,
         )
 
     def __copy__(self):
@@ -376,7 +378,8 @@ class SupervisedJointDistrib(object):
         knn_num_neighbors=10,
         n_jobs=1,
         hyperbolic=False,
-        tf_sess_config=None
+        tf_sess_config=None,
+        zero_mean=False,
     ):
         """Fits the target and transform distributions to the data."""
         # TODO check if the target and pred match the distributions' sample
@@ -426,6 +429,7 @@ class SupervisedJointDistrib(object):
                     input_dim=self.sample_dim,
                     mle_args=mle_args,
                     sess_config=tf_sess_config,
+                    zero_mean=zero_mean,
                 )
 
         # Set the number of parameters for the transform distribution

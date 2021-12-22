@@ -1,4 +1,5 @@
 """Prototyping bnn mcmc on CRC."""
+from datetime import datetime
 import logging
 import os
 import json
@@ -20,9 +21,10 @@ from experiment.research.sjd import src_candidates
 
 
 def setup_rwm_sim(
+    target_log_prob,
     width=10,
     sample_size=10,
-    scale_identity_multiplier=0.01,
+    #scale_identity_multiplier=0.01,
     dim=3,
     src_id='tight_dir_small_mvn',
 ):
@@ -38,10 +40,9 @@ def setup_rwm_sim(
         np.zeros([dim-1], dtype=np.float32)]
 
     sample_log_prob = partial(
-        bnn_transform.mcmc_sample_log_prob,
+        target_log_prob,
         origin_adjust=rdm.transform_distrib.simplex_transform.origin_adjust.astype(np.float32),
         rotation_mat=rdm.transform_distrib.simplex_transform.change_of_basis_matrix.astype(np.float32),
-        scale_identity_multiplier=scale_identity_multiplier,
     )
 
     #return data, targets, sample_log_prob, init_state
@@ -271,13 +272,22 @@ def sample_chain_run(
 def save_stats(
     output_dir,
     weights_sets,
-    accept_total,
-    accept_rate,
+    is_accepted,
     acf_log_prob,
     final_step_size,
     burnin,
     lag,
+    num_hidden_units,
+    num_layers,
+    scale_identity_multiplier,
+    input_output_dim,
+    bnn_weights_file,
+    data_file,
     log_prob_linregress=None,
+    acf_thresholds=[.5, .4, .3, .2, .1, .05, .01],
+    first_n_acf=10,
+    note=None,
+    datetime_fmt='%Y-%m-%d_%H-%M-%S',
 ):
     """Saves important information of the MCMC chain runs."""
     io.save_json(
@@ -285,15 +295,45 @@ def save_stats(
         weights_sets,
     )
 
+    idx_30percent = int(np.ceil(len(is_accepted) * .3))
+
     acf_lag = {
-        'accept_total': accept_total,
-        'accept_rate': accept_rate,
-        '0.5': np.where(np.abs(acf_log_prob) < 0.5)[0][:10],
-        '0.1': np.where(np.abs(acf_log_prob) < 0.1)[0][:10],
-        '0.05': np.where(np.abs(acf_log_prob) < 0.05)[0][:10],
-        '0.01': np.where(np.abs(acf_log_prob) < 0.01)[0][:10],
-        'final_step_size': final_step_size,
+        'datetime_saving': datetime.now().strftime(datetime_fmt),
+        'paths': {
+            'bnn_weights_file': bnn_weights_file,
+            'data_file': data_file,
+        },
+        'mcmc':{
+            'params':{
+                'final_step_size': final_step_size,
+                'burnin': burnin,
+                'lag': lag,
+            },
+            'results':{
+                'accept_total': is_accepted.sum(),
+                'accept_rate': {
+                    'overall': is_accepted.mean(),
+                    'first_30%': is_accepted[:idx_30percent].mean(),
+                    'in_between':
+                        is_accepted[idx_30percent : -idx_30percent].mean(),
+                    'last_30%': is_accepted[-idx_30percent:].mean(),
+                },
+                'acf_thresholds': {
+                    x: np.where(np.abs(acf_log_prob) <= x)[0][:first_n_acf]
+                    for x in acf_thresholds
+                },
+            },
+            'bnn':{
+                'num_hidden_units': num_hidden_units,
+                'num_layers': num_layers,
+                'input_output_dim': input_output_dim,
+                'scale_identity_multiplier': scale_identity_multiplier,
+            },
+        },
     }
+
+    if note is not None:
+        acf_lag['note'] = note
 
     if log_prob_linregress is not None:
         acf_lag['target_func_linreg'] = {
@@ -346,11 +386,11 @@ def add_custom_args(parser):
         help='The id of joint distribution to use in simulation of samples.',
     )
 
-    #parser.add_argument(
-    #    '--no_visuals',
-    #    default=None,
-    #    help='Does not save visuals.',
-    #)
+    parser.add_argument(
+        '--no_visuals',
+        action='store_true',
+        help='Does not save visuals if single chain (single process).',
+    )
 
     parser.add_argument(
         '--target_accept_prob',
@@ -365,6 +405,20 @@ def add_custom_args(parser):
         help='If given, and dataset_filepath is a file and no bnn weights given, then the bnn weights are randomly initialized.',
     )
 
+    parser.add_argument(
+        '--mcmc_target_log_prob',
+        default='mcmc_sample_log_prob',
+        choices=['mcmc_sample_log_prob', 'l2_dist'],
+        help='The target log prob function to use for the MCMC.',
+    )
+
+    parser.add_argument(
+        '--note',
+        default=None,
+        type=str,
+        help='A Note to be added in the results JSON.',
+    )
+
 
 if __name__ == '__main__':
     args = io.parse_args(custom_args=add_custom_args)
@@ -374,6 +428,15 @@ if __name__ == '__main__':
     output_dir = io.create_dirs(output_dir)
     logging.info('Created the output directories')
 
+    if args.mcmc_target_log_prob == 'l2_dist':
+        target_log_prob = bnn_transform.l2_dist
+    else:
+        # defaults to bnn_transform.mcmc_sample_log_prob (regression MVN)
+        target_log_prob = partial(
+            bnn_transform.mcmc_sample_log_prob,
+            scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+        )
+
     if os.path.isfile(args.data.dataset_filepath):
         with open(args.data.dataset_filepath, 'r') as f:
             data = json.load(f)
@@ -382,12 +445,12 @@ if __name__ == '__main__':
             change_of_basis = np.array(data['change_of_basis'], dtype=np.float32)
             origin_adjust = np.array(data['origin_adjust'], dtype=np.float32)
 
-        scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+        #scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
         sample_log_prob = partial(
-            bnn_transform.mcmc_sample_log_prob,
+            target_log_prob,
             origin_adjust=origin_adjust,
             rotation_mat=change_of_basis,
-            scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+            #scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
         )
 
         if args.random_bnn_init:
@@ -426,9 +489,10 @@ if __name__ == '__main__':
             raise ValueError('Must provide dim when doing simulation runs.')
 
         givens, conditionals, sample_log_prob, init_state, src = setup_rwm_sim(
+            target_log_prob,
             width=args.bnn.num_hidden,
             sample_size=args.num_samples,
-            scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
+            #scale_identity_multiplier=args.mcmc.scale_identity_multiplier,
             dim=args.dim,
             src_id=args.src_sjd_id,
         )
@@ -481,9 +545,6 @@ if __name__ == '__main__':
         )
         logging.info('Finished RandomWalkMetropolis')
 
-        accept_total = output[1].is_accepted.sum()
-        accept_rate = output[1].is_accepted.mean()
-
         acf_log_prob = acf(
             output[1].accepted_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -494,26 +555,33 @@ if __name__ == '__main__':
         save_stats(
             output_dir,
             new_starting_state,
-            accept_total,
-            accept_rate,
+            output[1].is_accepted,
             acf_log_prob,
             final_step_size,
             args.mcmc.sample_chain.burnin,
             args.mcmc.sample_chain.lag,
+            args.bnn.num_hidden,
+            args.bnn.num_layers,
+            args.mcmc.scale_identity_multiplier,
+            givens.shape[1],
+            args.bnn_weights_file,
+            args.data.dataset_filepath,
+            note=args.note,
             #log_prob_linreg=scipy.stats.linregress(
             #    np.arange(args.mcmc.sample_chain.num_results),
             #    mcmc_results.accepted_results.target_log_prob,
             #),
         )
 
-        logging.info('Starting RandomWalkMetropolis specific visuals')
-        plt.plot(output[1].accepted_results.target_log_prob)
-        plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+        if not args.no_visuals:
+            logging.info('Starting RandomWalkMetropolis specific visuals')
+            plt.plot(output[1].accepted_results.target_log_prob)
+            plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
+            plt.close()
 
-        pd.DataFrame(acf_log_prob).plot(kind='bar')
-        plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+            pd.DataFrame(acf_log_prob).plot(kind='bar')
+            plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
+            plt.close()
 
     elif args.mcmc.kernel_id == 'HamiltonianMonteCarlo':
         output = run_hmc(
@@ -544,9 +612,6 @@ if __name__ == '__main__':
                 mcmc_results = output[1]
                 final_step_size = args.mcmc.kernel.step_size
 
-            accept_total = mcmc_results.is_accepted.sum()
-            accept_rate = mcmc_results.is_accepted.mean()
-
             acf_log_prob = acf(
                 mcmc_results.accepted_results.target_log_prob,
                 nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -555,26 +620,34 @@ if __name__ == '__main__':
             save_stats(
                 output_dir,
                 new_starting_state,
-                accept_total,
-                accept_rate,
+                mcmc_results.is_accepted,
                 acf_log_prob,
                 final_step_size,
                 args.mcmc.sample_chain.burnin,
                 args.mcmc.sample_chain.lag,
+                args.bnn.num_hidden,
+                args.bnn.num_layers,
+                args.mcmc.scale_identity_multiplier,
+                givens.shape[1],
+                args.bnn_weights_file,
+                args.data.dataset_filepath,
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
                     mcmc_results.accepted_results.target_log_prob,
                 ),
+                note=args.note,
             )
 
-            logging.info('Starting HamiltonianMonteCarlo specific visuals')
-            plt.plot(mcmc_results.accepted_results.target_log_prob)
-            plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
-            plt.close()
 
-            pd.DataFrame(acf_log_prob).plot(kind='bar')
-            plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
-            plt.close()
+            if not args.no_visuals:
+                logging.info('Starting HamiltonianMonteCarlo specific visuals')
+                plt.plot(mcmc_results.accepted_results.target_log_prob)
+                plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
+                plt.close()
+
+                pd.DataFrame(acf_log_prob).plot(kind='bar')
+                plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
+                plt.close()
         else:
             sampled_weights = {}
             for i in range(0, len(output)):
@@ -613,9 +686,6 @@ if __name__ == '__main__':
             mcmc_results = output[1]
             final_step_size = args.mcmc.kernel.step_size
 
-        accept_total = mcmc_results.is_accepted.sum()
-        accept_rate = mcmc_results.is_accepted.mean()
-
         acf_log_prob = acf(
             mcmc_results.target_log_prob,
             nlags=int(args.mcmc.sample_chain.num_results / 4),
@@ -625,25 +695,32 @@ if __name__ == '__main__':
             save_stats(
                 output_dir,
                 new_starting_state,
-                accept_total,
-                accept_rate,
+                mcmc_results.is_accepted,
                 acf_log_prob,
                 final_step_size,
                 args.mcmc.sample_chain.burnin,
                 args.mcmc.sample_chain.lag,
+                args.bnn.num_hidden,
+                args.bnn.num_layers,
+                args.mcmc.scale_identity_multiplier,
+                givens.shape[1],
+                args.bnn_weights_file,
+                args.data.dataset_filepath,
                 log_prob_linregress=scipy.stats.linregress(
                     np.arange(args.mcmc.sample_chain.num_results),
                     mcmc_results.target_log_prob
                 ),
+                note=args.note,
             )
 
-        logging.info('Starting NoUTurnSampler specific visuals')
-        plt.plot(mcmc_results.target_log_prob)
-        plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+        if not args.no_visuals:
+            logging.info('Starting NoUTurnSampler specific visuals')
+            plt.plot(mcmc_results.target_log_prob)
+            plt.savefig(os.path.join(output_dir, 'log_prob.png'), dpi=400, bbox_inches='tight')
+            plt.close()
 
-        pd.DataFrame(acf_log_prob).plot(kind='bar')
-        plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
-        plt.close()
+            pd.DataFrame(acf_log_prob).plot(kind='bar')
+            plt.savefig(os.path.join(output_dir, 'log_prob_acf_fourth.png'), dpi=400, bbox_inches='tight')
+            plt.close()
 
     logging.info('Finished MCMC training and specific kernel givens saving.')
